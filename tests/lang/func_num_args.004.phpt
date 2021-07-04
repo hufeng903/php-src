@@ -1,21 +1,21 @@
 --TEST--
-Pass same variable by ref and by value. 
+Pass same variable by ref and by value.
 --FILE--
 <?php
 function valRef($x, &$y) {
-	var_dump($x, $y);
-	var_dump(func_num_args());
-	$x = 'changed.x';
-	$y = 'changed.y';
-	var_dump(func_num_args());
+    var_dump($x, $y);
+    var_dump(func_num_args());
+    $x = 'changed.x';
+    $y = 'changed.y';
+    var_dump(func_num_args());
 }
 
 function refVal(&$x, $y) {
-	var_dump($x, $y);
-	var_dump(func_num_args());
-	$x = 'changed.x';
-	$y = 'changed.y';
-	var_dump(func_num_args());
+    var_dump($x, $y);
+    var_dump(func_num_args());
+    $x = 'changed.x';
+    $y = 'changed.y';
+    var_dump(func_num_args());
 }
 
 
@@ -30,8 +30,6 @@ refVal($b, $b);
 var_dump($b);
 ?>
 --EXPECT--
-
-
 -- Val, Ref --
 string(10) "original.a"
 string(10) "original.a"

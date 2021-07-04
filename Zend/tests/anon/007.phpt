@@ -17,7 +17,7 @@ namespace lone {
 
     new Outer();
 }
+?>
 --EXPECTF--
 object(class@%s)#2 (0) {
 }
-

@@ -1,10 +1,7 @@
 --TEST--
 ZipArchive::*ExternalAttributes*() function
---SKIPIF--
-<?php
-/* $Id$ */
-if (!extension_loaded('zip')) die('skip');
-?>
+--EXTENSIONS--
+zip
 --FILE--
 <?php
 

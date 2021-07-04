@@ -1,12 +1,7 @@
 --TEST--
-Test strrev() function : basic functionality 
+Test strrev() function : basic functionality
 --FILE--
 <?php
-/* Prototype  : string strrev(string $str);
- * Description: Reverse a string 
- * Source code: ext/standard/string.c
-*/
-
 echo "*** Testing strrev() : basic functionality ***\n";
 $heredoc = <<<EOD
 Hello, world

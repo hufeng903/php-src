@@ -1,5 +1,7 @@
 --TEST--
 Bug #71974 Trans sid will always be send, even if cookies are available
+--EXTENSIONS--
+session
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --INI--
@@ -19,5 +21,3 @@ session_start()
 <a href="some.php">abc</a>
 --EXPECT--
 <a href="some.php">abc</a>
-
-

@@ -47,7 +47,7 @@ namespace Fiz\Biz\Buz {
     boz();
     A();
 }
-
+?>
 --EXPECTF--
 ==== MIXED ====
 Foo\Bar\A::__construct

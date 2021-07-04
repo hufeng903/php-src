@@ -1,7 +1,7 @@
 --TEST--
 locale_get_script()
---SKIPIF--
-<?php if( !extension_loaded( 'intl' ) ) print 'skip'; ?>
+--EXTENSIONS--
+intl
 --FILE--
 <?php
 
@@ -119,4 +119,3 @@ en-a-myExt-b-another:  script=''
 de-419-DE:  script=''
 a-DE:  script=''
 ar-a-aaa-b-bbb-a-ccc:  script=''
-

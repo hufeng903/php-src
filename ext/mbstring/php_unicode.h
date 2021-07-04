@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -32,8 +30,6 @@
 
 #ifndef PHP_UNICODE_H
 #define PHP_UNICODE_H
-
-#if HAVE_MBSTRING
 
 #define UC_MN  0 /* Mark, Non-Spacing          */
 #define UC_MC  1 /* Mark, Spacing Combining    */
@@ -87,8 +83,8 @@ MBSTRING_API int php_unicode_is_prop(unsigned long code, ...);
 MBSTRING_API int php_unicode_is_prop1(unsigned long code, int prop);
 
 MBSTRING_API char *php_unicode_convert_case(
-		int case_mode, const char *srcstr, size_t srclen, size_t *retlen,
-		const mbfl_encoding *src_encoding);
+		int case_mode, const char *srcstr, size_t srclen, size_t *ret_len,
+		const mbfl_encoding *src_encoding, int illegal_mode, int illegal_substchar);
 
 #define PHP_UNICODE_CASE_UPPER        0
 #define PHP_UNICODE_CASE_LOWER        1
@@ -192,11 +188,4 @@ static inline int php_unicode_is_upper(unsigned long code) {
 #define php_unicode_is_cased(cc) php_unicode_is_prop1(cc, UC_CASED)
 #define php_unicode_is_case_ignorable(cc) php_unicode_is_prop1(cc, UC_CASE_IGNORABLE)
 
-
-#endif
-
-
 #endif /* PHP_UNICODE_H */
-
-
-

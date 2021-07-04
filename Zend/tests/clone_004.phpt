@@ -1,12 +1,12 @@
 --TEST--
 Testing usage of object as array on clone statement
 --FILE--
-<?php 
+<?php
 
 class foo {
-	public function __get($a) {
-		return new $this;
-	}
+    public function __get($a) {
+        return new $this;
+    }
 }
 
 $c = new foo;

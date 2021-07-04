@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Derick Rethans
+ * Copyright (c) 2015-2019 Derick Rethans
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,13 +39,7 @@
 # endif
 #endif
 
-#ifdef HAVE_STRING_H
-# include <string.h>
-#endif
-
-#ifdef HAVE_STRINGS_H
-# include <strings.h>
-#endif
+#include <string.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -68,10 +62,7 @@
 #endif
 
 #include <stdio.h>
-
-#if HAVE_LIMITS_H
 #include <limits.h>
-#endif
 
 #define TIMELIB_SECOND   1
 #define TIMELIB_MINUTE   2
@@ -92,11 +83,15 @@
 
 #define SECS_PER_ERA   TIMELIB_LL_CONST(12622780800)
 #define SECS_PER_DAY   86400
+#define SECS_PER_HOUR   3600
+#define DAYS_PER_WEEK      7
 #define DAYS_PER_YEAR    365
 #define DAYS_PER_LYEAR   366
+#define MONTHS_PER_YEAR   12
 /* 400*365 days + 97 leap days */
-#define DAYS_PER_LYEAR_PERIOD 146097
-#define YEARS_PER_LYEAR_PERIOD 400
+#define DAYS_PER_ERA  146097
+#define YEARS_PER_ERA    400
+#define HINNANT_EPOCH_SHIFT 719468 /* 0000-03-01 instead of 1970-01-01 */
 
 #define TIMELIB_TZINFO_PHP       0x01
 #define TIMELIB_TZINFO_ZONEINFO  0x02
@@ -123,7 +118,7 @@ struct _ttinfo
 
 struct _tlinfo
 {
-	int32_t  trans;
+	int64_t  trans;
 	int32_t  offset;
 };
 
@@ -136,14 +131,27 @@ struct _tlinfo
 #define LONG_MIN (- LONG_MAX - 1)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* From unixtime2tm.c */
 int timelib_apply_localtime(timelib_time *t, unsigned int localtime);
 
+/* From parse_posix.c */
+timelib_sll timelib_ts_at_start_of_year(timelib_sll year);
+ttinfo* timelib_fetch_posix_timezone_offset(timelib_tzinfo *tz, timelib_sll ts, timelib_sll *transition_time);
+
 /* From parse_tz.c */
-void timelib_time_tz_abbr_update(timelib_time* tm, char* tz_abbr);
+void timelib_time_tz_abbr_update(timelib_time* tm, const char* tz_abbr);
+ttinfo* timelib_fetch_timezone_offset(timelib_tzinfo *tz, timelib_sll ts, timelib_sll *transition_time);
 
 /* From timelib.c */
 int timelib_strcasecmp(const char *s1, const char *s2);
 int timelib_strncasecmp(const char *s1, const char *s2, size_t n);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

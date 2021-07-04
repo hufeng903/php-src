@@ -2,11 +2,6 @@
 Test array_unique() function : usage variations - different arrays for 'input' argument
 --FILE--
 <?php
-/* Prototype  : array array_unique(array $input)
- * Description: Removes duplicate values from array 
- * Source code: ext/standard/array.c
-*/
-
 /*
 * Passing different arrays to $input argument and testing whether
 * array_unique() behaves in an expected way.
@@ -77,7 +72,7 @@ foreach($inputs as $input) {
   var_dump( array_unique($input, SORT_STRING) );
   $iterator++;
 }
-  
+
 echo "Done";
 ?>
 --EXPECT--

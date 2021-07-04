@@ -1,9 +1,9 @@
 --TEST--
 Accessing root, body, html, and head nodes..
---SKIPIF--
-<?php if (!extension_loaded("tidy")) print "skip"; ?>
+--EXTENSIONS--
+tidy
 --FILE--
-<?php 
+<?php
 $a = tidy_parse_string("<HTML><BODY BGCOLOR=#FFFFFF ALINK=#000000></BODY></HTML>", array('newline' => 'LF'));
 var_dump($a->root());
 var_dump($a->body());

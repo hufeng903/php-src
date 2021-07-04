@@ -1,6 +1,5 @@
 --TEST--
 Return value is subclass of return type
-
 --FILE--
 <?php
 class foo {}
@@ -13,7 +12,7 @@ class qux extends foo {
 
 $qux = new qux();
 var_dump($qux->foo());
-
+?>
 --EXPECTF--
 object(qux)#%d (%d) {
 }

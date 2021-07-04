@@ -1,51 +1,56 @@
 --TEST--
 openssl_csr_export_to_file() tests
---SKIPIF--
-<?php if (!extension_loaded("openssl")) print "skip"; ?>
+--EXTENSIONS--
+openssl
 --FILE--
 <?php
-$csrfile = dirname(__FILE__) . "/openssl_csr_export_to_file_csr.tmp";
+$csrfile = __DIR__ . "/openssl_csr_export_to_file_csr.tmp";
 $wrong = "wrong";
 $config = __DIR__ . DIRECTORY_SEPARATOR . 'openssl.cnf';
 $phex = 'dcf93a0b883972ec0e19989ac5a2ce310e1d37717e8d9571bb7623731866e61e' .
-		'f75a2e27898b057f9891c2e27a639c3f29b60814581cd3b2ca3986d268370557' .
-		'7d45c2e7e52dc81c7a171876e5cea74b1448bfdfaf18828efd2519f14e45e382' .
-		'6634af1949e5b535cc829a483b8a76223e5d490a257f05bdff16f2fb22c583ab';
+        'f75a2e27898b057f9891c2e27a639c3f29b60814581cd3b2ca3986d268370557' .
+        '7d45c2e7e52dc81c7a171876e5cea74b1448bfdfaf18828efd2519f14e45e382' .
+        '6634af1949e5b535cc829a483b8a76223e5d490a257f05bdff16f2fb22c583ab';
 $dh_details = array('p' => $phex, 'g' => '2');
 $dh = openssl_pkey_new(array(
-	'dh'=> array('p' => hex2bin($phex), 'g' => '2'))
+    'dh'=> array('p' => hex2bin($phex), 'g' => '2'))
 );
 
 $dn = array(
-	"countryName" => "BR",
-	"stateOrProvinceName" => "Rio Grande do Sul",
-	"localityName" => "Porto Alegre",
-	"commonName" => "Henrique do N. Angelo",
-	"emailAddress" => "hnangelo@php.net"
+    "countryName" => "BR",
+    "stateOrProvinceName" => "Rio Grande do Sul",
+    "localityName" => "Porto Alegre",
+    "commonName" => "Henrique do N. Angelo",
+    "emailAddress" => "hnangelo@php.net"
 );
 
 $args = array(
-	"digest_alg" => "sha1",
-	"private_key_bits" => 2048,
-	"private_key_type" => OPENSSL_KEYTYPE_DSA,
-	"encrypt_key" => true,
-	"config" => $config,
+    "digest_alg" => "sha1",
+    "private_key_bits" => 2048,
+    "private_key_type" => OPENSSL_KEYTYPE_DSA,
+    "encrypt_key" => true,
+    "config" => $config,
 );
 
-$privkey_file = 'file://' . dirname(__FILE__) . '/private_rsa_2048.key';
+$privkey_file = 'file://' . __DIR__ . '/private_rsa_2048.key';
 $csr = openssl_csr_new($dn, $privkey_file, $args);
 var_dump(openssl_csr_export_to_file($csr, $csrfile));
 var_dump(file_get_contents($csrfile));
+
 var_dump(openssl_csr_export_to_file($wrong, $csrfile));
-var_dump(openssl_csr_export_to_file($dh, $csrfile));
-var_dump(openssl_csr_export_to_file(array(), $csrfile));
+
+try {
+    openssl_csr_export_to_file($dh, $csrfile);
+} catch (TypeError $e) {
+    echo $e->getMessage(), "\n";
+}
 var_dump(openssl_csr_export_to_file($csr, $csrfile, false));
 ?>
 --CLEAN--
 <?php
-$csrfile = dirname(__FILE__) . "/openssl_csr_export_to_file_csr.tmp";
+$csrfile = __DIR__ . "/openssl_csr_export_to_file_csr.tmp";
 if (file_exists($csrfile)) {
-	unlink($csrfile);
+    unlink($csrfile);
 }
 ?>
 --EXPECTF--
@@ -70,14 +75,7 @@ JViHkCA9x6m8RJXAFvqmgLlWlUzbDv/cRrDfjWjR
 -----END CERTIFICATE REQUEST-----
 "
 
-Warning: openssl_csr_export_to_file() expects parameter 1 to be resource, string given in %s on line %d
-NULL
-
-Warning: openssl_csr_export_to_file(): supplied resource is not a valid OpenSSL X.509 CSR resource in %s on line %d
-
-Warning: openssl_csr_export_to_file(): cannot get CSR from parameter 1 in %s on line %d
+Warning: openssl_csr_export_to_file(): X.509 Certificate Signing Request cannot be retrieved in %s on line %d
 bool(false)
-
-Warning: openssl_csr_export_to_file() expects parameter 1 to be resource, array given in %s on line %d
-NULL
+openssl_csr_export_to_file(): Argument #1 ($csr) must be of type OpenSSLCertificateSigningRequest|string, OpenSSLAsymmetricKey given
 bool(true)

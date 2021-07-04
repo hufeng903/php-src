@@ -1,210 +1,176 @@
 PHP                                                                        NEWS
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-?? ??? ????, PHP 7.3.0alpha1
+?? ??? ????, PHP 8.1.0alpha3
 
 - Core:
-  . Improved PHP GC. (Dmitry, Nikita)
-  . Redesigned the old ext_skel program written in PHP, run: 
-    'php ext_skel.php' for all options. This means there is no dependencies 
-    thrus making it work on Windows out of the box. (Kalle)
-  . Removed support for BeOS. (Kalle)
-  . Add PHP_VERSION to phpinfo() <title/>. (github/MattJeevas)
-  . Add net_get_interfaces(). (Sara, Joe, Anatol)
-  . Implemented flexible heredoc and nowdoc syntax, per
-    RFC https://wiki.php.net/rfc/flexible_heredoc_nowdoc_syntaxes.
-    (Thomas Punt)
-  . Added support for references in list() and array destructuring, per
-    RFC https://wiki.php.net/rfc/list_reference_assignment.
-    (David Walker)
-  . Fixed bug #75683 (Memory leak in zend_register_functions() in ZTS mode).
-    (Dmitry)
-  . Fixed bug #75031 (support append mode in temp/memory streams). (adsr)
-  . Fixed bug #74860 (Uncaught exceptions not being formatted properly when
-    error_log set to "syslog"). (Philip Prindeville)
-  . Fixed bug #75220 (Segfault when calling is_callable on parent). 
-    (andrewnester)
-  . Fixed bug #69954 (broken links and unused config items in distributed ini
-    files). (petk)
-  . Fixed bug #74922 (Composed class has fatal error with duplicate, equal const
-    properties). (pmmaga)
-  . Fixed bug #63911 (identical trait methods raise errors during composition). 
-    (pmmaga)
-  . Fixed bug #75677 (Clang ignores fastcall calling convention on variadic
-    function). (Li-Wen Hsu)
-  . Fixed bug #54043 (Remove inconsitency of internal exceptions and user
-    defined exceptions). (Nikita)
-  . Fixed bug #53033 (Mathematical operations convert objects to integers).
-    (Nikita)
-  . Fixed bug #73108 (Internal class cast handler uses integer instead of
-    float). (Nikita)
-  . Fixed bug #75765 (Fatal error instead of Error exception when base class is
-    not found). (Timur Ibragimov)
-  . Fixed bug #76198 (Wording: "iterable" is not a scalar type). (Levi Morrison)
+  . Fixed bug #81202 (powerpc64 build fails on fibers). (krakjoe)
+  . Fixed bug #80072 (Cyclic unserialize in TMPVAR operand may leak). (Nikita)
 
-- BCMath:
-  . Fixed bug #66364 (BCMath bcmul ignores scale parameter). (cmb)
-  . Implemented request #67855 (No way to get current scale in use). (Chris
-    Wright, cmb)
-  . Fixed bug #75164 (split_bc_num() is pointless). (cmb)
-  . Fixed bug #75169 (BCMath errors/warnings bypass PHP's error handling). (cmb)
+- Curl:
+  . Fixed bug #81085 (Support CURLOPT_SSLCERT_BLOB for cert strings).
+    (camporter)
 
-- cURL:
-  . Fixed bug #74125 (Fixed finding CURL on systems with multiarch support).
-    (cebe)
+- Reflection:
+  . Fixed bug #81200 (no way to determine if Closure is static). (krakjoe)
 
-- Date:
-  . Implemented FR #74668: Add DateTime::createFromImmutable() method.
-    (majkl578, Rican7)
-  . Fixed bug #75222 (DateInterval microseconds property always 0). (jhdxr)
-  . Fixed bug #68406 (calling var_dump on a DateTimeZone object modifies it).
-    (jhdxr)
-  . Fixed bug #76131 (mismatch arginfo for date_create). (carusogabriel)
+24 Jun 2021, PHP 8.1.0alpha2
 
-- DBA:
-  . Fixed bug #75264 (compiler warnings emitted). (petk)
+- Core:
+  . Fixed bug #81163 (__sleep allowed to return non-array). (krakjoe)
 
-- GD:
-  . Added support for WebP in imagecreatefromstring() (Andreas Treichel, cmb).
+- Opcache:
+  . Fixed bug #81133 (building opcache with phpize fails). (krakjoe)
+  . Fixed bug #81136 (opcache header not installed). (krakjoe)
 
-- GMP:
-  . Export internal structures and accessor helpers for GMP object. (Sara)
-  . Added gmp_binomial(n, k). (Nikita)
-  . Added gmp_lcm(a, b). (Nikita)
-  . Added gmp_perfect_power(a). (Nikita)
-  . Added gmp_kronecker(a, b). (Nikita)
-
-- interbase:
-  . Fixed bug #75453 (Incorrect reflection for ibase_[p]connect). (villfa)
-
-- intl:
-  . Fixed bug #75317 (UConverter::setDestinationEncoding changes source instead 
-    of destination). (andrewnester)
-
-- JSON:
-  . Added JSON_THROW_ON_ERROR flag. (Andrea)
-
-- LDAP:
-  . Added ldap_exop_refresh helper for EXOP REFRESH operation with dds overlay. 
-    (Come)
-  . Added full support for sending and parsing ldap controls (Come)
-  . Fixed bug #49876 (Fix LDAP path lookup on 64-bit distros). (dzuelke)
-
-- libxml2:
-  . Fixed bug #75871 (use pkg-config where available). (pmmaga)
-
-- litespeed:
-  . Fixed bug #75248 (Binary directory doesn't get created when building 
-    only litespeed SAPI). (petk)
-  . Fixed bug #75251 (Missing program prefix and suffix). (petk)
-
-- mbstring:
-  . Fixed bug #65544 (mb title case conversion-first word in quotation isn't
-    capitalized). (Nikita)
-  . Fixed bug #71298 (MB_CASE_TITLE misbehaves with curled apostrophe/quote.
-    (Nikita)
-  . Fixed bug #73528 (Crash in zif_mb_send_mail). (Nikita)
-  . Fixed bug #74929 (mbstring functions version 7.1.1 are slow compared to 5.3
-    on Windows). (Nikita)
-  . Update to Oniguruma 6.8.1. (cmb)
-
-- ODBC:
-  . Removed support for ODBCRouter. (Kalle)
-  . Removed support for Birdstep. (Kalle)
-
-- OpenSSL:
-  . Added openssl_pkey_derive function. (Jim Zubov)
-
-- PCRE:
-  . Implemented https://wiki.php.net/rfc/pcre2-migration (Anatol, Dmitry)
-  . Fixed bug #75355 (preg_quote() does not quote # control character).
-    (Michael Moravec)
-
-- PDO_DBlib:
-  . Implemented request #69592 (allow 0-column rowsets to be skipped
-    automatically). (fandrieu)
-  . Fixed bug #74243 (allow locales.conf to drive datetime format). (fandrieu)
-  . Expose TDS version as \PDO::DBLIB_ATTR_TDS_VERSION attribute on \PDO
-    instance. (fandrieu)
-  . Treat DATETIME2 columns like DATETIME. (fandrieu)
-
-- PDO_OCI:
-  . Fixed bug #74631 (PDO_PCO with PHP-FPM: OCI environment initialized
-    before PHP-FPM sets it up). (Ingmar Runge)
-
-- PDO SQLite
-  . Add support for additional open flags
-
-- pgsql:
-  . Added new error constants for pg_result_error(): (Kalle)
-    - Requires Postgres 9.3
-      - PGSQL_DIAG_SCHEMA_NAME
-	  - PGSQL_DIAG_TABLE_NAME
-	  - PGSQL_DIAG_COLUMN_NAME
-	  - PGSQL_DIAG_DATATYPE_NAME
-	  - PGSQL_DIAG_CONSTRAINT_NAME
-	- Requires Postgres 9.6
-	  - PGSQL_DIAG_SEVERITY_NONLOCALIZED
-
-- phar:
-  . Fixed bug #74991 (include_path has a 4096 char limit in some cases).
-    (bwbroersma)
-  . Fixed bug #65414 (deal with leading slash when adding files correctly).
-    (bishopb)
-
-- readline:
-  . Added completion_append_character and completion_suppress_append options
-    to readline_info() if linked against libreadline. (krageon)
-
-- Session:
-  . Fixed bug #74941 (session fails to start after having headers sent). 
-    (morozov)
-
-- SimpleXML:
-  . Fixed bug #54973 (SimpleXML casts integers wrong). (Nikita)
-
-- SOAP:
-  . Fixed bug #75464 (Wrong reflection on SoapClient::__setSoapHeaders). (villfa)
-  . Fixed bug #70469 (SoapClient generates E_ERROR even if exceptions=1 is
-    used). (Anton Artamonov)
+- PDO OCI:
+  . Fixed bug #77120 (Support 'success with info' at connection).
+    (Sergei Morozov)
+    
+- phpdbg:
+  . Fixed bug #81135 (unknown help topic causes assertion failure). (krakjoe)
 
 - SPL:
-  . Fixed bug #74977 (Appending AppendIterator leads to segfault). 
-    (Andrew Nester)
-  . Fixed bug #75173 (incorrect behavior of AppendIterator::append in foreach
-    loop). (jhdxr)
-  . Fixed bug #74372 (autoloading file with syntax error uses next autoloader,
-    may hide parse error). (Nikita)
-  . Fixed bug #75878 (RecursiveTreeIterator::setPostfix has wrong signature).
-    (cmb)
-  . Fixed bug #74519 (strange behavior of AppendIterator). (jhdxr)
-  . Fixed bug #76131 (mismatch arginfo for splarray constructor). 
-    (carusogabriel)
-
-- SQLite3:
-  . Updated bundled libsqlite to 3.23.1. (cmb)
-
+  . Fixed bug #81112 (Special json_encode behavior for SplFixedArray). (Nikita)
+  . Fixed bug #80945 ("Notice: Undefined index" on unset() ArrayObject
+    non-existing key). (Nikita)
+    
 - Standard:
-  . Added is_countable() function. (Gabriel Caruso)
-  . Fixed bug #75916 (DNS_CAA record results contain garbage). (Mike, 
-    Philip Sharp)
-  . Fixed unserialize(), to disable creation of unsupported data structures
-    through manually crafted strings. (Dmitry)
-  . Fixed bug #75409 (accept EFAULT in addition to ENOSYS as indicator 
-    that getrandom() is missing). (sarciszewski)
-  . Fixed bug #74719 (fopen() should accept NULL as context). (Alexander Holman)
-  . Fixed bug #69948 (path/domain are not sanitized in setcookie). (cmb)
-  . Fixed bug #75996 (incorrect url in header for mt_rand). (tatarbj)
-  . Remove superfluous warnings from inet_ntop()/inet_pton(). (daverandom)
+  . Fixed bug #81137 (hrtime breaks build on OSX before Sierra). (krakjoe)
 
-- Testing:
-  . Implemented request #62055 (Make run-tests.php support --CGI-- sections).
-    (cmb)
+10 Jun 2021, PHP 8.1.0alpha1
 
-- Tidy:
-  . Fixed bug #74707 (Tidy has incorrect ReflectionFunction param counts for
-    functions taking tidy). (Gabriel Caruso)
+- Core:
+  . Fixed inclusion order for phpize builds on Windows. (cmb)
+  . Added missing hashtable insertion APIs for arr/obj/ref. (Sara)
+  . Fixed bug #75474 (function scope static variables are not bound to a unique
+    function). (Nikita)
+  . Fixed bug #53826 (__callStatic fired in base class through a parent call if
+    the method is private). (Nikita)
+  . Implemented FR #77372 (Relative file path is removed from uploaded file).
+    (Björn Tantau)
+  . Fixed bug #81076 (incorrect debug info on Closures with implicit binds).
+    (krakjoe)
+ 
+ - Standard:
+  . Fixed bug #77627 (method_exists on Closure::__invoke inconsistency).
+    (krakjoe)
 
-- Zlib:
-  . Added zlib/level context option for compress.zlib wrapper. (Sara)
+- Date:
+  . Fixed bug #52480 (Incorrect difference using DateInterval) (Derick)
+  . Fixed bug #62326 (date_diff() function returns false result) (Derick)
+  . Fixed bug #64992 (dst not handled past 2038) (Derick)
+  . Fixed bug #65003 (Wrong date diff) (Derick)
+  . Fixed bug #66545 (DateTime. diff returns negative values) (Derick)
+  . Fixed bug #68503 (date_diff on two dates with timezone set localised
+    returns wrong results) (Derick)
+  . Fixed bug #69806 (Incorrect date from timestamp) (Derick)
+  . Fixed bug #71700 (Extra day on diff between begin and end of march 2016)
+    (Derick)
+  . Fixed bug #71826 (DateTime::diff confuse on timezone 'Asia/Tokyo') (Derick)
+  . Fixed bug #73460 (Datetime add not realising it already applied DST
+    change) (Derick)
+  . Fixed bug #74173 (DateTimeImmutable::getTimestamp() triggers DST switch in
+    incorrect time) (Derick)
+  . Fixed bug #74274 (Handling DST transitions correctly) (Derick)
+  . Fixed bug #74524 (Date diff is bad calculated, in same time zone) (Derick)
+  . Fixed bug #75167 (DateTime::add does only care about backward DST
+    transition, not forward) (Derick)
+  . Fixed bug #76032 (DateTime->diff having issues with leap days for
+    timezones ahead of UTC) (Derick)
+  . Fixed bug #76374 (Date difference varies according day time) (Derick)
+  . Fixed bug #77571 (DateTime's diff DateInterval incorrect in timezones from
+    UTC+01:00 to UTC+12:00 (Derick)
+  . Fixed bug #78452 (diff makes wrong in hour for Asia/Tehran) (Derick)
+  . Fixed bug #79452 (DateTime::diff() generates months differently between
+    time zones) (Derick)
+  . Fixed bug #79698 (timelib mishandles future timestamps (triggered by 'zic
+    -b slim')) (Derick)
+  . Fixed bug #79716 (Invalid date time created (with day "00")) (Derick)
+  . Fixed bug #80610 (DateTime calculate wrong with DateInterval) (Derick)
+  . Fixed bug #80664 (DateTime objects behave incorrectly around DST
+    transition) (Derick)
+  . Fixed bug #80913 (DateTime(Immutable)::sub around DST yield incorrect
+    time) (Derick)
+
+- FPM:
+  . Added openmetrics status format. (Cees-Jan Kiewiet)
+  . Enable process renaming on macOS. (devnexen)
+  . Added pm.max_spawn_rate option to configure max spawn child processes rate.
+    (Paulius Sapragonas)
+  . Fixed bug #65800 (Events port mechanism). (psumbera)
+
+- FTP:
+  . Convert resource<ftp> to object \FTP\Connection. (Sara)
+
+- GD:
+  . Convert resource<gd font> to object \GdFont. (Sara)
+
+- hash:
+  . Implemented FR #68109 (Add MurmurHash V3). (Anatol, Michael)
+  . Implemented FR #73385 (Add xxHash support). (Anatol)
+
+- LDAP:
+  . Convert resource<ldap link> to object \LDAP\Connection. (Máté)
+  . Convert resource<ldap result> to object \LDAP\Result. (Máté)
+  . Convert resource<ldap result entry> to object \LDAP\ResultEntry. (Máté)
+
+- MySQLi:
+  . Fixed bug #70372 (Emulate mysqli_fetch_all() for libmysqlclient). (Nikita)
+  . Fixed bug #80330 (Replace language in APIs and source code/docs).
+    (Darek Ślusarczyk)
+  . Fixed bug #80329 (Add option to specify LOAD DATA LOCAL white list folder
+    (including libmysql)). (Darek Ślusarczyk)
+
+- MySQLnd:
+  . Fixed bug #80761 (PDO uses too much memory). (Nikita)
+
+- OPcache:
+  . Added inheritance cache. (Dmitry)
+
+- OpenSSL:
+  . Bump minimal OpenSSL version to 1.0.2. (Jakub Zelenka)
+
+- PCRE:
+  . Bundled PCRE2 is 10.37.
+
+- PDO:
+  . Fixed bug #40913 (PDO_MYSQL: PDO::PARAM_LOB does not bind to a stream for
+    fetching a BLOB). (Nikita)
+
+. PDO MySQL:
+  . Fixed bug #80908 (PDO::lastInsertId() return wrong). (matt)
+  . Fixed bug #81037 (PDO discards error message text from prepared
+    statement). (Kamil Tekiela)
+
+. PDO ODBC:
+  . Implement PDO_ATTR_SERVER_VERSION and PDO_ATTR_SERVER_INFO for
+    PDO::getAttribute(). (Calvin Buckley)
+
+. PDO SQLite:
+  . Fixed bug #38334 (Proper data-type support for PDO_SQLITE). (Nikita)
+
+- PgSQL:
+  . Convert resource<pgsql link> to object \PgSql\Connection. (Máté)
+  . Convert resource<pgsql result> to object \PgSql\Result. (Máté)
+  . Convert resource<pgsql large object> to object \PgSql\Lob. (Máté)
+
+- PSpell:
+  . Convert resource<pspell> to object \PSpell\Dictionary. (Sara)
+  . Convert resource<pspell config> to object \PSpell\Config. (Sara)
+
+- readline:
+  . Fixed bug #72998 (invalid read in readline completion). (krakjoe)
+
+- Reflection:
+  . Implement ReflectionFunctionAbstract::getClosureUsedVariables (krakjoe)
+
+- Sodium:
+  . Added the XChaCha20 stream cipher functions. (P.I.E. Security Team)
+  . Added the Ristretto255 functions, which are available in libsodium 1.0.18.
+    (P.I.E. Security Team)
+
+- SPL:
+  . Fixed bug #80724 (FilesystemIterator::FOLLOW_SYMLINKS remove KEY_AS_FILE
+    from bitmask). (Cameron Porter)
 
 <<< NOTE: Insert NEWS from last stable release here prior to actual release! >>>

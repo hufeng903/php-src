@@ -1,13 +1,13 @@
 --TEST--
 Check for libsodium utils
---SKIPIF--
-<?php if (!extension_loaded("sodium")) print "skip"; ?>
+--EXTENSIONS--
+sodium
 --FILE--
 <?php
 $a = 'test';
 sodium_memzero($a);
 if ($a !== 'test') {
-  echo strlen($a);
+  var_dump($a);
 } else {
   echo $a;
 }
@@ -86,11 +86,29 @@ if (defined('SODIUM_BASE64_VARIANT_ORIGINAL')) {
     } catch (Exception $e) {
         var_dump('base64("O") case passed');
     }
+    var_dump(sodium_base642bin('YWJjZA', SODIUM_BASE64_VARIANT_ORIGINAL_NO_PADDING));
+} else {
+    var_dump('base64("O1R") case passed');
+    var_dump('base64("O1") case passed');
+    var_dump('base64("O") case passed');
+    var_dump('abcd');
+}
+
+function sodium_foo()
+{
+    throw new SodiumException('test');
+}
+
+try {
+    sodium_foo();
+} catch (SodiumException $ex) {
+    var_dump($ex->getMessage());
 }
 
 ?>
 --EXPECT--
-0
+NULL
+
 bool(true)
 bool(false)
 string(22) "0000810102030405060708"
@@ -107,3 +125,5 @@ bool(true)
 string(25) "base64("O1R") case passed"
 string(24) "base64("O1") case passed"
 string(23) "base64("O") case passed"
+string(4) "abcd"
+string(4) "test"

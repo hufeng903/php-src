@@ -1,12 +1,9 @@
 --TEST--
 Bug #55218 getDocNamespaces from current element and not root
---SKIPIF--
-<?php
-if (!extension_loaded("simplexml")) print "skip SimpleXML not present";
-if (!extension_loaded("libxml")) print "skip LibXML not present";
-?>
+--EXTENSIONS--
+simplexml
 --FILE--
-<?php 
+<?php
 
 $x = new SimpleXMLElement(
 '<?xml version="1.0" standalone="yes"?>
@@ -48,7 +45,6 @@ var_dump( $x->person[0]->getDocNamespaces(false, false) );
 var_dump( $x->person[1]->getDocNamespaces(false, false) );
 
 ?>
-===DONE===
 --EXPECT--
 getDocNamespaces
 
@@ -114,4 +110,3 @@ array(1) {
 }
 array(0) {
 }
-===DONE===

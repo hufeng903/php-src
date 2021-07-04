@@ -4,7 +4,7 @@ using invalid combinations of cmdline options
 <?php
 
 if (substr(PHP_OS, 0, 3) == 'WIN') {
-	die ("skip not for Windows");
+    die ("skip not for Windows");
 }
 
 include "skipif.inc";
@@ -22,7 +22,7 @@ var_dump(`$php -n -f 'wrong' -a`);
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(51) "No input file specified.
 Interactive mode enabled
 

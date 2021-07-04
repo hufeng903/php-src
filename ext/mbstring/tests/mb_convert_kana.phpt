@@ -1,10 +1,7 @@
 --TEST--
 Testing mb_convert_kana() function
---SKIPIF--
-<?php
-if (!extension_loaded('mbstring')) die('skip mbstring not enabled');
-if (!function_exists("mb_convert_kana")) print "skip mb_convert_kana() not available";
-?>
+--EXTENSIONS--
+mbstring
 --FILE--
 <?php
 $zenKakuA    =	'ァアィイゥウェエォオカガキギク';
@@ -53,7 +50,6 @@ echo $hanKakuD . ' => ' . mb_convert_kana($hanKakuD, 'AZKH', 'utf-8');
 ｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿ => ーアイウエオカキクケコサシスセソ
 ﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏ => タチツテトナニヌネノハヒフヘホマ
 ﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ => ミムメモヤユヨラリルレロワン゛゜
-
 --CREDITS--
 Jason Easter <easter@phpug-wuerzburg.de>
 PHPUG Würzburg <phpug-wuerzburg.de>

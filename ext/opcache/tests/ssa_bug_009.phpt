@@ -1,5 +1,7 @@
 --TEST--
 Incorrect type inference
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 class PHP_CodeCoverage

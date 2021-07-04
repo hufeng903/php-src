@@ -1,11 +1,11 @@
 --TEST--
 oci_bind_array_by_name() and invalid values 2
---SKIPIF--
-<?php if (!extension_loaded('oci8')) die("skip no oci8 extension"); ?>
+--EXTENSIONS--
+oci8
 --FILE--
 <?php
 
-require dirname(__FILE__).'/connect.inc';
+require __DIR__.'/connect.inc';
 
 $drop = "DROP table bind_test";
 $statement = oci_parse($c, $drop);
@@ -16,15 +16,15 @@ $statement = oci_parse($c, $create);
 oci_execute($statement);
 
 $create_pkg = "
-CREATE OR REPLACE PACKAGE ARRAY_BIND_002_PKG AS 
-  TYPE ARRTYPE IS TABLE OF DATE INDEX BY BINARY_INTEGER; 
-  PROCEDURE iobind(c1 IN OUT ARRTYPE); 
+CREATE OR REPLACE PACKAGE ARRAY_BIND_002_PKG AS
+  TYPE ARRTYPE IS TABLE OF DATE INDEX BY BINARY_INTEGER;
+  PROCEDURE iobind(c1 IN OUT ARRTYPE);
 END ARRAY_BIND_002_PKG;";
 $statement = oci_parse($c, $create_pkg);
 oci_execute($statement);
 
 $create_pkg_body = "
-CREATE OR REPLACE PACKAGE BODY ARRAY_BIND_002_PKG AS 
+CREATE OR REPLACE PACKAGE BODY ARRAY_BIND_002_PKG AS
   CURSOR CUR IS SELECT name FROM bind_test;
   PROCEDURE iobind(c1 IN OUT ARRTYPE) IS
     BEGIN
@@ -50,7 +50,11 @@ $statement = oci_parse($c, "BEGIN array_bind_002_pkg.iobind(:c1); END;");
 
 $array = Array("06-DEC-05","10-DEC-80","21-AUG-91","26-OCT-17","05-NOV-05");
 
-oci_bind_array_by_name($statement, ":c1", $array, 0, 0, SQLT_ODT);
+try {
+    oci_bind_array_by_name($statement, ":c1", $array, 0, 0, SQLT_ODT);
+} catch (ValueError $e) {
+    echo $e->getMessage(), "\n";
+}
 
 oci_execute($statement);
 
@@ -58,8 +62,8 @@ var_dump($array);
 
 echo "Done\n";
 ?>
---EXPECTF--	
-Warning: oci_bind_array_by_name(): Maximum array length must be greater than zero in %s on line %d
+--EXPECTF--
+oci_bind_array_by_name(): Argument #4 ($max_array_length) must be greater than 0
 
 Warning: oci_execute(): ORA-%r(01008|57000)%r: %s in %s on line %d
 array(5) {

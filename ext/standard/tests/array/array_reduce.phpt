@@ -4,10 +4,6 @@ Test array_reduce() function
 precision=14
 --FILE--
 <?php
-/* Prototype: array array_reduce(array $array, mixed $callback, mixed $initial);
-   Description: Iteratively reduce the array to a single value via the callback
-*/
-
 $array = array('foo', 'foo', 'bar', 'qux', 'qux', 'quux');
 
 echo "\n*** Testing array_reduce() to integer ***\n";
@@ -36,7 +32,7 @@ $initial = null;
 var_dump(array_reduce($array, 'reduce_null', $initial), $initial);
 
 echo "\nDone";
-?> 
+?>
 --EXPECT--
 *** Testing array_reduce() to integer ***
 int(61)

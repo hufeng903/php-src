@@ -1,15 +1,11 @@
 --TEST--
 Test function gzseek() by seeking forward in write mode
---SKIPIF--
-<?php 
-if (!extension_loaded("zlib")) {
-	print "skip - ZLIB extension not loaded"; 
-}
-?>
+--EXTENSIONS--
+zlib
 --FILE--
 <?php
 $f = "gzseek_variation1.gz";
-$h = gzopen($f, 'w'); 
+$h = gzopen($f, 'w');
 $str1 = "This is the first line.";
 $str2 = "This is the second line.";
 gzwrite($h, $str1);
@@ -25,9 +21,7 @@ echo gzread($h, strlen($str2))."\n";
 gzclose($h);
 unlink($f);
 ?>
-===DONE===
 --EXPECT--
 This is the first line.
 string(40) "0000000000000000000000000000000000000000"
 This is the second line.
-===DONE===

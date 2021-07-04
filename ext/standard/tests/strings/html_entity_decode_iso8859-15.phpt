@@ -106,13 +106,14 @@ foreach ($arr as $u => $v) {
     $res = html_entity_decode($ent, ENT_QUOTES, 'ISO-8859-15');
     $d = unpack("H*", $res);
     echo sprintf("%s: %s => %s\n", $v[1], $ent, $d[1]);
-    
+
     $ent = sprintf("&#x%X;", $v[0]);
     $res = html_entity_decode($ent, ENT_QUOTES, 'ISO-8859-15');
     if ($res[0] != "&" || $res[1] != "#")
         $res = unpack("H*", $res)[1];
     echo sprintf("%s => %s\n\n", $ent, $res);
 }
+?>
 --EXPECT--
 NO-BREAK SPACE: &#xA0; => a0
 &#xA0; => a0
@@ -401,5 +402,3 @@ LATIN SMALL LETTER THORN: &#xFE; => fe
 
 LATIN SMALL LETTER Y WITH DIAERESIS: &#xFF; => ff
 &#xFF; => ff
-
-

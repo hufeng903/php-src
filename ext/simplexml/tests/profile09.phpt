@@ -1,7 +1,7 @@
 --TEST--
 SimpleXML [profile]: Accessing a namespaced element without a namespace
---SKIPIF--
-<?php if (!extension_loaded("simplexml")) print "skip"; ?>
+--EXTENSIONS--
+simplexml
 --FILE--
 <?php
 error_reporting(E_ALL & ~E_NOTICE);
@@ -15,5 +15,4 @@ echo $root->child;
 echo "\n---Done---\n";
 ?>
 --EXPECT--
-
 ---Done--- 

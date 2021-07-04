@@ -1,13 +1,13 @@
 --TEST--
 oci8.old_oci_close_semantics On
---SKIPIF--
-<?php if (!extension_loaded('oci8')) die("skip no oci8 extension"); ?>
+--EXTENSIONS--
+oci8
 --INI--
 oci8.old_oci_close_semantics=1
 --FILE--
 <?php
 
-require dirname(__FILE__)."/connect.inc";
+require __DIR__."/connect.inc";
 
 var_dump($c);
 var_dump(oci_close($c));

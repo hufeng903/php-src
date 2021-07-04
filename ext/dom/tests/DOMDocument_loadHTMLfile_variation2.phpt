@@ -6,12 +6,12 @@ Verifies the behavior if a not-well formed document is loaded
 Antonio Diaz Ruiz <dejalatele@gmail.com>
 --INI--
 assert.bail=true
---SKIPIF--
-<?php include('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 $doc = new DOMDocument();
-$result = $doc->loadHTMLFile(dirname(__FILE__) . "/not_well.html");
+$result = $doc->loadHTMLFile(__DIR__ . "/not_well.html");
 assert($result === true);
 ?>
 --EXPECT--

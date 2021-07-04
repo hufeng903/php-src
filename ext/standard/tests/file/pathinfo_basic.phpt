@@ -2,13 +2,9 @@
 Test pathinfo() function: basic functionality
 --FILE--
 <?php
-/* Prototype: mixed pathinfo ( string $path [, int $options] );
-   Description: Returns information about a file path
-*/
-
 echo "*** Testing basic functions of pathinfo() ***\n";
 
-$file_path = dirname(__FILE__);
+$file_path = __DIR__;
 
 $paths = array (
   /* Testing basic file notation */
@@ -45,7 +41,7 @@ $paths = array (
 
   /* Testing with homedir notation */
   "~/PHP/php5.2.0/",
-  
+
   /* Testing normal directory notation */
   "/home/example/test/",
   "http://httpd.apache.org/core.html#acceptpathinfo"

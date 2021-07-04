@@ -1,5 +1,7 @@
 --TEST--
 Bug #75255 (Request hangs and not finish)
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 function generatePlanImage() {

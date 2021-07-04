@@ -63,7 +63,7 @@ bool(false)
 Warning: tempnam(): open_basedir restriction in effect. File(./../.) is not within the allowed path(s): (.) in %s on line %d
 bool(false)
 
-Warning: tempnam(): open_basedir restriction in effect. File() is not within the allowed path(s): (.) in %s on line %d
+Warning: tempnam(): open_basedir restriction in effect. File(%s) is not within the allowed path(s): (.) in %s on line %d
 bool(false)
 string(%d) "%s"
 bool(true)
@@ -72,4 +72,3 @@ bool(true)
 string(%d) "%s"
 bool(true)
 *** Finished testing open_basedir configuration [tempnam] ***
-

@@ -1,7 +1,7 @@
 --TEST--
 filter_var() / filter_var_array() and passed data integrity
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 function filter_cb($var)
@@ -16,6 +16,7 @@ var_dump(filter_var($data, FILTER_CALLBACK, array('options' => 'filter_cb')));
 var_dump($data);
 var_dump(filter_var_array($data, array('bar' => array('filter' => FILTER_CALLBACK, 'options' => 'filter_cb'))));
 var_dump($data);
+?>
 --EXPECT--
 array(1) {
   ["bar"]=>

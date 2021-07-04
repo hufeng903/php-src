@@ -1,7 +1,7 @@
 --TEST--
 filter_var() and FILTER_SANITIZE_NUMBER_*
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 
@@ -25,7 +25,7 @@ var_dump(filter_var("", FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(6) "123456"
 string(11) "12312312323"
 string(5) "12323"

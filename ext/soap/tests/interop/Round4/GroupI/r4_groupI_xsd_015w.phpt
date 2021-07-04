@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round4 GroupI XSD 015 (php/wsdl): echoComplexTypeMultiOccurs(nil)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -16,7 +16,7 @@ class SOAPComplexType {
 }
 $struct1 = new SOAPComplexType('arg',34,325.325);
 $struct2 = new SOAPComplexType('arg',34,325.325);
-$client = new SoapClient(dirname(__FILE__)."/round4_groupI_xsd.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round4_groupI_xsd.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoComplexTypeMultiOccurs(array("inputComplexTypeMultiOccurs"=>array($struct1,null,$struct2)));
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

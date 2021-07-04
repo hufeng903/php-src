@@ -6,12 +6,12 @@ Verifies the basic behaviour of the method
 Antonio Diaz Ruiz <dejalatele@gmail.com>
 --INI--
 assert.bail=true
---SKIPIF--
-<?php include('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 $doc = new DOMDocument();
-$result = $doc->loadHTMLFile(dirname(__FILE__) . "/test.html");
+$result = $doc->loadHTMLFile(__DIR__ . "/test.html");
 assert($result === true);
 ?>
 --EXPECT--

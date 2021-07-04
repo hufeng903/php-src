@@ -1,9 +1,9 @@
 --TEST--
 SimpleXML: iteration through subnodes and attributes
---SKIPIF--
-<?php if (!extension_loaded("simplexml")) print "skip"; ?>
+--EXTENSIONS--
+simplexml
 --FILE--
-<?php 
+<?php
 $xml =<<<EOF
 <people>
    <person name="Joe">

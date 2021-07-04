@@ -1,7 +1,7 @@
 --TEST--
 filter_var() and FILTER_SANITIZE_STRIPPED
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 
@@ -19,7 +19,7 @@ var_dump(filter_var("", FILTER_SANITIZE_STRIPPED, FILTER_FLAG_STRIP_HIGH));
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(40) "Let me see you Stripped down to the bone"
 string(11) "!@#$%^&*()>"
 string(0) ""

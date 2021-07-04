@@ -1,5 +1,7 @@
 --TEST--
 Incorrect NOP removal on jump to NOP
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

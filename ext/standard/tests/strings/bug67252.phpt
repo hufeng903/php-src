@@ -7,7 +7,6 @@ $a = "M86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A86%A"."\n"."a.";
 var_dump(convert_uudecode($a));
 
 ?>
---EXPECTF--	
-
-Warning: convert_uudecode(): The given parameter is not a valid uuencoded string in %s on line %d
+--EXPECTF--
+Warning: convert_uudecode(): Argument #1 ($data) is not a valid uuencoded string in %s on line %d
 bool(false)

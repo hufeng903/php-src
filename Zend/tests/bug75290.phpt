@@ -12,7 +12,7 @@ var_dump(function ($someThing) {});
 object(Closure)#2 (1) {
   ["parameter"]=>
   array(1) {
-    ["$number"]=>
+    ["$num"]=>
     string(10) "<required>"
   }
 }
@@ -23,4 +23,3 @@ object(Closure)#2 (1) {
     string(10) "<required>"
   }
 }
-

@@ -1,7 +1,7 @@
 --TEST--
 get_error_code()
---SKIPIF--
-<?php if( !extension_loaded( 'intl' ) ) print 'skip'; ?>
+--EXTENSIONS--
+intl
 --FILE--
 <?php
 
@@ -16,7 +16,7 @@ get_error_code()
 function check_rc( $rc, $expected )
 {
     return ( $rc === $expected ? "ok" : "failed" ) . "\n";
-} 
+}
 
 function ut_main()
 {

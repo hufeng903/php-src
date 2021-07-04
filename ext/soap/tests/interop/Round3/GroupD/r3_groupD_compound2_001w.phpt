@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round3 GroupD Compound2 001 (php/wsdl): echoEmployee
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -25,7 +25,7 @@ class Employee {
 $person = new Person(32,12345,'Shane',TRUE);
 $employee = new Employee($person,12345,1000000.00);
 
-$client = new SoapClient(dirname(__FILE__)."/round3_groupD_compound2.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round3_groupD_compound2.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoEmployee($employee);
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

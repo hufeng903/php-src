@@ -1,13 +1,7 @@
 --TEST--
-Test asort() function : usage variations - sorting arrays with/without keys, 'sort_flags' as default/SORT_REGULAR  
+Test asort() function : usage variations - sorting arrays with/without keys, 'sort_flags' as default/SORT_REGULAR
 --FILE--
 <?php
-/* Prototype  : bool asort ( array &$array [, int $sort_flags] )
- * Description: Sort an array and maintain index association. 
-                Elements will be arranged from lowest to highest when this function has completed.
- * Source code: ext/standard/array.c
-*/
-
 /*
  * Testing asort() by providing arrays  with key values for $array argument with following flag values.
  * 1.flag value as default
@@ -30,8 +24,8 @@ $various_arrays = array (
 $count = 1;
 echo "\n-- Testing asort() by supplying various arrays with key values --\n";
 
-// loop through to test asort() with different arrays, 
-// to test the new keys for the elements in the sorted array 
+// loop through to test asort() with different arrays,
+// to test the new keys for the elements in the sorted array
 foreach ($various_arrays as $array) {
   echo "\n-- Iteration $count --\n";
 
@@ -200,18 +194,18 @@ array(6) {
 - With default sort_flag -
 bool(true)
 array(2) {
-  ["bar"]=>
-  string(3) "baz"
   ["foo"]=>
   int(1)
+  ["bar"]=>
+  string(3) "baz"
 }
 - Sort_flag = SORT_REGULAR -
 bool(true)
 array(2) {
-  ["bar"]=>
-  string(3) "baz"
   ["foo"]=>
   int(1)
+  ["bar"]=>
+  string(3) "baz"
 }
 
 -- Iteration 7 --

@@ -31,10 +31,13 @@ elseif (PHP_OS == 'FreeBSD') {
   $lines = explode("\n",`sysctl -a`);
   $infos = array();
   foreach ($lines as $line) {
-    if(!$line){
+    if (!$line){
       continue;
     }
     $tmp = explode(":", $line);
+    if (count($tmp) < 2) {
+      continue;
+    }
     $index = strtolower($tmp[0]);
     $value = trim($tmp[1], " ");
     $infos[$index] = $value;
@@ -43,6 +46,13 @@ elseif (PHP_OS == 'FreeBSD') {
                 +($infos['vm.stats.vm.v_cache_count']*$infos['hw.pagesize'])
                 +($infos['vm.stats.vm.v_free_count']*$infos['hw.pagesize']);
   if ($freeMemory < 2100*1024*1024) {
+    die('skip Not enough memory.');
+  }
+} elseif (PHP_OS == "WINNT") {
+  $s = trim(shell_exec("wmic OS get FreeVirtualMemory /Value 2>nul"));
+  $freeMemory = explode('=', $s)[1]*1;
+
+  if ($freeMemory < 2.1*1024*1024) {
     die('skip Not enough memory.');
   }
 }

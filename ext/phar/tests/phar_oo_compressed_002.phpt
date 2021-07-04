@@ -1,14 +1,14 @@
 --TEST--
 Phar: context/compress=GZ
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
-<?php if (!extension_loaded("zlib")) die("skip zlib not present"); ?>
+--EXTENSIONS--
+phar
+zlib
 --INI--
 phar.readonly=0
 phar.require_hash=0
 --FILE--
 <?php
-$fname = dirname(__FILE__) . '/' . basename(__FILE__, '.php') . '.phar.php';
+$fname = __DIR__ . '/' . basename(__FILE__, '.php') . '.phar.php';
 $pname = 'phar://' . $fname;
 $file = '<?php __HALT_COMPILER(); ?>';
 
@@ -48,10 +48,9 @@ var_dump(file_get_contents($pname . '/e'));
 var_dump($phar['e']->isCompressed());
 
 ?>
-===DONE===
 --CLEAN--
-<?php 
-unlink(dirname(__FILE__) . '/' . basename(__FILE__, '.clean.php') . '.phar.php');
+<?php
+unlink(__DIR__ . '/' . basename(__FILE__, '.clean.php') . '.phar.php');
 ?>
 --EXPECT--
 string(1) "a"
@@ -70,4 +69,3 @@ string(5) "new d"
 bool(false)
 string(5) "new e"
 bool(true)
-===DONE===

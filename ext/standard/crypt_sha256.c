@@ -26,11 +26,7 @@
 #else
 # include <sys/param.h>
 # include <sys/types.h>
-# if HAVE_STRING_H
-#  include <string.h>
-# else
-#  include <strings.h>
-# endif
+# include <string.h>
 #endif
 
 char * __php_stpncpy(char *dst, const char *src, size_t len)
@@ -348,7 +344,7 @@ char * php_sha256_crypt_r(const char *key, const char *salt, char *buffer, int b
 	char *s_bytes;
 	/* Default number of rounds.  */
 	size_t rounds = ROUNDS_DEFAULT;
-	zend_bool rounds_custom = 0;
+	bool rounds_custom = 0;
 
 	/* Find beginning of salt string.  The prefix should normally always
 	be present.  Just in case it is not.  */
@@ -363,7 +359,11 @@ char * php_sha256_crypt_r(const char *key, const char *salt, char *buffer, int b
 		zend_ulong srounds = ZEND_STRTOUL(num, &endp, 10);
 		if (*endp == '$') {
 			salt = endp + 1;
-			rounds = MAX(ROUNDS_MIN, MIN(srounds, ROUNDS_MAX));
+			if (srounds < ROUNDS_MIN || srounds > ROUNDS_MAX) {
+				return NULL;
+			}
+
+			rounds = srounds;
 			rounds_custom = 1;
 		}
 	}

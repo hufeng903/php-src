@@ -1,9 +1,7 @@
 --TEST--
-Bug #38179 (imagecopy from a palette to a truecolor image loses alpha channel) 
---SKIPIF--
-<?php
-        if (!function_exists('imagecopy')) die("skip gd extension not available\n");
-?>
+Bug #38179 (imagecopy from a palette to a truecolor image loses alpha channel)
+--EXTENSIONS--
+gd
 --FILE--
 <?php
 $src = imagecreate(5,5);
@@ -25,4 +23,3 @@ imagedestroy($src); imagedestroy($dst_tc);
 ?>
 --EXPECT--
 46FF0000
-

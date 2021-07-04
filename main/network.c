@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -16,8 +14,6 @@
    | Streams work by Wez Furlong <wez@thebrainroom.com>                   |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 /*#define DEBUG_MAIN_NETWORK 1*/
 
@@ -30,6 +26,7 @@
 #ifdef PHP_WIN32
 # include <Ws2tcpip.h>
 # include "win32/inet.h"
+# include "win32/winutil.h"
 # define O_RDONLY _O_RDONLY
 # include "win32/param.h"
 #else
@@ -100,47 +97,45 @@ const struct in6_addr in6addr_any = {0}; /* IN6ADDR_ANY_INIT; */
 #  define PHP_GAI_STRERROR(x) (gai_strerror(x))
 #else
 #  define PHP_GAI_STRERROR(x) (php_gai_strerror(x))
-/* {{{ php_gai_strerror
- */
+/* {{{ php_gai_strerror */
 static const char *php_gai_strerror(int code)
 {
-        static struct {
-                int code;
-                const char *msg;
-        } values[] = {
+	static struct {
+		int code;
+		const char *msg;
+	} values[] = {
 #  ifdef EAI_ADDRFAMILY
-                {EAI_ADDRFAMILY, "Address family for hostname not supported"},
+		{EAI_ADDRFAMILY, "Address family for hostname not supported"},
 #  endif
-                {EAI_AGAIN, "Temporary failure in name resolution"},
-                {EAI_BADFLAGS, "Bad value for ai_flags"},
-                {EAI_FAIL, "Non-recoverable failure in name resolution"},
-                {EAI_FAMILY, "ai_family not supported"},
-                {EAI_MEMORY, "Memory allocation failure"},
+		{EAI_AGAIN, "Temporary failure in name resolution"},
+		{EAI_BADFLAGS, "Bad value for ai_flags"},
+		{EAI_FAIL, "Non-recoverable failure in name resolution"},
+		{EAI_FAMILY, "ai_family not supported"},
+		{EAI_MEMORY, "Memory allocation failure"},
 #  ifdef EAI_NODATA
-                {EAI_NODATA, "No address associated with hostname"},
+		{EAI_NODATA, "No address associated with hostname"},
 #  endif
-                {EAI_NONAME, "Name or service not known"},
-                {EAI_SERVICE, "Servname not supported for ai_socktype"},
-                {EAI_SOCKTYPE, "ai_socktype not supported"},
-                {EAI_SYSTEM, "System error"},
-                {0, NULL}
-        };
-        int i;
+		{EAI_NONAME, "Name or service not known"},
+		{EAI_SERVICE, "Servname not supported for ai_socktype"},
+		{EAI_SOCKTYPE, "ai_socktype not supported"},
+		{EAI_SYSTEM, "System error"},
+		{0, NULL}
+	};
+	int i;
 
-        for (i = 0; values[i].msg != NULL; i++) {
-                if (values[i].code == code) {
-                        return (char *)values[i].msg;
-                }
-        }
+	for (i = 0; values[i].msg != NULL; i++) {
+		if (values[i].code == code) {
+			return (char *)values[i].msg;
+		}
+	}
 
-        return "Unknown error";
+	return "Unknown error";
 }
 /* }}} */
 #endif
 #endif
 
-/* {{{ php_network_freeaddresses
- */
+/* {{{ php_network_freeaddresses */
 PHPAPI void php_network_freeaddresses(struct sockaddr **sal)
 {
 	struct sockaddr **sap;
@@ -202,18 +197,26 @@ PHPAPI int php_network_getaddresses(const char *host, int socktype, struct socka
 
 	if ((n = getaddrinfo(host, NULL, &hints, &res))) {
 		if (error_string) {
-			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo failed: %s", PHP_GAI_STRERROR(n));
+			/* free error string received during previous iteration (if any) */
+			if (*error_string) {
+				zend_string_release_ex(*error_string, 0);
+			}
+			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo for %s failed: %s", host, PHP_GAI_STRERROR(n));
 			php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
 		} else {
-			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo failed: %s", PHP_GAI_STRERROR(n));
+			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo for %s failed: %s", host, PHP_GAI_STRERROR(n));
 		}
 		return 0;
 	} else if (res == NULL) {
 		if (error_string) {
-			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo failed (null result pointer) errno=%d", errno);
+			/* free error string received during previous iteration (if any) */
+			if (*error_string) {
+				zend_string_release_ex(*error_string, 0);
+			}
+			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo for %s failed (null result pointer) errno=%d", host, errno);
 			php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
 		} else {
-			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo failed (null result pointer)");
+			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo for %s failed (null result pointer)", host);
 		}
 		return 0;
 	}
@@ -234,7 +237,11 @@ PHPAPI int php_network_getaddresses(const char *host, int socktype, struct socka
 
 	freeaddrinfo(res);
 #else
+#ifdef HAVE_INET_PTON
+	if (!inet_pton(AF_INET, host, &in)) {
+#else
 	if (!inet_aton(host, &in)) {
+#endif
 		if(strlen(host) > MAXFQDNLEN) {
 			host_info = NULL;
 			errno = E2BIG;
@@ -243,6 +250,10 @@ PHPAPI int php_network_getaddresses(const char *host, int socktype, struct socka
 		}
 		if (host_info == NULL) {
 			if (error_string) {
+				/* free error string received during previous iteration (if any) */
+				if (*error_string) {
+					zend_string_release_ex(*error_string, 0);
+				}
 				*error_string = strpprintf(0, "php_network_getaddresses: gethostbyname failed. errno=%d", errno);
 				php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
 			} else {
@@ -274,9 +285,9 @@ PHPAPI int php_network_getaddresses(const char *host, int socktype, struct socka
 #ifdef PHP_WIN32
 typedef u_long php_non_blocking_flags_t;
 #  define SET_SOCKET_BLOCKING_MODE(sock, save) \
-     save = TRUE; ioctlsocket(sock, FIONBIO, &save)
+	save = TRUE; ioctlsocket(sock, FIONBIO, &save)
 #  define RESTORE_SOCKET_BLOCKING_MODE(sock, save) \
-	 ioctlsocket(sock, FIONBIO, &save)
+	ioctlsocket(sock, FIONBIO, &save)
 #else
 typedef int php_non_blocking_flags_t;
 #  define SET_SOCKET_BLOCKING_MODE(sock, save) \
@@ -514,6 +525,10 @@ PHPAPI int php_network_parse_network_address_with_port(const char *addr, zend_lo
 	zend_string *errstr = NULL;
 #if HAVE_IPV6
 	struct sockaddr_in6 *in6 = (struct sockaddr_in6*)sa;
+
+	memset(in6, 0, sizeof(struct sockaddr_in6));
+#else
+	memset(in4, 0, sizeof(struct sockaddr_in));
 #endif
 
 	if (*addr == '[') {
@@ -544,7 +559,11 @@ PHPAPI int php_network_parse_network_address_with_port(const char *addr, zend_lo
 		goto out;
 	}
 #endif
+#ifdef HAVE_INET_PTON
+	if (inet_pton(AF_INET, tmp, &in4->sin_addr) > 0) {
+#else
 	if (inet_aton(tmp, &in4->sin_addr) > 0) {
+#endif
 		in4->sin_port = htons(port);
 		in4->sin_family = AF_INET;
 		*sl = sizeof(struct sockaddr_in);
@@ -558,7 +577,7 @@ PHPAPI int php_network_parse_network_address_with_port(const char *addr, zend_lo
 	if (n == 0) {
 		if (errstr) {
 			php_error_docref(NULL, E_WARNING, "Failed to resolve `%s': %s", tmp, ZSTR_VAL(errstr));
-			zend_string_release(errstr);
+			zend_string_release_ex(errstr, 0);
 		}
 		goto out;
 	}
@@ -606,15 +625,19 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 	}
 
 	if (textaddr) {
-#if HAVE_IPV6 && HAVE_INET_NTOP
+#ifdef HAVE_INET_NTOP
 		char abuf[256];
 #endif
-		char *buf = NULL;
+		const char *buf = NULL;
 
 		switch (sa->sa_family) {
 			case AF_INET:
 				/* generally not thread safe, but it *is* thread safe under win32 */
+#ifdef HAVE_INET_NTOP
+				buf = inet_ntop(AF_INET, &((struct sockaddr_in*)sa)->sin_addr, (char *)&abuf, sizeof(abuf));
+#else
 				buf = inet_ntoa(((struct sockaddr_in*)sa)->sin_addr);
+#endif
 				if (buf) {
 					*textaddr = strpprintf(0, "%s:%d",
 						buf, ntohs(((struct sockaddr_in*)sa)->sin_port));
@@ -626,7 +649,7 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 			case AF_INET6:
 				buf = (char*)inet_ntop(sa->sa_family, &((struct sockaddr_in6*)sa)->sin6_addr, (char *)&abuf, sizeof(abuf));
 				if (buf) {
-					*textaddr = strpprintf(0, "%s:%d",
+					*textaddr = strpprintf(0, "[%s]:%d",
 						buf, ntohs(((struct sockaddr_in6*)sa)->sin6_port));
 				}
 
@@ -767,7 +790,7 @@ PHPAPI php_socket_t php_network_accept_incoming(php_socket_t srvsock,
 /* {{{ php_network_connect_socket_to_host */
 php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short port,
 		int socktype, int asynchronous, struct timeval *timeout, zend_string **error_string,
-		int *error_code, char *bindto, unsigned short bindport, long sockopts
+		int *error_code, const char *bindto, unsigned short bindport, long sockopts
 		)
 {
 	int num_addrs, n, fatal = 0;
@@ -841,6 +864,9 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 				int local_address_len = 0;
 
 				if (sa->sa_family == AF_INET) {
+					if (strchr(bindto,':')) {
+						goto skip_bind;
+					}
 					struct sockaddr_in *in4 = emalloc(sizeof(struct sockaddr_in));
 
 					local_address = (struct sockaddr*)in4;
@@ -848,7 +874,11 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 
 					in4->sin_family = sa->sa_family;
 					in4->sin_port = htons(bindport);
+#ifdef HAVE_INET_PTON
+					if (!inet_pton(AF_INET, bindto, &in4->sin_addr)) {
+#else
 					if (!inet_aton(bindto, &in4->sin_addr)) {
+#endif
 						php_error_docref(NULL, E_WARNING, "Invalid IP Address: %s", bindto);
 						goto skip_bind;
 					}
@@ -871,7 +901,7 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 #endif
 
 				if (!local_address || bind(sock, local_address, local_address_len)) {
-					php_error_docref(NULL, E_WARNING, "failed to bind to '%s:%d', system said: %s", bindto, bindport, strerror(errno));
+					php_error_docref(NULL, E_WARNING, "Failed to bind to '%s:%d', system said: %s", bindto, bindport, strerror(errno));
 				}
 skip_bind:
 				if (local_address) {
@@ -880,7 +910,7 @@ skip_bind:
 			}
 			/* free error string received during previous iteration (if any) */
 			if (error_string && *error_string) {
-				zend_string_release(*error_string);
+				zend_string_release_ex(*error_string, 0);
 				*error_string = NULL;
 			}
 
@@ -914,7 +944,7 @@ skip_bind:
 			if (timeout) {
 				gettimeofday(&time_now, NULL);
 
-				if (timercmp(&time_now, &limit_time, >=)) {
+				if (!timercmp(&time_now, &limit_time, <)) {
 					/* time limit expired; don't attempt any further connections */
 					fatal = 1;
 				} else {
@@ -1019,20 +1049,8 @@ PHPAPI char *php_socket_strerror(long err, char *buf, size_t bufsize)
 	}
 	return buf;
 #else
-	char *sysbuf;
-	int free_it = 1;
-
-	if (!FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				err,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPTSTR)&sysbuf,
-				0,
-				NULL)) {
-		free_it = 0;
+	char *sysbuf = php_win32_error_to_msg(err);
+	if (!sysbuf[0]) {
 		sysbuf = "Unknown Error";
 	}
 
@@ -1043,9 +1061,7 @@ PHPAPI char *php_socket_strerror(long err, char *buf, size_t bufsize)
 		buf[bufsize?(bufsize-1):0] = 0;
 	}
 
-	if (free_it) {
-		LocalFree(sysbuf);
-	}
+	php_win32_error_msg_free(sysbuf);
 
 	return buf;
 #endif
@@ -1062,28 +1078,15 @@ PHPAPI zend_string *php_socket_error_str(long err)
 	return zend_string_init(errstr, strlen(errstr), 0);
 #else
 	zend_string *ret;
-	char *sysbuf;
-	int free_it = 1;
 
-	if (!FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				err,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPTSTR)&sysbuf,
-				0,
-				NULL)) {
-		free_it = 0;
+	char *sysbuf = php_win32_error_to_msg(err);
+	if (!sysbuf[0]) {
 		sysbuf = "Unknown Error";
 	}
 
 	ret = zend_string_init(sysbuf, strlen(sysbuf), 0);
 
-	if (free_it) {
-		LocalFree(sysbuf);
-	}
+	php_win32_error_msg_free(sysbuf);
 
 	return ret;
 #endif
@@ -1196,16 +1199,18 @@ PHPAPI void _php_emit_fd_setsize_warning(int max_fd)
 PHPAPI int php_poll2(php_pollfd *ufds, unsigned int nfds, int timeout)
 {
 	fd_set rset, wset, eset;
-	php_socket_t max_fd = SOCK_ERR;
+	php_socket_t max_fd = SOCK_ERR; /* effectively unused on Windows */
 	unsigned int i;
 	int n;
 	struct timeval tv;
 
+#ifndef PHP_WIN32
 	/* check the highest numbered descriptor */
 	for (i = 0; i < nfds; i++) {
 		if (ufds[i].fd > max_fd)
 			max_fd = ufds[i].fd;
 	}
+#endif
 
 	PHP_SAFE_MAX_FD(max_fd, nfds + 1);
 
@@ -1229,7 +1234,7 @@ PHPAPI int php_poll2(php_pollfd *ufds, unsigned int nfds, int timeout)
 		tv.tv_sec = timeout / 1000;
 		tv.tv_usec = (timeout - (tv.tv_sec * 1000)) * 1000;
 	}
-/* Reseting/initializing */
+/* Resetting/initializing */
 #ifdef PHP_WIN32
 	WSASetLastError(0);
 #else
@@ -1328,7 +1333,7 @@ struct hostent * gethostname_re (const char *host,struct hostent *hostbuf,char *
 #endif
 #endif
 
-PHPAPI struct hostent*	php_network_gethostbyname(char *name) {
+PHPAPI struct hostent*	php_network_gethostbyname(const char *name) {
 #if !defined(HAVE_GETHOSTBYNAME_R)
 	return gethostbyname(name);
 #else
@@ -1344,12 +1349,3 @@ PHPAPI struct hostent*	php_network_gethostbyname(char *name) {
 	return gethostname_re(name, &FG(tmp_host_info), &FG(tmp_host_buf), &FG(tmp_host_buf_len));
 #endif
 }
-
-/*
- * Local variables:
- * tab-width: 8
- * c-basic-offset: 8
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

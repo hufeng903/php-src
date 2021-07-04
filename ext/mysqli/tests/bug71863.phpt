@@ -1,12 +1,13 @@
 --TEST--
 Bug #71863 Segfault when EXPLAIN with "Unknown Column" Error
+--EXTENSIONS--
+mysqli
 --SKIPIF--
 <?php
-require_once('skipif.inc');
 require_once('skipifconnectfailure.inc');
 require_once("connect.inc");
 if (!$IS_MYSQLND) {
-	die("skip mysqlnd only test");
+    die("skip mysqlnd only test");
 }
 ?>
 --FILE--
@@ -18,7 +19,7 @@ $req = my_mysqli_connect($host, $user, $passwd, $db, $port, $socket);
 // create db and table for test
 mysqli_query($req, "DROP TABLE IF EXISTS test_bug_71863") or die(mysqli_error($req));
 mysqli_query($req, "CREATE TABLE test_bug_71863 (id INT UNSIGNED NOT NULL DEFAULT 0)") or die(mysqli_error($req));
-    
+
 // segfault if EXPLAIN + "Unknown column" error
 mysqli_query($req, "EXPLAIN SELECT `id` FROM `test_bug_71863` WHERE `owner_id` = '2' AND `object_id` = '1' AND type = '0'") or die(mysqli_error($req)."\n");
 

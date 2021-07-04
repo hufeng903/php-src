@@ -2,15 +2,12 @@
 int socket_send ( resource $socket , string $buf , int $len , int $flags );
 --CREDITS--
 marcosptf - <marcosptf@yahoo.com.br> - #phparty7 - @phpsp - novatec/2015 - sao paulo - br
+--EXTENSIONS--
+sockets
 --SKIPIF--
 <?php
 if (getenv("SKIP_ONLINE_TESTS")) die("skip online test");
-if (!extension_loaded('sockets')) {
-  die('SKIP sockets extension not available.');
-}
-if(substr(PHP_OS, 0, 3) == 'WIN' ) {
-	die('skip not for windows');
-}
+
 ?>
 --FILE--
 <?php
@@ -26,11 +23,11 @@ if(socket_send($socket, $stringSocket, $stringSocketLength, MSG_OOB)===$stringSo
   print("okey\n");
 }
 
-if(socket_send($socket, $stringSocket, $stringSocketLength, MSG_EOR)===$stringSocketLength){
+if(!defined('MSG_EOR') || socket_send($socket, $stringSocket, $stringSocketLength, MSG_EOR)===$stringSocketLength){
   print("okey\n");
 }
 
-if(socket_send($socket, $stringSocket, $stringSocketLength, MSG_EOF)===$stringSocketLength){
+if(!defined('MSG_EOF') || socket_send($socket, $stringSocket, $stringSocketLength, MSG_EOF)===$stringSocketLength){
   print("okey\n");
 }
 

@@ -1,8 +1,9 @@
 --TEST--
 Testing reading and writing to DOMNode::textContent
+--EXTENSIONS--
+dom
 --SKIPIF--
 <?php
-require_once('skipif.inc');
 if (LIBXML_VERSION < 20707) die ('skip requires libxml2-2.7.7 or higher');
 ?>
 --FILE--
@@ -36,4 +37,3 @@ var_dump($dom->saveHTML($node));
 string(8) "hi there"
 bool(true)
 string(63) "<div id="test">&lt;p&gt;hello world &amp;trade;&lt;/p&gt;</div>"
-

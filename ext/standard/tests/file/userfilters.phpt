@@ -2,19 +2,20 @@
 stream userfilter test
 --FILE--
 <?php
-# vim600:syn=php:
+
 class testfilter extends php_user_filter {
-  function filter($in, $out, &$consumed, $closing) {
+  function filter($in, $out, &$consumed, $closing): int {
     while ($bucket = stream_bucket_make_writeable($in)) {
       $bucket->data = strtoupper($bucket->data);
       $consumed += strlen($bucket->data);
       stream_bucket_append($out, $bucket);
     }
-    return PSFS_PASS_ON;    
+    return PSFS_PASS_ON;
   }
 
-  function oncreate() {
+  function oncreate(): bool {
     echo "params: {$this->params}\n";
+    return true;
   }
 }
 

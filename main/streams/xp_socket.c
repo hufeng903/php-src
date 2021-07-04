@@ -1,13 +1,11 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
-  +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
+  | Copyright (c) The PHP Group                                          |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
+  | https://www.php.net/license/3_01.txt                                 |
   | If you did not receive a copy of the PHP license and are unable to   |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
@@ -15,8 +13,6 @@
   | Author: Wez Furlong <wez@thebrainroom.com>                           |
   +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "php.h"
 #include "ext/standard/file.h"
@@ -27,7 +23,7 @@
 # undef AF_UNIX
 #endif
 
-#if defined(AF_UNIX)
+#ifdef AF_UNIX
 #include <sys/un.h>
 #endif
 
@@ -58,10 +54,10 @@ const php_stream_ops php_stream_unixdg_socket_ops;
 static int php_tcp_sockop_set_option(php_stream *stream, int option, int value, void *ptrparam);
 
 /* {{{ Generic socket stream operations */
-static size_t php_sockop_write(php_stream *stream, const char *buf, size_t count)
+static ssize_t php_sockop_write(php_stream *stream, const char *buf, size_t count)
 {
 	php_netstream_data_t *sock = (php_netstream_data_t*)stream->abstract;
-	int didwrite;
+	ssize_t didwrite;
 	struct timeval *ptimeout;
 
 	if (!sock || sock->socket == -1) {
@@ -77,42 +73,48 @@ retry:
 	didwrite = send(sock->socket, buf, XP_SOCK_BUF_SIZE(count), (sock->is_blocked && ptimeout) ? MSG_DONTWAIT : 0);
 
 	if (didwrite <= 0) {
-		int err = php_socket_errno();
 		char *estr;
+		int err = php_socket_errno();
 
-		if (sock->is_blocked && (err == EWOULDBLOCK || err == EAGAIN)) {
-			int retval;
+		if (PHP_IS_TRANSIENT_ERROR(err)) {
+			if (sock->is_blocked) {
+				int retval;
 
-			sock->timeout_event = 0;
+				sock->timeout_event = 0;
 
-			do {
-				retval = php_pollfd_for(sock->socket, POLLOUT, ptimeout);
+				do {
+					retval = php_pollfd_for(sock->socket, POLLOUT, ptimeout);
 
-				if (retval == 0) {
-					sock->timeout_event = 1;
-					break;
-				}
+					if (retval == 0) {
+						sock->timeout_event = 1;
+						break;
+					}
 
-				if (retval > 0) {
-					/* writable now; retry */
-					goto retry;
-				}
+					if (retval > 0) {
+						/* writable now; retry */
+						goto retry;
+					}
 
-				err = php_socket_errno();
-			} while (err == EINTR);
+					err = php_socket_errno();
+				} while (err == EINTR);
+			} else {
+				/* EWOULDBLOCK/EAGAIN is not an error for a non-blocking stream.
+				 * Report zero byte write instead. */
+				return 0;
+			}
 		}
-		estr = php_socket_strerror(err, NULL, 0);
-		php_error_docref(NULL, E_NOTICE, "send of " ZEND_LONG_FMT " bytes failed with errno=%d %s",
+
+		if (!(stream->flags & PHP_STREAM_FLAG_SUPPRESS_ERRORS)) {
+			estr = php_socket_strerror(err, NULL, 0);
+			php_error_docref(NULL, E_NOTICE,
+				"Send of " ZEND_LONG_FMT " bytes failed with errno=%d %s",
 				(zend_long)count, err, estr);
-		efree(estr);
+			efree(estr);
+		}
 	}
 
 	if (didwrite > 0) {
 		php_stream_notify_progress_increment(PHP_STREAM_CONTEXT(stream), didwrite, 0);
-	}
-
-	if (didwrite < 0) {
-		didwrite = 0;
 	}
 
 	return didwrite;
@@ -148,33 +150,37 @@ static void php_sock_stream_wait_for_data(php_stream *stream, php_netstream_data
 	}
 }
 
-static size_t php_sockop_read(php_stream *stream, char *buf, size_t count)
+static ssize_t php_sockop_read(php_stream *stream, char *buf, size_t count)
 {
 	php_netstream_data_t *sock = (php_netstream_data_t*)stream->abstract;
 	ssize_t nr_bytes = 0;
 	int err;
 
 	if (!sock || sock->socket == -1) {
-		return 0;
+		return -1;
 	}
 
 	if (sock->is_blocked) {
 		php_sock_stream_wait_for_data(stream, sock);
 		if (sock->timeout_event)
-			return 0;
+			return -1;
 	}
 
 	nr_bytes = recv(sock->socket, buf, XP_SOCK_BUF_SIZE(count), (sock->is_blocked && sock->timeout.tv_sec != -1) ? MSG_DONTWAIT : 0);
 	err = php_socket_errno();
 
-	stream->eof = (nr_bytes == 0 || (nr_bytes == -1 && err != EWOULDBLOCK && err != EAGAIN));
+	if (nr_bytes < 0) {
+		if (PHP_IS_TRANSIENT_ERROR(err)) {
+			nr_bytes = 0;
+		} else {
+			stream->eof = 1;
+		}
+	} else if (nr_bytes == 0) {
+		stream->eof = 1;
+	}
 
 	if (nr_bytes > 0) {
 		php_stream_notify_progress_increment(PHP_STREAM_CONTEXT(stream), nr_bytes, 0);
-	}
-
-	if (nr_bytes < 0) {
-		nr_bytes = 0;
 	}
 
 	return nr_bytes;
@@ -235,7 +241,7 @@ static int php_sockop_flush(php_stream *stream)
 
 static int php_sockop_stat(php_stream *stream, php_stream_statbuf *ssb)
 {
-#if ZEND_WIN32
+#ifdef ZEND_WIN32
 	return 0;
 #else
 	php_netstream_data_t *sock = (php_netstream_data_t*)stream->abstract;
@@ -274,6 +280,12 @@ static inline int sock_recvfrom(php_netstream_data_t *sock, char *buf, size_t bu
 		socklen_t sl = sizeof(sa);
 		ret = recvfrom(sock->socket, buf, XP_SOCK_BUF_SIZE(buflen), flags, (struct sockaddr*)&sa, &sl);
 		ret = (ret == SOCK_CONN_ERR) ? -1 : ret;
+#ifdef PHP_WIN32
+		/* POSIX discards excess bytes without signalling failure; emulate this on Windows */
+		if (ret == -1 && WSAGetLastError() == WSAEMSGSIZE) {
+			ret = buflen;
+		}
+#endif
 		if (sl) {
 			php_network_populate_name_from_sockaddr((struct sockaddr*)&sa, sl,
 					textaddr, addr, addrlen);
@@ -441,12 +453,11 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 #endif
 
 				default:
-					return PHP_STREAM_OPTION_RETURN_NOTIMPL;
+					break;
 			}
-
-		default:
-			return PHP_STREAM_OPTION_RETURN_NOTIMPL;
 	}
+
+	return PHP_STREAM_OPTION_RETURN_NOTIMPL;
 }
 
 static int php_sockop_cast(php_stream *stream, int castas, void **ret)
@@ -805,7 +816,7 @@ static inline int php_tcp_sockop_accept(php_stream *stream, php_netstream_data_t
 		php_stream_xport_param *xparam STREAMS_DC)
 {
 	int clisock;
-	zend_bool nodelay = 0;
+	bool nodelay = 0;
 	zval *tmpzval = NULL;
 
 	xparam->outputs.client = NULL;
@@ -927,13 +938,3 @@ PHPAPI php_stream *php_stream_generic_socket_factory(const char *proto, size_t p
 
 	return stream;
 }
-
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

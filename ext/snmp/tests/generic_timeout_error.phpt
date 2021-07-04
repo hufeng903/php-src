@@ -1,14 +1,16 @@
---TEST--                                 
+--TEST--
 Generic timeout (wrong community)
 --CREDITS--
 Boris Lytochkin
+--EXTENSIONS--
+snmp
 --SKIPIF--
 <?php
-require_once(dirname(__FILE__).'/skipif.inc');
+require_once(__DIR__.'/skipif.inc');
 ?>
 --FILE--
 <?php
-require_once(dirname(__FILE__).'/snmp_include.inc');
+require_once(__DIR__.'/snmp_include.inc');
 
 //EXPECTF format is quickprint OFF
 snmp_set_quick_print(false);
@@ -24,4 +26,3 @@ bool(false)
 
 Warning: snmpget(): No response from %s in %s on line %d
 bool(false)
-

@@ -1,23 +1,20 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
-  +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
+  | Copyright (c) The PHP Group                                          |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
+  | https://www.php.net/license/3_01.txt                                 |
   | If you did not receive a copy of the PHP license and are unable to   |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
   | Authors: Brad Lafountain <rodif_bl@yahoo.com>                        |
   |          Shane Caraveo <shane@caraveo.com>                           |
-  |          Dmitry Stogov <dmitry@zend.com>                             |
+  |          Dmitry Stogov <dmitry@php.net>                              |
   +----------------------------------------------------------------------+
 */
-/* $Id$ */
 
 #ifndef PHP_SOAP_H
 #define PHP_SOAP_H
@@ -26,7 +23,7 @@
 #include "php_globals.h"
 #include "ext/standard/info.h"
 #include "ext/standard/php_standard.h"
-#if HAVE_PHP_SESSION && !defined(COMPILE_DL_SESSION)
+#if defined(HAVE_PHP_SESSION) && !defined(COMPILE_DL_SESSION)
 #include "ext/session/php_session.h"
 #endif
 #include "zend_smart_str.h"
@@ -162,7 +159,7 @@ ZEND_BEGIN_MODULE_GLOBALS(soap)
 	int        cur_uniq_ns;
 	int        soap_version;
 	sdlPtr     sdl;
-	zend_bool  use_soap_error_handler;
+	bool  use_soap_error_handler;
 	char*      error_code;
 	zval       error_object;
 	char       cache;

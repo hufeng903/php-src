@@ -1,9 +1,9 @@
 --TEST--
 Check for tidy presence
---SKIPIF--
-<?php if (!extension_loaded("tidy")) print "skip"; ?>
+--EXTENSIONS--
+tidy
 --FILE--
-<?php 
+<?php
 echo "tidy extension is available";
 ?>
 --EXPECT--

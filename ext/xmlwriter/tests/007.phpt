@@ -1,13 +1,9 @@
 --TEST--
-XMLWriter: libxml2 XML Writer, Elements & Attributes 
---SKIPIF--
-<?php 
-if (!extension_loaded("xmlwriter")) die("skip"); 
-if (LIBXML_VERSION < 20629) die("skip: libxml2 2.6.29+ required");
-?>
+XMLWriter: libxml2 XML Writer, Elements & Attributes
+--EXTENSIONS--
+xmlwriter
 --FILE--
-<?php 
-/* $Id$ */
+<?php
 
 $xw = xmlwriter_open_memory();
 xmlwriter_set_indent($xw, TRUE);

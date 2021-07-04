@@ -1,7 +1,7 @@
 --TEST--
 gzinflate() and $length argument
---SKIPIF--
-<?php if (!extension_loaded("zlib")) print "skip"; ?>
+--EXTENSIONS--
+zlib
 --FILE--
 <?php
 $original = 'aaaaaaaaaaaaaaa';
@@ -23,4 +23,3 @@ Strings are equal
 
 Warning: gzinflate(): insufficient memory in %s on line %d
 Failed (as expected)
-

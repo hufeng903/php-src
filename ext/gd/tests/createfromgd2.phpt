@@ -1,12 +1,14 @@
 --TEST--
 imagecreatefromgd2
+--EXTENSIONS--
+gd
 --SKIPIF--
 <?php
         if (!function_exists('imagecreatefromgd2')) die("skip gd extension not available\n");
 ?>
 --FILE--
 <?php
-$file = dirname(__FILE__) . '/src.gd2';
+$file = __DIR__ . '/src.gd2';
 
 $im2 = imagecreatefromgd2($file);
 echo 'test create from gd2: ';

@@ -1,7 +1,7 @@
 --TEST--
 CharData: DOMCharacterData and related functionality
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 require_once("dom_test.inc");
@@ -62,7 +62,6 @@ $text3 = $text2->splitText(1);
 echo "Is Whitespace?: ".($text2->isElementContentWhitespace()?'YES':'NO');
 ?>
 --EXPECT--
-
 Comment Length: 42
 New Comment Length: 15
 New Comment Data: Updated comment

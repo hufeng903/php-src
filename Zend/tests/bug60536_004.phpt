@@ -1,10 +1,10 @@
 --TEST--
-Introducing new private variables of the same name in a subclass is ok, and does not lead to any output. That is consitent with normal inheritance handling. (relevant to #60536)
+Introducing new private variables of the same name in a subclass is ok, and does not lead to any output. That is consistent with normal inheritance handling. (relevant to #60536)
 --FILE--
 <?php
 
 class Base {
-  private $hello;    
+  private $hello;
 }
 
 trait THello1 {
@@ -28,7 +28,7 @@ class Notice extends Base {
 }
 echo "POST-CLASS-GUARD2\n";
 ?>
---EXPECT--	
+--EXPECT--
 PRE-CLASS-GUARD
 POST-CLASS-GUARD
 POST-CLASS-GUARD2

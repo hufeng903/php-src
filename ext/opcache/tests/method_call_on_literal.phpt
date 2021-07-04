@@ -1,5 +1,7 @@
 --TEST--
 Literal compaction should take method calls on literals into account
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

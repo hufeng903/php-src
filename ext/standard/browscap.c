@@ -1,22 +1,18 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
    +----------------------------------------------------------------------+
-   | Author: Zeev Suraski <zeev@zend.com>                                 |
+   | Author: Zeev Suraski <zeev@php.net>                                  |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #include "php.h"
 #include "php_browscap.h"
@@ -72,9 +68,9 @@ ZEND_DECLARE_MODULE_GLOBALS(browscap)
 static void browscap_entry_dtor(zval *zvalue)
 {
 	browscap_entry *entry = Z_PTR_P(zvalue);
-	zend_string_release(entry->pattern);
+	zend_string_release_ex(entry->pattern, 0);
 	if (entry->parent) {
-		zend_string_release(entry->parent);
+		zend_string_release_ex(entry->parent, 0);
 	}
 	efree(entry);
 }
@@ -82,14 +78,14 @@ static void browscap_entry_dtor(zval *zvalue)
 static void browscap_entry_dtor_persistent(zval *zvalue)
 {
 	browscap_entry *entry = Z_PTR_P(zvalue);
-	zend_string_release(entry->pattern);
+	zend_string_release_ex(entry->pattern, 1);
 	if (entry->parent) {
-		zend_string_release(entry->parent);
+		zend_string_release_ex(entry->parent, 1);
 	}
 	pefree(entry, 1);
 }
 
-static inline zend_bool is_placeholder(char c) {
+static inline bool is_placeholder(char c) {
 	return c == '?' || c == '*';
 }
 
@@ -225,12 +221,15 @@ typedef struct _browscap_parser_ctx {
 } browscap_parser_ctx;
 
 static zend_string *browscap_intern_str(
-		browscap_parser_ctx *ctx, zend_string *str) {
+		browscap_parser_ctx *ctx, zend_string *str, bool persistent) {
 	zend_string *interned = zend_hash_find_ptr(&ctx->str_interned, str);
 	if (interned) {
 		zend_string_addref(interned);
 	} else {
 		interned = zend_string_copy(str);
+		if (persistent) {
+			interned = zend_new_interned_string(str);
+		}
 		zend_hash_add_new_ptr(&ctx->str_interned, interned, interned);
 	}
 
@@ -238,7 +237,7 @@ static zend_string *browscap_intern_str(
 }
 
 static zend_string *browscap_intern_str_ci(
-		browscap_parser_ctx *ctx, zend_string *str, zend_bool persistent) {
+		browscap_parser_ctx *ctx, zend_string *str, bool persistent) {
 	zend_string *lcname;
 	zend_string *interned;
 	ALLOCA_FLAG(use_heap);
@@ -250,7 +249,10 @@ static zend_string *browscap_intern_str_ci(
 	if (interned) {
 		zend_string_addref(interned);
 	} else {
-		interned = zend_string_dup(lcname, persistent);
+		interned = zend_string_init(ZSTR_VAL(lcname), ZSTR_LEN(lcname), persistent);
+		if (persistent) {
+			interned = zend_new_interned_string(interned);
+		}
 		zend_hash_add_new_ptr(&ctx->str_interned, interned, interned);
 	}
 
@@ -259,7 +261,7 @@ static zend_string *browscap_intern_str_ci(
 }
 
 static void browscap_add_kv(
-		browser_data *bdata, zend_string *key, zend_string *value, zend_bool persistent) {
+		browser_data *bdata, zend_string *key, zend_string *value, bool persistent) {
 	if (bdata->kv_used == bdata->kv_size) {
 		bdata->kv_size *= 2;
 		bdata->kv = safe_perealloc(bdata->kv, sizeof(browscap_kv), bdata->kv_size, 0, persistent);
@@ -311,37 +313,25 @@ static void php_browscap_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callb
 				zend_string *new_key, *new_value;
 
 				/* Set proper value for true/false settings */
-				if ((Z_STRLEN_P(arg2) == 2 && !strncasecmp(Z_STRVAL_P(arg2), "on", sizeof("on") - 1)) ||
-					(Z_STRLEN_P(arg2) == 3 && !strncasecmp(Z_STRVAL_P(arg2), "yes", sizeof("yes") - 1)) ||
-					(Z_STRLEN_P(arg2) == 4 && !strncasecmp(Z_STRVAL_P(arg2), "true", sizeof("true") - 1))
+				if (zend_string_equals_literal_ci(Z_STR_P(arg2), "on")
+					|| zend_string_equals_literal_ci(Z_STR_P(arg2), "yes")
+					|| zend_string_equals_literal_ci(Z_STR_P(arg2), "true")
 				) {
 					new_value = ZSTR_CHAR('1');
-				} else if (
-					(Z_STRLEN_P(arg2) == 2 && !strncasecmp(Z_STRVAL_P(arg2), "no", sizeof("no") - 1)) ||
-					(Z_STRLEN_P(arg2) == 3 && !strncasecmp(Z_STRVAL_P(arg2), "off", sizeof("off") - 1)) ||
-					(Z_STRLEN_P(arg2) == 4 && !strncasecmp(Z_STRVAL_P(arg2), "none", sizeof("none") - 1)) ||
-					(Z_STRLEN_P(arg2) == 5 && !strncasecmp(Z_STRVAL_P(arg2), "false", sizeof("false") - 1))
+				} else if (zend_string_equals_literal_ci(Z_STR_P(arg2), "no")
+					|| zend_string_equals_literal_ci(Z_STR_P(arg2), "off")
+					|| zend_string_equals_literal_ci(Z_STR_P(arg2), "none")
+					|| zend_string_equals_literal_ci(Z_STR_P(arg2), "false")
 				) {
 					new_value = ZSTR_EMPTY_ALLOC();
 				} else { /* Other than true/false setting */
-					new_value = browscap_intern_str(ctx, Z_STR_P(arg2));
-
-					if (persistent) {
-						new_value = zend_new_interned_string(zend_string_copy(new_value));
-						if (ZSTR_IS_INTERNED(new_value)) {
-							if (new_value == Z_STR_P(arg2)) {
-								Z_TYPE_FLAGS_P(arg2) = 0;
-							}
-						} else {
-							zend_string_release(new_value);
-						}
-					}
+					new_value = browscap_intern_str(ctx, Z_STR_P(arg2), persistent);
 				}
 
-				if (!strcasecmp(Z_STRVAL_P(arg1), "parent")) {
+				if (zend_string_equals_literal_ci(Z_STR_P(arg1), "parent")) {
 					/* parent entry can not be same as current section -> causes infinite loop! */
 					if (ctx->current_section_name != NULL &&
-						!strcasecmp(ZSTR_VAL(ctx->current_section_name), Z_STRVAL_P(arg2))
+						zend_string_equals_ci(ctx->current_section_name, Z_STR_P(arg2))
 					) {
 						zend_error(E_CORE_ERROR, "Invalid browscap ini file: "
 							"'Parent' value cannot be same as the section name: %s "
@@ -356,18 +346,6 @@ static void php_browscap_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callb
 					ctx->current_entry->parent = new_value;
 				} else {
 					new_key = browscap_intern_str_ci(ctx, Z_STR_P(arg1), persistent);
-
-					if (persistent) {
-						new_key = zend_new_interned_string(zend_string_copy(new_key));
-						if (ZSTR_IS_INTERNED(new_key)) {
-							if (new_key == Z_STR_P(arg1)) {
-								Z_TYPE_FLAGS_P(arg1) = 0;
-							}
-						} else {
-							zend_string_release(new_key);
-						}
-					}
-
 					browscap_add_kv(bdata, new_key, new_value, persistent);
 					ctx->current_entry->kv_end = bdata->kv_used;
 				}
@@ -419,29 +397,30 @@ static void php_browscap_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callb
 }
 /* }}} */
 
+static void str_interned_dtor(zval *zv) {
+	zend_string_release(Z_STR_P(zv));
+}
+
 static int browscap_read_file(char *filename, browser_data *browdata, int persistent) /* {{{ */
 {
 	zend_file_handle fh;
 	browscap_parser_ctx ctx = {0};
+	FILE *fp;
 
 	if (filename == NULL || filename[0] == '\0') {
 		return FAILURE;
 	}
 
-	fh.handle.fp = VCWD_FOPEN(filename, "r");
-	fh.opened_path = NULL;
-	fh.free_filename = 0;
-	if (!fh.handle.fp) {
-		zend_error(E_CORE_WARNING, "Cannot open '%s' for reading", filename);
+	fp = VCWD_FOPEN(filename, "r");
+	if (!fp) {
+		zend_error(E_CORE_WARNING, "Cannot open \"%s\" for reading", filename);
 		return FAILURE;
 	}
-
-	fh.filename = filename;
-	fh.type = ZEND_HANDLE_FP;
+	zend_stream_init_fp(&fh, fp, filename);
 
 	browdata->htab = pemalloc(sizeof *browdata->htab, persistent);
-	zend_hash_init_ex(browdata->htab, 0, NULL,
-		persistent ? browscap_entry_dtor_persistent : browscap_entry_dtor, persistent, 0);
+	zend_hash_init(browdata->htab, 0, NULL,
+		persistent ? browscap_entry_dtor_persistent : browscap_entry_dtor, persistent);
 
 	browdata->kv_size = 16 * 1024;
 	browdata->kv_used = 0;
@@ -451,7 +430,7 @@ static int browscap_read_file(char *filename, browser_data *browdata, int persis
 	ctx.bdata = browdata;
 	ctx.current_entry = NULL;
 	ctx.current_section_name = NULL;
-	zend_hash_init(&ctx.str_interned, 8, NULL, NULL, persistent);
+	zend_hash_init(&ctx.str_interned, 8, NULL, str_interned_dtor, persistent);
 
 	zend_parse_ini_file(&fh, 1, ZEND_INI_SCANNER_RAW,
 			(zend_ini_parser_cb_t) php_browscap_parser_cb, &ctx);
@@ -461,6 +440,7 @@ static int browscap_read_file(char *filename, browser_data *browdata, int persis
 		zend_string_release(ctx.current_section_name);
 	}
 	zend_hash_destroy(&ctx.str_interned);
+	zend_destroy_file_handle(&fh);
 
 	return SUCCESS;
 }
@@ -496,8 +476,7 @@ static void browscap_bdata_dtor(browser_data *bdata, int persistent) /* {{{ */
 }
 /* }}} */
 
-/* {{{ PHP_INI_MH
- */
+/* {{{ PHP_INI_MH */
 PHP_INI_MH(OnChangeBrowscap)
 {
 	if (stage == PHP_INI_STAGE_STARTUP) {
@@ -565,12 +544,8 @@ static inline size_t browscap_get_minimum_length(browscap_entry *entry) {
 	return len;
 }
 
-static int browser_reg_compare(
-		zval *entry_zv, int num_args, va_list args, zend_hash_key *key) /* {{{ */
+static int browser_reg_compare(browscap_entry *entry, zend_string *agent_name, browscap_entry **found_entry_ptr) /* {{{ */
 {
-	browscap_entry *entry = Z_PTR_P(entry_zv);
-	zend_string *agent_name = va_arg(args, zend_string *);
-	browscap_entry **found_entry_ptr = va_arg(args, browscap_entry **);
 	browscap_entry *found_entry = *found_entry_ptr;
 	ALLOCA_FLAG(use_heap)
 	zend_string *pattern_lc, *regex;
@@ -579,7 +554,7 @@ static int browser_reg_compare(
 
 	pcre2_code *re;
 	pcre2_match_data *match_data;
-	uint32_t re_options, capture_count;
+	uint32_t capture_count;
 	int rc;
 
 	/* Agent name too short */
@@ -618,11 +593,11 @@ static int browser_reg_compare(
 	if (zend_string_equals(agent_name, pattern_lc)) {
 		*found_entry_ptr = entry;
 		ZSTR_ALLOCA_FREE(pattern_lc, use_heap);
-		return ZEND_HASH_APPLY_STOP;
+		return 1;
 	}
 
 	regex = browscap_convert_pattern(entry->pattern, 0);
-	re = pcre_get_compiled_regex(regex, &capture_count, &re_options);
+	re = pcre_get_compiled_regex(regex, &capture_count);
 	if (re == NULL) {
 		ZSTR_ALLOCA_FREE(pattern_lc, use_heap);
 		zend_string_release(regex);
@@ -635,7 +610,7 @@ static int browser_reg_compare(
 		zend_string_release(regex);
 		return 0;
 	}
-	rc = pcre2_match(re, (PCRE2_SPTR)ZSTR_VAL(agent_name), ZSTR_LEN(agent_name), 0, re_options, match_data, php_pcre_mctx());
+	rc = pcre2_match(re, (PCRE2_SPTR)ZSTR_VAL(agent_name), ZSTR_LEN(agent_name), 0, 0, match_data, php_pcre_mctx());
 	php_pcre_free_match_data(match_data);
 	if (PCRE2_ERROR_NOMATCH != rc) {
 		/* If we've found a possible browser, we need to do a comparison of the
@@ -702,15 +677,20 @@ static void browscap_zval_copy_ctor(zval *p) /* {{{ */
 }
 /* }}} */
 
-/* {{{ proto mixed get_browser([string browser_name [, bool return_array]])
-   Get information about the capabilities of a browser. If browser_name is omitted or null, HTTP_USER_AGENT is used. Returns an object by default; if return_array is true, returns an array. */
+/* {{{ Get information about the capabilities of a browser. If browser_name is omitted or null, HTTP_USER_AGENT is used. Returns an object by default; if return_array is true, returns an array. */
 PHP_FUNCTION(get_browser)
 {
 	zend_string *agent_name = NULL, *lookup_browser_name;
-	zend_bool return_array = 0;
+	bool return_array = 0;
 	browser_data *bdata;
 	browscap_entry *found_entry = NULL;
 	HashTable *agent_ht;
+
+	ZEND_PARSE_PARAMETERS_START(0, 2)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_STR_OR_NULL(agent_name)
+		Z_PARAM_BOOL(return_array)
+	ZEND_PARSE_PARAMETERS_END();
 
 	if (BROWSCAP_G(activation_bdata).filename[0] != '\0') {
 		bdata = &BROWSCAP_G(activation_bdata);
@@ -727,16 +707,10 @@ PHP_FUNCTION(get_browser)
 		bdata = &global_bdata;
 	}
 
-	ZEND_PARSE_PARAMETERS_START(0, 2)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_STR_EX(agent_name, 1, 0)
-		Z_PARAM_BOOL(return_array)
-	ZEND_PARSE_PARAMETERS_END();
-
 	if (agent_name == NULL) {
 		zval *http_user_agent = NULL;
 		if (Z_TYPE(PG(http_globals)[TRACK_VARS_SERVER]) == IS_ARRAY
-				|| zend_is_auto_global_str(ZEND_STRL("_SERVER"))) {
+				|| zend_is_auto_global(ZSTR_KNOWN(ZEND_STR_AUTOGLOBAL_SERVER))) {
 			http_user_agent = zend_hash_str_find(
 				Z_ARRVAL_P(&PG(http_globals)[TRACK_VARS_SERVER]),
 				"HTTP_USER_AGENT", sizeof("HTTP_USER_AGENT")-1);
@@ -751,13 +725,19 @@ PHP_FUNCTION(get_browser)
 	lookup_browser_name = zend_string_tolower(agent_name);
 	found_entry = zend_hash_find_ptr(bdata->htab, lookup_browser_name);
 	if (found_entry == NULL) {
-		zend_hash_apply_with_arguments(bdata->htab, browser_reg_compare, 2, lookup_browser_name, &found_entry);
+		browscap_entry *entry;
+
+		ZEND_HASH_FOREACH_PTR(bdata->htab, entry) {
+			if (browser_reg_compare(entry, lookup_browser_name, &found_entry)) {
+				break;
+			}
+		} ZEND_HASH_FOREACH_END();
 
 		if (found_entry == NULL) {
 			found_entry = zend_hash_str_find_ptr(bdata->htab,
 				DEFAULT_SECTION_NAME, sizeof(DEFAULT_SECTION_NAME)-1);
 			if (found_entry == NULL) {
-				efree(lookup_browser_name);
+				zend_string_release(lookup_browser_name);
 				RETURN_FALSE;
 			}
 		}
@@ -788,15 +768,6 @@ PHP_FUNCTION(get_browser)
 		efree(agent_ht);
 	}
 
-	zend_string_release(lookup_browser_name);
+	zend_string_release_ex(lookup_browser_name, 0);
 }
 /* }}} */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

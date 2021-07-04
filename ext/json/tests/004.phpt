@@ -1,7 +1,5 @@
 --TEST--
 json_encode() & endless loop - 2
---SKIPIF--
-<?php if (!extension_loaded("json")) print "skip"; ?>
 --FILE--
 <?php
 
@@ -22,7 +20,7 @@ var_dump(json_last_error(), json_last_error_msg());
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 object(stdClass)#%d (1) {
   ["prop"]=>
   *RECURSION*

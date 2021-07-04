@@ -1,5 +1,3 @@
-
-	/* $Id: fpm_env.c,v 1.15 2008/09/18 23:19:59 anight Exp $ */
 	/* (c) 2007,2008 Andrei Nigmatulin */
 
 #include "fpm_config.h"
@@ -15,7 +13,7 @@
 #include "fpm.h"
 
 #ifndef HAVE_SETPROCTITLE
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 static char **fpm_env_argv = NULL;
 static size_t fpm_env_argv_len = 0;
 #endif
@@ -120,17 +118,18 @@ static char * nvmatch(char *s1, char *s2) /* {{{ */
 
 void fpm_env_setproctitle(char *title) /* {{{ */
 {
-#ifdef HAVE_SETPROCTITLE
+#if defined(HAVE_SETPROCTITLE_FAST)
+	setproctitle_fast("%s", title);
+#elif defined(HAVE_SETPROCTITLE)
 	setproctitle("%s", title);
-#else
-#ifdef __linux__
-	if (fpm_env_argv != NULL && fpm_env_argv_len > strlen(SETPROCTITLE_PREFIX) + 3) {
+#elif defined(__linux__) || defined(__APPLE__)
+	size_t prefixlen = strlen(SETPROCTITLE_PREFIX);
+	if (fpm_env_argv != NULL && fpm_env_argv_len > prefixlen + 3) {
 		memset(fpm_env_argv[0], 0, fpm_env_argv_len);
 		strncpy(fpm_env_argv[0], SETPROCTITLE_PREFIX, fpm_env_argv_len - 2);
-		strncpy(fpm_env_argv[0] + strlen(SETPROCTITLE_PREFIX), title, fpm_env_argv_len - strlen(SETPROCTITLE_PREFIX) - 2);
+		strncpy(fpm_env_argv[0] + prefixlen, title, fpm_env_argv_len - prefixlen - 2);
 		fpm_env_argv[1] = NULL;
 	}
-#endif
 #endif
 }
 /* }}} */
@@ -199,9 +198,6 @@ static int fpm_env_conf_wp(struct fpm_worker_pool_s *wp) /* {{{ */
 int fpm_env_init_main() /* {{{ */
 {
 	struct fpm_worker_pool_s *wp;
-	int i;
-	char *first = NULL;
-	char *last = NULL;
 	char *title;
 
 	for (wp = fpm_worker_all_pools; wp; wp = wp->next) {
@@ -210,9 +206,12 @@ int fpm_env_init_main() /* {{{ */
 		}
 	}
 #ifndef HAVE_SETPROCTITLE
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
+	int i;
+	char *first = NULL;
+	char *last = NULL;
 	/*
-	 * This piece of code has been inspirated from nginx and pureftpd code, which
+	 * This piece of code has been inspired from nginx and pureftpd code, which
 	 * are under BSD licence.
 	 *
 	 * To change the process title in Linux we have to set argv[1] to NULL
@@ -275,4 +274,3 @@ int fpm_env_init_main() /* {{{ */
 	return 0;
 }
 /* }}} */
-

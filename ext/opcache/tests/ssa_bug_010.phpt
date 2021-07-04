@@ -1,5 +1,7 @@
 --TEST--
 Wrong assertion
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 function foo($parts, $a, $b) {

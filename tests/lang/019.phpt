@@ -1,7 +1,7 @@
 --TEST--
 eval() test
 --FILE--
-<?php 
+<?php
 
 eval("function test() { echo \"hey, this is a function inside an eval()!\\n\"; }");
 
@@ -13,6 +13,7 @@ while ($i<10) {
 }
 
 eval('-');
+?>
 --EXPECTF--
 hey, this is a regular echo'd eval()
 hey, this is a function inside an eval()!

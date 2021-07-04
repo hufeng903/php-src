@@ -1,5 +1,7 @@
 --TEST--
-SSA constrution for CFG with unreachable basic blocks
+SSA construction for CFG with unreachable basic blocks
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 class X {

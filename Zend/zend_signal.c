@@ -2,12 +2,12 @@
   +----------------------------------------------------------------------+
   | Zend Signal Handling                                                 |
   +----------------------------------------------------------------------+
-  | Copyright (c) 2008-2018 The PHP Group                                     |
+  | Copyright (c) The PHP Group                                          |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
+  | https://www.php.net/license/3_01.txt                                 |
   | If you did not receive a copy of the PHP license and are unable to   |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
@@ -25,17 +25,12 @@
    All other licensing and usage conditions are those of the PHP Group.
 */
 
- /* $Id$ */
-
 #define _GNU_SOURCE
 #include <string.h>
 
 #include "zend.h"
 #include "zend_globals.h"
-
-#ifdef HAVE_SIGNAL_H
 #include <signal.h>
-#endif
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -47,6 +42,7 @@
 
 #ifdef ZTS
 ZEND_API int zend_signal_globals_id;
+ZEND_API size_t zend_signal_globals_offset;
 #else
 ZEND_API zend_signal_globals_t zend_signal_globals;
 #endif /* not ZTS */
@@ -66,7 +62,8 @@ ZEND_API zend_signal_globals_t zend_signal_globals;
 static void zend_signal_handler(int signo, siginfo_t *siginfo, void *context);
 static int zend_signal_register(int signo, void (*handler)(int, siginfo_t*, void*));
 
-#ifdef __CYGWIN__
+#if defined(__CYGWIN__) || defined(__PASE__)
+/* Matches zend_execute_API.c; these platforms don't support ITIMER_PROF. */
 #define TIMEOUT_SIG SIGALRM
 #else
 #define TIMEOUT_SIG SIGPROF
@@ -86,17 +83,17 @@ void zend_signal_handler_defer(int signo, siginfo_t *siginfo, void *context)
 {
 	int errno_save = errno;
 	zend_signal_queue_t *queue, *qtmp;
-	zend_bool is_handling_safe = 1;
 
 #ifdef ZTS
-	ZEND_TSRMLS_CACHE_UPDATE();
 	/* A signal could hit after TSRM shutdown, in this case globals are already freed. */
-	if (NULL == TSRMLS_CACHE || NULL == TSRMG_BULK_STATIC(zend_signal_globals_id, zend_signal_globals_t *)) {
-		is_handling_safe = 0;
+	if (tsrm_is_shutdown()) {
+		/* Forward to default handler handler */
+		zend_signal_handler(signo, siginfo, context);
+		return;
 	}
 #endif
 
-	if (EXPECTED(is_handling_safe && SIGG(active))) {
+	if (EXPECTED(SIGG(active))) {
 		if (UNEXPECTED(SIGG(depth) == 0)) { /* try to handle signal */
 			if (UNEXPECTED(SIGG(blocked))) {
 				SIGG(blocked) = 0;
@@ -121,7 +118,7 @@ void zend_signal_handler_defer(int signo, siginfo_t *siginfo, void *context)
 		} else { /* delay signal handling */
 			SIGG(blocked) = 1; /* signal is blocked */
 
-			if ((queue = SIGG(pavail))) { /* if none available it's simply forgotton */
+			if ((queue = SIGG(pavail))) { /* if none available it's simply forgotten */
 				SIGG(pavail) = queue->next;
 				queue->zend_signal.signo = signo;
 				queue->zend_signal.siginfo = siginfo;
@@ -181,7 +178,7 @@ static void zend_signal_handler(int signo, siginfo_t *siginfo, void *context)
 	sigset_t sigset;
 	zend_signal_entry_t p_sig;
 #ifdef ZTS
-	if (NULL == TSRMLS_CACHE || NULL == TSRMG_BULK_STATIC(zend_signal_globals_id, zend_signal_globals_t *)) {
+	if (tsrm_is_shutdown()) {
 		p_sig.flags = 0;
 		p_sig.handler = SIG_DFL;
 	} else
@@ -227,7 +224,7 @@ static void zend_signal_handler(int signo, siginfo_t *siginfo, void *context)
 
 /* {{{ zend_sigaction
  *  Register a signal handler that will be deferred in critical sections */
-ZEND_API int zend_sigaction(int signo, const struct sigaction *act, struct sigaction *oldact)
+ZEND_API void zend_sigaction(int signo, const struct sigaction *act, struct sigaction *oldact)
 {
 	struct sigaction sa;
 	sigset_t sigset;
@@ -263,14 +260,12 @@ ZEND_API int zend_sigaction(int signo, const struct sigaction *act, struct sigac
 		sigaddset(&sigset, signo);
 		zend_sigprocmask(SIG_UNBLOCK, &sigset, NULL);
 	}
-
-	return SUCCESS;
 }
 /* }}} */
 
 /* {{{ zend_signal
  *  Register a signal handler that will be deferred in critical sections */
-ZEND_API int zend_signal(int signo, void (*handler)(int))
+ZEND_API void zend_signal(int signo, void (*handler)(int))
 {
 	struct sigaction sa;
 
@@ -279,7 +274,7 @@ ZEND_API int zend_signal(int signo, void (*handler)(int))
 	sa.sa_handler = handler;
 	sa.sa_mask    = global_sigmask;
 
-	return zend_sigaction(signo, &sa, NULL);
+	zend_sigaction(signo, &sa, NULL);
 }
 /* }}} */
 
@@ -287,7 +282,7 @@ ZEND_API int zend_signal(int signo, void (*handler)(int))
  *  Set a handler for a signal we want to defer.
  *  Previously set handler must have been saved before.
  */
-static int zend_signal_register(int signo, void (*handler)(int, siginfo_t*, void*))
+static zend_result zend_signal_register(int signo, void (*handler)(int, siginfo_t*, void*))
 {
 	struct sigaction sa;
 
@@ -324,19 +319,19 @@ void zend_signal_activate(void)
 
 	memcpy(&SIGG(handlers), &global_orig_handlers, sizeof(global_orig_handlers));
 
-	for (x = 0; x < sizeof(zend_sigs) / sizeof(*zend_sigs); x++) {
-		zend_signal_register(zend_sigs[x], zend_signal_handler_defer);
+	if (SIGG(reset)) {
+		for (x = 0; x < sizeof(zend_sigs) / sizeof(*zend_sigs); x++) {
+			zend_signal_register(zend_sigs[x], zend_signal_handler_defer);
+		}
 	}
 
 	SIGG(active) = 1;
 	SIGG(depth)  = 0;
 } /* }}} */
 
-/* {{{ zend_signal_deactivate
- * */
+/* {{{ zend_signal_deactivate */
 void zend_signal_deactivate(void)
 {
-
 	if (SIGG(check)) {
 		size_t x;
 		struct sigaction sa;
@@ -344,21 +339,32 @@ void zend_signal_deactivate(void)
 		if (SIGG(depth) != 0) {
 			zend_error(E_CORE_WARNING, "zend_signal: shutdown with non-zero blocking depth (%d)", SIGG(depth));
 		}
+
 		/* did anyone steal our installed handler */
 		for (x = 0; x < sizeof(zend_sigs) / sizeof(*zend_sigs); x++) {
 			sigaction(zend_sigs[x], NULL, &sa);
-			if (sa.sa_sigaction != zend_signal_handler_defer) {
+			if (sa.sa_sigaction != zend_signal_handler_defer &&
+					sa.sa_sigaction != (void *) SIG_IGN) {
 				zend_error(E_CORE_WARNING, "zend_signal: handler was replaced for signal (%d) after startup", zend_sigs[x]);
 			}
 		}
 	}
 
-	SIGNAL_BEGIN_CRITICAL();
-	SIGG(active) = 0;
+	/* After active=0 is set, signal handlers will be called directly and other
+	 * state that is reset below will not be accessed. */
+	*((volatile int *) &SIGG(active)) = 0;
+
 	SIGG(running) = 0;
 	SIGG(blocked) = 0;
 	SIGG(depth) = 0;
-	SIGNAL_END_CRITICAL();
+
+	/* If there are any queued signals because of a missed unblock, drop them. */
+	if (SIGG(phead) && SIGG(ptail)) {
+		SIGG(ptail)->next = SIGG(pavail);
+		SIGG(pavail) = SIGG(phead);
+		SIGG(phead) = NULL;
+		SIGG(ptail) = NULL;
+	}
 }
 /* }}} */
 
@@ -367,6 +373,7 @@ static void zend_signal_globals_ctor(zend_signal_globals_t *zend_signal_globals)
 	size_t x;
 
 	memset(zend_signal_globals, 0, sizeof(*zend_signal_globals));
+	zend_signal_globals->reset = 1;
 
 	for (x = 0; x < sizeof(zend_signal_globals->pstorage) / sizeof(*zend_signal_globals->pstorage); ++x) {
 		zend_signal_queue_t *queue = &zend_signal_globals->pstorage[x];
@@ -399,11 +406,11 @@ void zend_signal_init(void) /* {{{ */
 
 /* {{{ zend_signal_startup
  * alloc zend signal globals */
-void zend_signal_startup(void)
+ZEND_API void zend_signal_startup(void)
 {
 
 #ifdef ZTS
-	ts_allocate_id(&zend_signal_globals_id, sizeof(zend_signal_globals_t), (ts_allocate_ctor) zend_signal_globals_ctor, NULL);
+	ts_allocate_fast_id(&zend_signal_globals_id, &zend_signal_globals_offset, sizeof(zend_signal_globals_t), (ts_allocate_ctor) zend_signal_globals_ctor, NULL);
 #else
 	zend_signal_globals_ctor(&zend_signal_globals);
 #endif
@@ -436,13 +443,3 @@ void zend_signal_startup(void)
 
 
 #endif /* ZEND_SIGNALS */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

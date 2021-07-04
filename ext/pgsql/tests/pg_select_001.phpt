@@ -1,5 +1,7 @@
 --TEST--
 PostgreSQL pg_select() - basic test using schema
+--EXTENSIONS--
+pgsql
 --SKIPIF--
 <?php include("skipif.inc"); ?>
 --FILE--
@@ -31,6 +33,8 @@ var_dump(pg_select($conn, 'phptests.bar', array('id' => 1)));
 /* Existent column */
 var_dump(pg_select($conn, 'phptests.bar', array('id4' => 4)));
 
+/* Use a different result type */
+var_dump(pg_select($conn, 'phptests.bar', array('id4' => 4), 0, PGSQL_NUM));
 
 pg_query('DROP TABLE phptests.foo');
 pg_query('DROP TABLE phptests.bar');
@@ -58,6 +62,15 @@ array(1) {
     ["id4"]=>
     string(1) "4"
     ["id3"]=>
+    string(1) "5"
+  }
+}
+array(1) {
+  [0]=>
+  array(2) {
+    [0]=>
+    string(1) "4"
+    [1]=>
     string(1) "5"
   }
 }

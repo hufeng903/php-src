@@ -1,11 +1,11 @@
 --TEST--
 oci_execute() and invalid execute mode
---SKIPIF--
-<?php if (!extension_loaded('oci8')) die("skip no oci8 extension"); ?>
+--EXTENSIONS--
+oci8
 --FILE--
 <?php
 
-require dirname(__FILE__)."/connect.inc";
+require __DIR__."/connect.inc";
 
 $pc = oci_pconnect($user, $password, $dbase);
 
@@ -14,6 +14,6 @@ oci_execute($stmt, -1);
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 Warning: oci_execute(): Invalid execute mode given: -1 in %s on line %d
 Done

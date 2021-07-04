@@ -1,18 +1,16 @@
 --TEST--
-Test posix_getsid() function : basic functionality 
---SKIPIF--
-<?php 
-	if (!extension_loaded('posix')) die('skip - POSIX extension not loaded'); 
-?>
+Test posix_getsid() function : basic functionality
+--EXTENSIONS--
+posix
 --FILE--
-<?php 
-  echo "Basic test of posix_getsid function\n"; 
-  
-  $pid = posix_getpid();	
+<?php
+  echo "Basic test of posix_getsid function\n";
+
+  $pid = posix_getpid();
   $sid = posix_getsid($pid);
-  
-  var_dump($sid); 
-  
+
+  var_dump($sid);
+
 ?>
 ===DONE====
 --EXPECTF--

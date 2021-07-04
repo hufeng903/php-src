@@ -1,7 +1,7 @@
 --TEST--
 filter_var() and FILTER_SANITIZE_STRING
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 
@@ -15,7 +15,7 @@ var_dump(filter_var(".", FILTER_SANITIZE_STRING));
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(0) ""
 string(0) ""
 string(12) "!@#$%^&*()'""

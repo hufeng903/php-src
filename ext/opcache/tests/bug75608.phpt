@@ -1,5 +1,7 @@
 --TEST--
 Bug #75608 ("Narrowing occurred during type inference" error)
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 class ReactionRatingService

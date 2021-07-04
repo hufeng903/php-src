@@ -292,10 +292,6 @@ static double private_mem[PRIVATE_mem], *pmem_next = private_mem;
 #include "math.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef CONST
 #ifdef KR_headers
 #define CONST /* blank */
@@ -528,12 +524,6 @@ BCinfo { int dp0, dp1, dplen, dsign, e0, inexact, nd, nd0, rounding, scale, uflc
 
 #define Kmax 7
 
-#ifdef __cplusplus
-extern "C" double strtod(const char *s00, char **se);
-extern "C" char *dtoa(double d, int mode, int ndigits,
-			int *decpt, int *sign, char **rve);
-#endif
-
  struct
 Bigint {
 	struct Bigint *next;
@@ -546,6 +536,7 @@ Bigint {
  static Bigint *freelist[Kmax+1];
 
 static void destroy_freelist(void);
+static void free_p5s(void);
 
 #ifdef ZTS
 static MUTEX_T dtoa_mutex;
@@ -564,6 +555,8 @@ ZEND_API int zend_startup_strtod(void) /* {{{ */
 ZEND_API int zend_shutdown_strtod(void) /* {{{ */
 {
 	destroy_freelist();
+	free_p5s();
+
 #ifdef ZTS
 	tsrm_mutex_free(dtoa_mutex);
 	dtoa_mutex = NULL;
@@ -1560,7 +1553,7 @@ hexdig_init(void)	/* Use of hexdig_init omitted 20121220 to avoid a */
 	htinit(hexdig, USC "ABCDEF", 0x10 + 10);
 	}
 #else
-static unsigned char hexdig[256] = {
+static const unsigned char hexdig[256] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -1908,7 +1901,7 @@ gethex( CONST char **sp, U *rvp, int rounding, int sign)
 		switch(*++s) {
 		  case '-':
 			esign = 1;
-			/* no break */
+			ZEND_FALLTHROUGH;
 		  case '+':
 			s++;
 		  }
@@ -2575,11 +2568,11 @@ zend_strtod
 	for(s = s00;;s++) switch(*s) {
 		case '-':
 			sign = 1;
-			/* no break */
+			ZEND_FALLTHROUGH;
 		case '+':
 			if (*++s)
 				goto break2;
-			/* no break */
+			ZEND_FALLTHROUGH;
 		case 0:
 			goto ret0;
 		case '\t':
@@ -2695,6 +2688,7 @@ zend_strtod
 		switch(c = *++s) {
 			case '-':
 				esign = 1;
+				ZEND_FALLTHROUGH;
 			case '+':
 				c = *++s;
 			}
@@ -2705,7 +2699,7 @@ zend_strtod
 				L = c - '0';
 				s1 = s;
 				while((c = *++s) >= '0' && c <= '9')
-					L = 10*L + c - '0';
+					L = (Long) (10*(ULong)L + (c - '0'));
 				if (s - s1 > 8 || L > 19999)
 					/* Avoid confusion from exponents
 					 * so large that e might overflow.
@@ -3751,7 +3745,7 @@ zend_dtoa
 	*/
 
 	int bbits, b2, b5, be, dig, i, ieps, ilim = 0, ilim0, ilim1,
-		j, j1, k, k0, k_check, leftright, m2, m5, s2, s5,
+		j, j1 = 0, k, k0, k_check, leftright, m2, m5, s2, s5,
 		spec_case = 0, try_quick;
 	Long L;
 #ifndef Sudden_Underflow
@@ -3949,7 +3943,7 @@ zend_dtoa
 			break;
 		case 2:
 			leftright = 0;
-			/* no break */
+			ZEND_FALLTHROUGH;
 		case 4:
 			if (ndigits <= 0)
 				ndigits = 1;
@@ -3957,7 +3951,7 @@ zend_dtoa
 			break;
 		case 3:
 			leftright = 0;
-			/* no break */
+			ZEND_FALLTHROUGH;
 		case 5:
 			i = ndigits + k + 1;
 			ilim = i;
@@ -4210,7 +4204,7 @@ zend_dtoa
 	 *
 	 * Perhaps we should just compute leading 28 bits of S once
 	 * and for all and pass them and a shift to quorem, so it
-	 * can do shifts and ors to compute the numerator for q.
+	 * can do shifts and ORs to compute the numerator for q.
 	 */
 	i = dshift(S, s2);
 	b2 += i;
@@ -4464,9 +4458,6 @@ ZEND_API double zend_oct_strtod(const char *str, const char **endptr)
 		return 0.0;
 	}
 
-	/* skip leading zero */
-	s++;
-
 	while ((c = *s++)) {
 		if (c < '0' || c > '7') {
 			/* break and return the current value if the number is not well-formed
@@ -4540,14 +4531,15 @@ static void destroy_freelist(void)
 	FREE_DTOA_LOCK(0)
 }
 
-#ifdef __cplusplus
+static void free_p5s(void)
+{
+	Bigint **listp, *tmp;
+
+	ACQUIRE_DTOA_LOCK(1)
+	listp = &p5s;
+	while ((tmp = *listp) != NULL) {
+		*listp = tmp->next;
+		free(tmp);
+	}
+	FREE_DTOA_LOCK(1)
 }
-#endif
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

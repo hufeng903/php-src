@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -15,8 +13,6 @@
    | Authors: Daniel Beulshausen <daniel@php4win.de>                      |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -107,7 +103,7 @@ TSRM_API void tsrm_win32_shutdown(void)
 #endif
 }/*}}}*/
 
-char * tsrm_win32_get_path_sid_key(const char *pathname, size_t pathname_len, size_t *key_len)
+const char * tsrm_win32_get_path_sid_key(const char *pathname, size_t pathname_len, size_t *key_len)
 {/*{{{*/
 	PSID pSid = TWG(impersonation_token_sid);
 	char *ptcSid = NULL;
@@ -258,7 +254,7 @@ TSRM_API int tsrm_win32_access(const char *pathname, int mode)
 		goto Finished;
 	}
 
-	/* Different identity, we need a new impersontated token as well */
+	/* Different identity, we need a new impersonated token as well */
 	if (!TWG(impersonation_token_sid) || !EqualSid(token_sid, TWG(impersonation_token_sid))) {
 		if (TWG(impersonation_token_sid)) {
 			free(TWG(impersonation_token_sid));
@@ -447,7 +443,7 @@ TSRM_API FILE *popen(const char *command, const char *type)
 	return popen_ex(command, type, NULL, NULL);
 }/*}}}*/
 
-TSRM_API FILE *popen_ex(const char *command, const char *type, const char *cwd, char *env)
+TSRM_API FILE *popen_ex(const char *command, const char *type, const char *cwd, const char *env)
 {/*{{{*/
 	FILE *stream = NULL;
 	int fno, type_len, read, mode;
@@ -460,7 +456,6 @@ TSRM_API FILE *popen_ex(const char *command, const char *type, const char *cwd, 
 	process_pair *proc;
 	char *cmd = NULL;
 	wchar_t *cmdw = NULL, *cwdw = NULL, *envw = NULL;
-	int i;
 	char *ptype = (char *)type;
 	HANDLE thread_token = NULL;
 	HANDLE token_user = NULL;
@@ -470,25 +465,25 @@ TSRM_API FILE *popen_ex(const char *command, const char *type, const char *cwd, 
 		return NULL;
 	}
 
-	/*The following two checks can be removed once we drop XP support */
 	type_len = (int)strlen(type);
-	if (type_len <1 || type_len > 2) {
+	if (type_len < 1 || type_len > 2) {
 		return NULL;
 	}
 
-	for (i=0; i < type_len; i++) {
-		if (!(*ptype == 'r' || *ptype == 'w' || *ptype == 'b' || *ptype == 't')) {
-			return NULL;
-		}
-		ptype++;
+	if (ptype[0] != 'r' && ptype[0] != 'w') {
+		return NULL;
 	}
 
-	cmd = (char*)malloc(strlen(command)+strlen(TWG(comspec))+sizeof(" /c ")+2);
+	if (type_len > 1 && (ptype[1] != 'b' && ptype[1] != 't')) {
+		return NULL;
+	}
+
+	cmd = (char*)malloc(strlen(command)+strlen(TWG(comspec))+sizeof(" /s /c ")+2);
 	if (!cmd) {
 		return NULL;
 	}
 
-	sprintf(cmd, "%s /c \"%s\"", TWG(comspec), command);
+	sprintf(cmd, "%s /s /c \"%s\"", TWG(comspec), command);
 	cmdw = php_win32_cp_any_to_w(cmd);
 	if (!cmdw) {
 		free(cmd);
@@ -618,14 +613,16 @@ TSRM_API int shmget(key_t key, size_t size, int flags)
 {/*{{{*/
 	shm_pair *shm;
 	char shm_segment[26], shm_info[29];
-	HANDLE shm_handle, info_handle;
+	HANDLE shm_handle = NULL, info_handle = NULL;
 	BOOL created = FALSE;
 
-	snprintf(shm_segment, sizeof(shm_segment), "TSRM_SHM_SEGMENT:%d", key);
-	snprintf(shm_info, sizeof(shm_info), "TSRM_SHM_DESCRIPTOR:%d", key);
+	if (key != IPC_PRIVATE) {
+		snprintf(shm_segment, sizeof(shm_segment), "TSRM_SHM_SEGMENT:%d", key);
+		snprintf(shm_info, sizeof(shm_info), "TSRM_SHM_DESCRIPTOR:%d", key);
 
-	shm_handle  = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, shm_segment);
-	info_handle = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, shm_info);
+		shm_handle  = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, shm_segment);
+		info_handle = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, shm_info);
+	}
 
 	if (!shm_handle && !info_handle) {
 		if (flags & IPC_CREAT) {
@@ -636,8 +633,8 @@ TSRM_API int shmget(key_t key, size_t size, int flags)
 			DWORD high = 0;
 			DWORD low = size;
 #endif
-			shm_handle	= CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, high, low, shm_segment);
-			info_handle	= CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(shm->descriptor), shm_info);
+			shm_handle	= CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, high, low, key == IPC_PRIVATE ? NULL : shm_segment);
+			info_handle	= CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(shm->descriptor), key == IPC_PRIVATE ? NULL : shm_info);
 			created		= TRUE;
 		}
 		if (!shm_handle || !info_handle) {
@@ -723,6 +720,7 @@ TSRM_API void *shmat(int key, const void *shmaddr, int flags)
 TSRM_API int shmdt(const void *shmaddr)
 {/*{{{*/
 	shm_pair *shm = shm_get(0, (void*)shmaddr);
+	int ret;
 
 	if (!shm->segment) {
 		return -1;
@@ -732,7 +730,12 @@ TSRM_API int shmdt(const void *shmaddr)
 	shm->descriptor->shm_lpid  = getpid();
 	shm->descriptor->shm_nattch--;
 
-	return UnmapViewOfFile(shm->addr) ? 0 : -1;
+	ret = UnmapViewOfFile(shm->addr) ? 0 : -1;
+	if (!ret  && shm->descriptor->shm_nattch <= 0) {
+		ret = UnmapViewOfFile(shm->descriptor) ? 0 : -1;
+		shm->descriptor = NULL;
+	}
+	return ret;
 }/*}}}*/
 
 TSRM_API int shmctl(int key, int cmd, struct shmid_ds *buf)
@@ -766,13 +769,12 @@ TSRM_API int shmctl(int key, int cmd, struct shmid_ds *buf)
 	}
 }/*}}}*/
 
-#if HAVE_UTIME
 static zend_always_inline void UnixTimeToFileTime(time_t t, LPFILETIME pft) /* {{{ */
 {
 	// Note that LONGLONG is a 64-bit value
 	LONGLONG ll;
 
-	ll = Int32x32To64(t, 10000000) + 116444736000000000;
+	ll = t * 10000000LL + 116444736000000000LL;
 	pft->dwLowDateTime = (DWORD)ll;
 	pft->dwHighDateTime = ll >> 32;
 }
@@ -821,13 +823,3 @@ TSRM_API int win32_utime(const char *filename, struct utimbuf *buf) /* {{{ */
 }
 /* }}} */
 #endif
-#endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

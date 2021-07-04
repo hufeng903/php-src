@@ -1,6 +1,5 @@
 --TEST--
 Return type covariance; extends class
-
 --FILE--
 <?php
 
@@ -9,8 +8,8 @@ class A {
 }
 
 class B extends A {
-    function foo(): StdClass {}
+    function foo(): stdClass {}
 }
-
+?>
 --EXPECTF--
-Fatal error: Declaration of B::foo(): StdClass must be compatible with A::foo(): A in %s on line %d
+Fatal error: Declaration of B::foo(): stdClass must be compatible with A::foo(): A in %s on line %d

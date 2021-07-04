@@ -1,5 +1,5 @@
 --TEST--
-SOAP Server 29-CGI: new/addfunction/handle 
+SOAP Server 29-CGI: new/addfunction/handle
 --POST--
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <SOAP-ENV:Envelope
@@ -12,10 +12,11 @@ SOAP Server 29-CGI: new/addfunction/handle
     <ns1:test xmlns:ns1="http://testuri.org" />
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
+--EXTENSIONS--
+soap
 --SKIPIF--
-<?php 
-	if (php_sapi_name()=='cli') echo 'skip';
-	require_once('skipif.inc'); 
+<?php
+    if (php_sapi_name()=='cli') echo 'skip';
 ?>
 --FILE--
 <?php

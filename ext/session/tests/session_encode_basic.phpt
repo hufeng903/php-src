@@ -2,18 +2,14 @@
 Test session_encode() function : basic functionality
 --INI--
 serialize_precision=100
+--EXTENSIONS--
+session
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --FILE--
 <?php
 
 ob_start();
-
-/* 
- * Prototype : string session_encode(void)
- * Description : Encodes the current session data as a string
- * Source code : ext/session/session.c 
- */
 
 echo "*** Testing session_encode() : basic functionality ***\n";
 
@@ -59,7 +55,7 @@ $inputs = array(
        false,
        TRUE,
        FALSE,
-       
+
        // Empty strings
 /*16*/ "",
        '',
@@ -68,7 +64,7 @@ $inputs = array(
 /*18*/ "Nothing",
        'Nothing',
        $heredoc,
-       
+
        // Object data
 /*21*/ new classA(),
 
@@ -173,4 +169,3 @@ string(7) "data|N;"
 string(9) "data|i:0;"
 bool(true)
 Done
-

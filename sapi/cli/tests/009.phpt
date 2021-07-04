@@ -1,5 +1,7 @@
 --TEST--
 using invalid combinations of cmdline options
+--EXTENSIONS--
+readline
 --SKIPIF--
 <?php include "skipif.inc"; ?>
 --FILE--
@@ -12,7 +14,7 @@ var_dump(`$php -n -r "echo hello;" -a`);
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(57) "Either execute direct code, process stdin or use a file.
 "
 string(57) "Either execute direct code, process stdin or use a file.

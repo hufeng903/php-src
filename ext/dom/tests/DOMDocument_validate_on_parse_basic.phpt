@@ -3,8 +3,8 @@ DOMDocument::$validateOnParse - read/write tests (dom_document_validate_on_parse
 --CREDITS--
 Hans Zaunere
 # TestFest 2009 NYPHP
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 
@@ -35,4 +35,3 @@ var_dump($dom->validateOnParse);
 Checking documented default value: bool(false)
 Setting validateOnParse to TRUE: bool(true)
 Setting validateOnParse to FALSE: bool(false)
-

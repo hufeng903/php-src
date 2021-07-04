@@ -1,22 +1,18 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
    +----------------------------------------------------------------------+
-   | Authors: Dmitry Stogov <dmitry@zend.com>                             |
+   | Authors: Dmitry Stogov <dmitry@php.net>                              |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "php.h"
 #include "php_network.h"
@@ -158,12 +154,12 @@ typedef struct _fcgi_begin_request_rec {
 } fcgi_begin_request_rec;
 
 typedef struct _fcgi_end_request {
-    unsigned char appStatusB3;
-    unsigned char appStatusB2;
-    unsigned char appStatusB1;
-    unsigned char appStatusB0;
-    unsigned char protocolStatus;
-    unsigned char reserved[3];
+	unsigned char appStatusB3;
+	unsigned char appStatusB2;
+	unsigned char appStatusB1;
+	unsigned char appStatusB0;
+	unsigned char protocolStatus;
+	unsigned char reserved[3];
 } fcgi_end_request;
 
 typedef struct _fcgi_end_request_rec {
@@ -204,9 +200,9 @@ typedef struct _fcgi_hash {
 typedef struct _fcgi_req_hook 	fcgi_req_hook;
 
 struct _fcgi_req_hook {
-	void(*on_accept)();
-	void(*on_read)();
-	void(*on_close)();
+	void(*on_accept)(void);
+	void(*on_read)(void);
+	void(*on_close)(void);
 };
 
 struct _fcgi_request {
@@ -692,8 +688,12 @@ int fcgi_listen(const char *path, int backlog)
 		if (!*host || !strncmp(host, "*", sizeof("*")-1)) {
 			sa.sa_inet.sin_addr.s_addr = htonl(INADDR_ANY);
 		} else {
+#ifdef HAVE_INET_PTON
+			if (!inet_pton(AF_INET, host, &sa.sa_inet.sin_addr)) {
+#else
 			sa.sa_inet.sin_addr.s_addr = inet_addr(host);
 			if (sa.sa_inet.sin_addr.s_addr == INADDR_NONE) {
+#endif
 				struct hostent *hep;
 
 				if(strlen(host) > MAXFQDNLEN) {
@@ -875,11 +875,11 @@ void fcgi_set_allowed_clients(char *ip)
 	}
 }
 
-static void fcgi_hook_dummy() {
+static void fcgi_hook_dummy(void) {
 	return;
 }
 
-fcgi_request *fcgi_init_request(int listen_socket, void(*on_accept)(), void(*on_read)(), void(*on_close)())
+fcgi_request *fcgi_init_request(int listen_socket, void(*on_accept)(void), void(*on_read)(void), void(*on_close)(void))
 {
 	fcgi_request *req = calloc(1, sizeof(fcgi_request));
 	req->listen_socket = listen_socket;
@@ -1036,7 +1036,7 @@ static int fcgi_get_params(fcgi_request *req, unsigned char *p, unsigned char *e
 			val_len |= *p++;
 		}
 		if (UNEXPECTED(name_len + val_len > (unsigned int) (end - p))) {
-			/* Malformated request */
+			/* Malformed request */
 			return 0;
 		}
 		fcgi_hash_set(&req->env, FCGI_HASH_FUNC(p, name_len), (char*)p, name_len, (char*)p + name_len, val_len);
@@ -1324,7 +1324,7 @@ int fcgi_is_closed(fcgi_request *req)
 	return (req->fd < 0);
 }
 
-static int fcgi_is_allowed() {
+static int fcgi_is_allowed(void) {
 	int i;
 
 	if (client_sa.sa.sa_family == AF_UNIX) {
@@ -1375,6 +1375,8 @@ int fcgi_accept_request(fcgi_request *req)
 				if (in_shutdown) {
 					return -1;
 				}
+
+				req->hook.on_accept();
 #ifdef _WIN32
 				if (!req->tcp) {
 					pipe = (HANDLE)_get_osfhandle(req->listen_socket);
@@ -1404,8 +1406,6 @@ int fcgi_accept_request(fcgi_request *req)
 #endif
 					sa_t sa;
 					socklen_t len = sizeof(sa);
-
-					req->hook.on_accept();
 
 					FCGI_LOCK(req->listen_socket);
 					req->fd = accept(listen_socket, (struct sockaddr *)&sa, &len);
@@ -1739,7 +1739,7 @@ void fcgi_set_mgmt_var(const char * name, size_t name_len, const char * value, s
 	GC_MAKE_PERSISTENT_LOCAL(key);
 	GC_MAKE_PERSISTENT_LOCAL(Z_STR(zvalue));
 	zend_hash_add(&fcgi_mgmt_vars, key, &zvalue);
-	zend_string_release(key);
+	zend_string_release_ex(key, 1);
 }
 
 void fcgi_free_mgmt_var_cb(zval *zv)
@@ -1771,12 +1771,3 @@ const char *fcgi_get_last_client_ip()
 	/* Unix socket */
 	return NULL;
 }
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

@@ -1,18 +1,9 @@
 --TEST--
 Test mb_stripos() function : basic functionality
---SKIPIF--
-<?php
-extension_loaded('mbstring') or die('skip');
-function_exists('mb_stripos') or die("skip mb_stripos() is not available in this build");
-?>
+--EXTENSIONS--
+mbstring
 --FILE--
 <?php
-/* Prototype  : int mb_stripos(string haystack, string needle [, int offset [, string encoding]])
- * Description: Finds position of first occurrence of a string within another, case insensitive 
- * Source code: ext/mbstring/mbstring.c
- * Alias to functions: 
- */
-
 /*
  * Test basic functionality of mb_stripos with ASCII and multibyte characters
  */
@@ -56,7 +47,7 @@ $greek_needles = array(
 echo "\n -- ASCII Strings --\n";
 foreach ($ascii_needles as $needle) {
    foreach ($ascii_haystacks as $haystack) {
-      var_dump(mb_stripos($haystack, $needle));      
+      var_dump(mb_stripos($haystack, $needle));
       var_dump(mb_stripos($haystack, $needle, 6));
    }
 }
@@ -65,7 +56,7 @@ echo "\n -- Greek Strings --\n";
 foreach ($greek_needles as $needle) {
    foreach ($greek_haystacks as $haystack) {
       var_dump(mb_stripos($haystack, $needle));
-      var_dump(mb_stripos($haystack, $needle, 4));         
+      var_dump(mb_stripos($haystack, $needle, 4));
    }
 }
 
@@ -126,4 +117,3 @@ int(11)
 int(2)
 int(11)
 Done
-

@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round4 GroupH Complex Doc Lit 003 (php/wsdl): echoExtendedStructFault
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -29,7 +29,7 @@ class ExtendedStruct extends BaseStruct {
     }
 }
 $struct = new ExtendedStruct(new SOAPStruct("a1",11,12.345),12,"arg",-3,5);
-$client = new SoapClient(dirname(__FILE__)."/round4_groupH_complex_doclit.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round4_groupH_complex_doclit.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoExtendedStructFault($struct);
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

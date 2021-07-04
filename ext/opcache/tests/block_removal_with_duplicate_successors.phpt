@@ -1,5 +1,7 @@
 --TEST--
 Removing a block that has duplicate successors
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 function test($foo) {

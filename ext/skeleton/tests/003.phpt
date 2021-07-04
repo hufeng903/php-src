@@ -1,13 +1,9 @@
 --TEST--
 %EXTNAME%_test2() Basic test
---SKIPIF--
-<?php
-if (!extension_loaded('%EXTNAME%')) {
-	echo 'skip';
-}
-?>
+--EXTENSIONS--
+%EXTNAME%
 --FILE--
-<?php 
+<?php
 var_dump(%EXTNAME%_test2());
 var_dump(%EXTNAME%_test2('PHP'));
 ?>

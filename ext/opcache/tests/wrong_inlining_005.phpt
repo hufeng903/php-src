@@ -1,5 +1,7 @@
 --TEST--
 Inlining of functions with ref arguments
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

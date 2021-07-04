@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round4 GroupI XSD 024 (php/wsdl): echoNestedComplexType(minOccurs=0)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -17,7 +17,7 @@ class SOAPComplexTypeComplexType {
 }
 $struct = new SOAPComplexTypeComplexType("arg",34,12.345,NULL);
 unset($struct->varComplexType);
-$client = new SoapClient(dirname(__FILE__)."/round4_groupI_xsd.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round4_groupI_xsd.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoNestedComplexType(array("inputComplexType"=>$struct));
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

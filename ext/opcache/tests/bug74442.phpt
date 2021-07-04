@@ -2,6 +2,8 @@
 Bug #74442: Opcached version produces a nested array
 --CREDITS--
 Eric Norris <erictnorris@gmail.com>
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 class Schema_Base {

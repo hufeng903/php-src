@@ -20,8 +20,6 @@ use Foo\Bar\
 };
 
 echo "\nDone\n";
-
-
+?>
 --EXPECT--
-
 Done

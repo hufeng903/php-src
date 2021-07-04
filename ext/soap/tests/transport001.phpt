@@ -1,7 +1,7 @@
 --TEST--
 SOAP Transport 1: Local transport using SoapClient::__doRequest
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --FILE--
 <?php
 function Add($x,$y) {
@@ -16,7 +16,7 @@ class LocalSoapClient extends SoapClient {
     $this->server->addFunction('Add');
   }
 
-  function __doRequest($request, $location, $action, $version, $one_way = 0) {
+  function __doRequest($request, $location, $action, $version, $one_way = 0): ?string {
     ob_start();
     $this->server->handle($request);
     $response = ob_get_contents();
@@ -26,8 +26,8 @@ class LocalSoapClient extends SoapClient {
 
 }
 
-$x = new LocalSoapClient(NULL,array('location'=>'test://', 
-                                   'uri'=>'http://testuri.org')); 
+$x = new LocalSoapClient(NULL,array('location'=>'test://',
+                                   'uri'=>'http://testuri.org'));
 var_dump($x->Add(3,4));
 echo "ok\n";
 ?>

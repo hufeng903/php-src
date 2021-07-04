@@ -1,10 +1,10 @@
 --TEST--
-__DOMCharacterData::substringData pull mid section of string 
+__DOMCharacterData::substringData pull mid section of string
 --CREDITS--
 Nic Rosental nicrosental@gmail.com
-# TestFest Atlanta 2009-5-28 
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+# TestFest Atlanta 2009-5-28
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 

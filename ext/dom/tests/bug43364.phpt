@@ -1,9 +1,9 @@
 --TEST--
 Bug #43364 (recursive xincludes don't remove internal xml nodes properly)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
-<?php 
+<?php
 function loopElements($nodes)
 {
     $count = 0;
@@ -36,7 +36,7 @@ $doc->xinclude();
 
 $count = loopElements(array($doc->documentElement));
 
-var_dump($count);
+var_dump($count == 13 || $count == 11);
 ?>
 --EXPECT--
-int(13)
+bool(true)

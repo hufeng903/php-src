@@ -1,12 +1,12 @@
 --TEST--
-Test curl option CURLOPT_FILE 
+Test curl option CURLOPT_FILE
 --CREDITS--
 Mathieu Kooiman <mathieuk@gmail.com>
 Dutch UG, TestFest 2009, Utrecht
 --DESCRIPTION--
 Writes the value 'test' to a temporary file. Use curl to access this file and store the output in another temporary file. Tests the PHP_CURL_FILE case in curl_write().
---SKIPIF--
-<?php if (!extension_loaded("curl")) print "skip"; ?>
+--EXTENSIONS--
+curl
 --FILE--
 <?php
 

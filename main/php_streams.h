@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -15,8 +13,6 @@
    | Author: Wez Furlong (wez@thebrainroom.com)                           |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #ifndef PHP_STREAMS_H
 #define PHP_STREAMS_H
@@ -117,8 +113,8 @@ typedef struct _php_stream_dirent {
 /* operations on streams that are file-handles */
 typedef struct _php_stream_ops  {
 	/* stdio like functions - these are mandatory! */
-	size_t (*write)(php_stream *stream, const char *buf, size_t count);
-	size_t (*read)(php_stream *stream, char *buf, size_t count);
+	ssize_t (*write)(php_stream *stream, const char *buf, size_t count);
+	ssize_t (*read)(php_stream *stream, char *buf, size_t count);
 	int    (*close)(php_stream *stream, int close_handle);
 	int    (*flush)(php_stream *stream);
 
@@ -185,6 +181,10 @@ struct _php_stream_wrapper	{
 
 #define PHP_STREAM_FLAG_NO_FCLOSE					0x80
 
+/* Suppress generation of PHP warnings on stream read/write errors.
+ * Currently for internal use only. */
+#define PHP_STREAM_FLAG_SUPPRESS_ERRORS				0x100
+
 #define PHP_STREAM_FLAG_WAS_WRITTEN					0x80000000
 
 struct _php_stream  {
@@ -205,8 +205,6 @@ struct _php_stream  {
 	/* so we know how to clean it up correctly.  This should be set to
 	 * PHP_STREAM_FCLOSE_XXX as appropriate */
 	uint8_t fclose_stdiocast:2;
-
-	uint8_t fgetss_state;		/* for fgetss to handle multiline tags */
 
 	char mode[16];			/* "rwb" etc. ala stdio */
 
@@ -262,13 +260,13 @@ END_EXTERN_C()
 #define php_stream_from_zval(xstr, pzval)	do { \
 	if (((xstr) = (php_stream*)zend_fetch_resource2_ex((pzval), \
 				"stream", php_file_le_stream(), php_file_le_pstream())) == NULL) { \
-		RETURN_FALSE; \
+		return; \
 	} \
 } while (0)
 #define php_stream_from_res(xstr, res)	do { \
 	if (((xstr) = (php_stream*)zend_fetch_resource2((res), \
 			   	"stream", php_file_le_stream(), php_file_le_pstream())) == NULL) { \
-		RETURN_FALSE; \
+		return; \
 	} \
 } while (0)
 #define php_stream_from_res_no_verify(xstr, pzval)	(xstr) = (php_stream*)zend_fetch_resource2((res), "stream", php_file_le_stream(), php_file_le_pstream())
@@ -307,17 +305,19 @@ PHPAPI int _php_stream_seek(php_stream *stream, zend_off_t offset, int whence);
 PHPAPI zend_off_t _php_stream_tell(php_stream *stream);
 #define php_stream_tell(stream)	_php_stream_tell((stream))
 
-PHPAPI size_t _php_stream_read(php_stream *stream, char *buf, size_t count);
+PHPAPI ssize_t _php_stream_read(php_stream *stream, char *buf, size_t count);
 #define php_stream_read(stream, buf, count)		_php_stream_read((stream), (buf), (count))
 
-PHPAPI size_t _php_stream_write(php_stream *stream, const char *buf, size_t count);
+PHPAPI zend_string *php_stream_read_to_str(php_stream *stream, size_t len);
+
+PHPAPI ssize_t _php_stream_write(php_stream *stream, const char *buf, size_t count);
 #define php_stream_write_string(stream, str)	_php_stream_write(stream, str, strlen(str))
 #define php_stream_write(stream, buf, count)	_php_stream_write(stream, (buf), (count))
 
-PHPAPI void _php_stream_fill_read_buffer(php_stream *stream, size_t size);
+PHPAPI int _php_stream_fill_read_buffer(php_stream *stream, size_t size);
 #define php_stream_fill_read_buffer(stream, size)	_php_stream_fill_read_buffer((stream), (size))
 
-PHPAPI size_t _php_stream_printf(php_stream *stream, const char *fmt, ...) PHP_ATTRIBUTE_FORMAT(printf, 2, 3);
+PHPAPI ssize_t _php_stream_printf(php_stream *stream, const char *fmt, ...) PHP_ATTRIBUTE_FORMAT(printf, 2, 3);
 
 /* php_stream_printf macro & function require */
 #define php_stream_printf _php_stream_printf
@@ -333,6 +333,9 @@ PHPAPI int _php_stream_putc(php_stream *stream, int c);
 
 PHPAPI int _php_stream_flush(php_stream *stream, int closing);
 #define php_stream_flush(stream)	_php_stream_flush((stream), 0)
+
+PHPAPI int _php_stream_sync(php_stream *stream, bool data_only);
+#define php_stream_sync(stream, d)	    _php_stream_sync((stream), (d))
 
 PHPAPI char *_php_stream_get_line(php_stream *stream, char *buf, size_t maxlen, size_t *returned_len);
 #define php_stream_gets(stream, buf, maxlen)	_php_stream_get_line((stream), (buf), (maxlen), NULL)
@@ -389,7 +392,7 @@ END_EXTERN_C()
 /* Flags for url_stat method in wrapper ops */
 #define PHP_STREAM_URL_STAT_LINK	1
 #define PHP_STREAM_URL_STAT_QUIET	2
-#define PHP_STREAM_URL_STAT_NOCACHE	4
+#define PHP_STREAM_URL_STAT_IGNORE_OPEN_BASEDIR	4
 
 /* change the blocking mode of stream: value == 1 => blocking, value == 0 => non-blocking. */
 #define PHP_STREAM_OPTION_BLOCKING	1
@@ -413,7 +416,7 @@ END_EXTERN_C()
 /* whether or not locking is supported */
 #define PHP_STREAM_LOCK_SUPPORTED		1
 
-#define php_stream_supports_lock(stream)	_php_stream_set_option((stream), PHP_STREAM_OPTION_LOCKING, 0, (void *) PHP_STREAM_LOCK_SUPPORTED) == 0 ? 1 : 0
+#define php_stream_supports_lock(stream)	(_php_stream_set_option((stream), PHP_STREAM_OPTION_LOCKING, 0, (void *) PHP_STREAM_LOCK_SUPPORTED) == 0 ? 1 : 0)
 #define php_stream_lock(stream, mode)		_php_stream_set_option((stream), PHP_STREAM_OPTION_LOCKING, (mode), (void *) NULL)
 
 /* option code used by the php_stream_xport_XXX api */
@@ -442,6 +445,15 @@ END_EXTERN_C()
 /* Enable/disable blocking reads on anonymous pipes on Windows. */
 #define PHP_STREAM_OPTION_PIPE_BLOCKING 13
 
+/* Stream can support fsync operation */
+#define PHP_STREAM_OPTION_SYNC_API		14
+#define PHP_STREAM_SYNC_SUPPORTED	0
+#define PHP_STREAM_SYNC_FSYNC 1
+#define PHP_STREAM_SYNC_FDSYNC 2
+
+#define php_stream_sync_supported(stream)	(_php_stream_set_option((stream), PHP_STREAM_OPTION_SYNC_API, PHP_STREAM_SYNC_SUPPORTED, NULL) == PHP_STREAM_OPTION_RETURN_OK ? 1 : 0)
+
+
 #define PHP_STREAM_OPTION_RETURN_OK			 0 /* option set OK */
 #define PHP_STREAM_OPTION_RETURN_ERR		-1 /* problem setting option */
 #define PHP_STREAM_OPTION_RETURN_NOTIMPL	-2 /* underlying stream does not implement; streams can handle it instead */
@@ -464,7 +476,7 @@ PHPAPI zend_string *_php_stream_copy_to_mem(php_stream *src, size_t maxlen, int 
 #define php_stream_copy_to_mem(src, maxlen, persistent) _php_stream_copy_to_mem((src), (maxlen), (persistent) STREAMS_CC)
 
 /* output all data from a stream */
-PHPAPI size_t _php_stream_passthru(php_stream * src STREAMS_DC);
+PHPAPI ssize_t _php_stream_passthru(php_stream * src STREAMS_DC);
 #define php_stream_passthru(stream)	_php_stream_passthru((stream) STREAMS_CC)
 END_EXTERN_C()
 
@@ -552,8 +564,8 @@ END_EXTERN_C()
 /* Allow blocking reads on anonymous pipes on Windows. */
 #define STREAM_USE_BLOCKING_PIPE        0x00008000
 
-/* Antique - no longer has meaning */
-#define IGNORE_URL_WIN 0
+/* this flag is only used by include/require functions */
+#define STREAM_OPEN_FOR_ZEND_STREAM     0x00010000
 
 int php_init_stream_wrappers(int module_number);
 int php_shutdown_stream_wrappers(int module_number);
@@ -608,11 +620,3 @@ END_EXTERN_C()
 #define PHP_STREAM_META_GROUP_NAME	4
 #define PHP_STREAM_META_GROUP		5
 #define PHP_STREAM_META_ACCESS		6
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

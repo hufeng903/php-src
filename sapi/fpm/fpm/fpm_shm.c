@@ -1,5 +1,3 @@
-
-	/* $Id: fpm_shm.c,v 1.3 2008/05/24 17:38:47 anight Exp $ */
 	/* (c) 2007,2008 Andrei Nigmatulin, Jerome Loyet */
 
 #include <sys/mman.h>
@@ -10,7 +8,7 @@
 #include "zlog.h"
 
 
-/* MAP_ANON is deprecated, but not in macosx */
+/* MAP_ANON is deprecated, but not in macOS */
 #if defined(MAP_ANON) && !defined(MAP_ANONYMOUS)
 #define MAP_ANONYMOUS MAP_ANON
 #endif

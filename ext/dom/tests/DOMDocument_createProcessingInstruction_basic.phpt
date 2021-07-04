@@ -3,8 +3,8 @@ DomDocument::createProcessingInstruction() - basic test for DomDocument::createP
 --CREDITS--
 Muhammad Khalid Adnan
 # TestFest 2008
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 
@@ -27,4 +27,3 @@ echo $doc->saveXML();
 --EXPECT--
 <?xml version="1.0"?>
 <para><?blablabla?><?blablabla datadata?></para>
-

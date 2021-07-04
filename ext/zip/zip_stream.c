@@ -1,13 +1,11 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
-  +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
+  | Copyright (c) The PHP Group                                          |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt.                                 |
+  | https://www.php.net/license/3_01.txt                                 |
   | If you did not receive a copy of the PHP license and are unable to   |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
@@ -20,7 +18,7 @@
 #   include "config.h"
 #endif
 #include "php.h"
-#if HAVE_ZIP
+#ifdef HAVE_ZIP
 
 #include "php_streams.h"
 #include "ext/standard/file.h"
@@ -45,7 +43,7 @@ struct php_zip_stream_data_t {
 
 
 /* {{{ php_zip_ops_read */
-static size_t php_zip_ops_read(php_stream *stream, char *buf, size_t count)
+static ssize_t php_zip_ops_read(php_stream *stream, char *buf, size_t count)
 {
 	ssize_t n = 0;
 	STREAM_DATA_FROM_STREAM();
@@ -65,7 +63,7 @@ static size_t php_zip_ops_read(php_stream *stream, char *buf, size_t count)
 			php_error_docref(NULL, E_WARNING, "Zip stream error: %s", zip_error_strerror(err));
 			zip_error_fini(err);
 #endif
-			return 0;
+			return -1;
 		}
 		/* cast count to signed value to avoid possibly negative n
 		 * being cast to unsigned value */
@@ -75,15 +73,15 @@ static size_t php_zip_ops_read(php_stream *stream, char *buf, size_t count)
 			self->cursor += n;
 		}
 	}
-	return (n < 1 ? 0 : (size_t)n);
+	return n;
 }
 /* }}} */
 
 /* {{{ php_zip_ops_write */
-static size_t php_zip_ops_write(php_stream *stream, const char *buf, size_t count)
+static ssize_t php_zip_ops_write(php_stream *stream, const char *buf, size_t count)
 {
 	if (!stream) {
-		return 0;
+		return -1;
 	}
 
 	return count;
@@ -161,7 +159,7 @@ static int php_zip_ops_stat(php_stream *stream, php_stream_statbuf *ssb) /* {{{ 
 	fragment++;
 
 	if (ZIP_OPENBASEDIR_CHECKPATH(file_dirname)) {
-		zend_string_release(file_basename);
+		zend_string_release_ex(file_basename, 0);
 		return -1;
 	}
 
@@ -170,7 +168,7 @@ static int php_zip_ops_stat(php_stream *stream, php_stream_statbuf *ssb) /* {{{ 
 		memset(ssb, 0, sizeof(php_stream_statbuf));
 		if (zip_stat(za, fragment, ZIP_FL_NOCASE, &sb) != 0) {
 			zip_close(za);
-			zend_string_release(file_basename);
+			zend_string_release_ex(file_basename, 0);
 			return -1;
 		}
 		zip_close(za);
@@ -194,7 +192,7 @@ static int php_zip_ops_stat(php_stream *stream, php_stream_statbuf *ssb) /* {{{ 
 #endif
 		ssb->sb.st_ino = -1;
 	}
-	zend_string_release(file_basename);
+	zend_string_release_ex(file_basename, 0);
 	return 0;
 }
 /* }}} */
@@ -306,7 +304,7 @@ php_stream *php_stream_zip_opener(php_stream_wrapper *wrapper,
 	fragment++;
 
 	if (ZIP_OPENBASEDIR_CHECKPATH(file_dirname)) {
-		zend_string_release(file_basename);
+		zend_string_release_ex(file_basename, 0);
 		return NULL;
 	}
 
@@ -338,7 +336,7 @@ php_stream *php_stream_zip_opener(php_stream_wrapper *wrapper,
 		}
 	}
 
-	zend_string_release(file_basename);
+	zend_string_release_ex(file_basename, 0);
 
 	if (!stream) {
 		return NULL;

@@ -1,10 +1,12 @@
 --TEST--
 PostgreSQL drop db
+--EXTENSIONS--
+pgsql
 --SKIPIF--
 <?php include("skipif.inc"); ?>
 --FILE--
 <?php
-// drop test table 
+// drop test table
 
 include('config.inc');
 

@@ -1,7 +1,7 @@
 --TEST--
 Bug #28969 (Wrong data encoding of special characters)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --FILE--
 <?php
 function test() {
@@ -17,7 +17,7 @@ class LocalSoapClient extends SoapClient {
     $this->server->addFunction('test');
   }
 
-  function __doRequest($request, $location, $action, $version, $one_way = 0) {
+  function __doRequest($request, $location, $action, $version, $one_way = 0): ?string {
     ob_start();
     $this->server->handle($request);
     $response = ob_get_contents();
@@ -27,9 +27,9 @@ class LocalSoapClient extends SoapClient {
 
 }
 
-$x = new LocalSoapClient(NULL,array('location'=>'test://', 
+$x = new LocalSoapClient(NULL,array('location'=>'test://',
                                     'uri'=>'http://testuri.org',
-                                    'encoding'=>'ISO-8859-1')); 
+                                    'encoding'=>'ISO-8859-1'));
 var_dump($x->test());
 echo "ok\n";
 ?>

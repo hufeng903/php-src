@@ -1,5 +1,7 @@
 --TEST--
 Incorrect liveness computation for verify-return
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 function test($foo): string

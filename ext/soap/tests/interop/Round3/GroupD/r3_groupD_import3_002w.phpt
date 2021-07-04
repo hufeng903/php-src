@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round3 GroupD Import3 002 (php/wsdl): echoStructArray
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -16,7 +16,7 @@ class SOAPStruct {
 }
 $struct1 = new SOAPStruct('arg',34,325.325);
 $struct2 = new SOAPStruct('arg',34,325.325);
-$client = new SoapClient(dirname(__FILE__)."/round3_groupD_import3.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round3_groupD_import3.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoStructArray(array($struct1,$struct2));
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

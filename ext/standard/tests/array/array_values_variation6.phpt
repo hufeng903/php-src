@@ -2,11 +2,6 @@
 Test array_values() function : usage variations - Referenced variables
 --FILE--
 <?php
-/* Prototype  : array array_values(array $input)
- * Description: Return just the values from the input array 
- * Source code: ext/standard/array.c
- */
-
 /*
  * Test array_values() when:
  * 1. Passed an array made up of referenced variables
@@ -29,7 +24,6 @@ var_dump($result1);
 
 echo "Done";
 ?>
-
 --EXPECT--
 *** Testing array_values() : usage variations ***
 

@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -16,8 +14,6 @@
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include "php.h"
 
 /* This code is heavily based on the PHP md5 implementation */
@@ -25,17 +21,16 @@
 #include "sha1.h"
 #include "md5.h"
 
-PHPAPI void make_sha1_digest(char *sha1str, unsigned char *digest)
+PHPAPI void make_sha1_digest(char *sha1str, const unsigned char *digest)
 {
 	make_digest_ex(sha1str, digest, 20);
 }
 
-/* {{{ proto string sha1(string str [, bool raw_output])
-   Calculate the sha1 hash of a string */
+/* {{{ Calculate the sha1 hash of a string */
 PHP_FUNCTION(sha1)
 {
 	zend_string *arg;
-	zend_bool raw_output = 0;
+	bool raw_output = 0;
 	PHP_SHA1_CTX context;
 	unsigned char digest[20];
 
@@ -60,17 +55,16 @@ PHP_FUNCTION(sha1)
 /* }}} */
 
 
-/* {{{ proto string sha1_file(string filename [, bool raw_output])
-   Calculate the sha1 hash of given filename */
+/* {{{ Calculate the sha1 hash of given filename */
 PHP_FUNCTION(sha1_file)
 {
 	char          *arg;
 	size_t           arg_len;
-	zend_bool raw_output = 0;
+	bool raw_output = 0;
 	unsigned char buf[1024];
 	unsigned char digest[20];
 	PHP_SHA1_CTX   context;
-	size_t         n;
+	ssize_t        n;
 	php_stream    *stream;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
@@ -158,7 +152,7 @@ static const unsigned char PADDING[64] =
 /* {{{ PHP_SHA1Init
  * SHA1 initialization. Begins an SHA1 operation, writing a new context.
  */
-PHPAPI void PHP_SHA1Init(PHP_SHA1_CTX * context)
+PHPAPI void PHP_SHA1InitArgs(PHP_SHA1_CTX * context, ZEND_ATTRIBUTE_UNUSED HashTable *args)
 {
 	context->count[0] = context->count[1] = 0;
 	/* Load magic initialization constants.
@@ -246,7 +240,7 @@ PHPAPI void PHP_SHA1Final(unsigned char digest[20], PHP_SHA1_CTX * context)
 
 	/* Zeroize sensitive information.
 	 */
-	memset((unsigned char*) context, 0, sizeof(*context));
+	ZEND_SECURE_ZERO((unsigned char*) context, sizeof(*context));
 }
 /* }}} */
 
@@ -357,7 +351,7 @@ const unsigned char block[64];
 	state[4] += e;
 
 	/* Zeroize sensitive information. */
-	memset((unsigned char*) x, 0, sizeof(x));
+	ZEND_SECURE_ZERO((unsigned char*) x, sizeof(x));
 }
 /* }}} */
 
@@ -397,12 +391,3 @@ unsigned int len;
 			(((uint32_t) input[j + 1]) << 16) | (((uint32_t) input[j]) << 24);
 }
 /* }}} */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

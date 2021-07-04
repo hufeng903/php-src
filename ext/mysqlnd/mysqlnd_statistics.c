@@ -1,13 +1,11 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
-  +----------------------------------------------------------------------+
-  | Copyright (c) 2006-2018 The PHP Group                                |
+  | Copyright (c) The PHP Group                                          |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
   | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
+  | https://www.php.net/license/3_01.txt                                 |
   | If you did not receive a copy of the PHP license and are unable to   |
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
@@ -205,7 +203,7 @@ mysqlnd_fill_stats_hash(const MYSQLND_STATS * const stats, const MYSQLND_STRING 
 	for (i = 0; i < stats->count; i++) {
 		char tmp[25];
 
-		sprintf((char *)&tmp, MYSQLND_LLU_SPEC, stats->values[i]);
+		sprintf((char *)&tmp, "%" PRIu64, stats->values[i]);
 		add_assoc_string_ex(return_value, names[i].s, names[i].l, tmp);
 	}
 }
@@ -214,7 +212,7 @@ mysqlnd_fill_stats_hash(const MYSQLND_STATS * const stats, const MYSQLND_STRING 
 
 /* {{{ mysqlnd_stats_init */
 PHPAPI void
-mysqlnd_stats_init(MYSQLND_STATS ** stats, const size_t statistic_count, const zend_bool persistent)
+mysqlnd_stats_init(MYSQLND_STATS ** stats, const size_t statistic_count, const bool persistent)
 {
 	*stats = pecalloc(1, sizeof(MYSQLND_STATS), persistent);
 	(*stats)->values = pecalloc(statistic_count, sizeof(uint64_t), persistent);
@@ -230,7 +228,7 @@ mysqlnd_stats_init(MYSQLND_STATS ** stats, const size_t statistic_count, const z
 
 /* {{{ mysqlnd_stats_end */
 PHPAPI void
-mysqlnd_stats_end(MYSQLND_STATS * stats, const zend_bool persistent)
+mysqlnd_stats_end(MYSQLND_STATS * stats, const bool persistent)
 {
 #ifdef ZTS
 	tsrm_mutex_free(stats->LOCK_access);
@@ -292,14 +290,3 @@ _mysqlnd_get_client_stats(MYSQLND_STATS * stats_ptr, zval *return_value ZEND_FIL
 	DBG_VOID_RETURN;
 }
 /* }}} */
-
-
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

@@ -1,16 +1,18 @@
 --TEST--
 PDO PgSQL PDOStatement::debugDumpParams() with emulated prepares
+--EXTENSIONS--
+pdo
+pdo_pgsql
 --SKIPIF--
 <?php
-if (!extension_loaded('pdo') || !extension_loaded('pdo_pgsql')) die('skip not loaded');
-require dirname(__FILE__) . '/config.inc';
-require dirname(__FILE__) . '/../../../ext/pdo/tests/pdo_test.inc';
+require __DIR__ . '/config.inc';
+require __DIR__ . '/../../../ext/pdo/tests/pdo_test.inc';
 PDOTest::skip();
 ?>
 --FILE--
 <?php
-require dirname(__FILE__) . '/../../../ext/pdo/tests/pdo_test.inc';
-$db = PDOTest::test_factory(dirname(__FILE__) . '/common.phpt');
+require __DIR__ . '/../../../ext/pdo/tests/pdo_test.inc';
+$db = PDOTest::test_factory(__DIR__ . '/common.phpt');
 $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
 
 $stmt = $db->prepare('SELECT :bool, :int, :string, :null');
@@ -31,17 +33,17 @@ Key: Name: [5] :bool
 paramno=-1
 name=[5] ":bool"
 is_param=1
-param_type=2
+param_type=3
 Key: Name: [4] :int
 paramno=-1
 name=[4] ":int"
 is_param=1
-param_type=1
+param_type=2
 Key: Name: [7] :string
 paramno=-1
 name=[7] ":string"
 is_param=1
-param_type=2
+param_type=3
 Key: Name: [5] :null
 paramno=-1
 name=[5] ":null"

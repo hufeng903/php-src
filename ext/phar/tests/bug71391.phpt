@@ -1,7 +1,7 @@
 --TEST--
 Phar: bug #71391: NULL Pointer Dereference in phar_tar_setupmetadata()
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
+--EXTENSIONS--
+phar
 --FILE--
 <?php
 // duplicate since the tar will change
@@ -11,7 +11,7 @@ $p->delMetaData();
 ?>
 DONE
 --CLEAN--
-<?php 
+<?php
 unlink(__DIR__."/bug71391.test.tar");
 ?>
 --EXPECT--

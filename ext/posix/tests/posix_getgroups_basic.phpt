@@ -1,24 +1,20 @@
 --TEST--
-Test posix_getgroups() function : basic functionality 
---SKIPIF--
-<?php 
-	if (!extension_loaded('posix')) die('skip - POSIX extension not loaded'); 
-?>
+Test posix_getgroups() function : basic functionality
+--EXTENSIONS--
+posix
 --FILE--
-<?php 
+<?php
   echo "Basic test of POSIX getgroups\n";
-   
+
   $groups = posix_getgroups();
-  
+
   if (!is_array($groups)) {
-  	echo "TEST FAILED - array result expected\n"; 
+    echo "TEST FAILED: ", posix_strerror(posix_get_last_error()), "\n";
   } else {
-  	echo "TEST PASSED\n";
-  }		 
-  
+    echo "TEST PASSED\n";
+  }
+
 ?>
-===DONE===
 --EXPECT--
 Basic test of POSIX getgroups
 TEST PASSED
-===DONE===

@@ -1,5 +1,7 @@
 --TEST--
 PostgreSQL pg_update() - basic test using schema
+--EXTENSIONS--
+pgsql
 --SKIPIF--
 <?php include("skipif.inc"); ?>
 --FILE--
@@ -26,7 +28,7 @@ var_dump(pg_update($conn, 'phptests.foo', array('id' => 100), array('id2' => 2),
 
 $rs = pg_query('SELECT * FROM foo UNION SELECT * FROM phptests.foo ORDER BY id');
 while ($row = pg_fetch_assoc($rs)) {
-	var_dump($row);
+    var_dump($row);
 }
 
 pg_query('DROP TABLE foo');

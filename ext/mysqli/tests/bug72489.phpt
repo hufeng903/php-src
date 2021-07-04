@@ -1,8 +1,9 @@
 --TEST--
 Bug #72489 (PHP Crashes When Modifying Array Containing MySQLi Result Data)
+--EXTENSIONS--
+mysqli
 --SKIPIF--
 <?php
-require_once('skipif.inc');
 require_once('skipifconnectfailure.inc');
 ?>
 --FILE--
@@ -45,9 +46,9 @@ while ($stmt->fetch()) {
 echo "Finished 1\n";
 
 $newArray = array();
-	
+
 echo "Finished 2\n";
-	
+
 ?>
 --CLEAN--
 <?php

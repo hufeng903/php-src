@@ -1,7 +1,7 @@
 --TEST--
 Phar: include and parser error
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
+--EXTENSIONS--
+phar
 --INI--
 phar.require_hash=0
 --FILE--
@@ -21,8 +21,8 @@ require $pname;
 ?>
 ===DONE===
 --CLEAN--
-<?php 
-unlink(dirname(__FILE__) . '/files/031.phar.php');
+<?php
+unlink(__DIR__ . '/files/031.phar.php');
 __halt_compiler();
 ?>
 --EXPECTF--

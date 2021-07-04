@@ -1,5 +1,7 @@
 --TEST--
 Switch where all targets, including default, coincide
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

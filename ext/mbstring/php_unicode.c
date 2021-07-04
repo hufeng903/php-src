@@ -1,13 +1,11 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
-   +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -30,14 +28,7 @@
 	all copies or substantial portions of the Software.
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "php.h"
-#include "php_ini.h"
-
-#if HAVE_MBSTRING
 
 /* include case folding data generated from the official UnicodeData.txt file */
 #include "mbstring.h"
@@ -114,9 +105,9 @@ MBSTRING_API int php_unicode_is_prop(unsigned long code, ...)
 }
 
 static inline unsigned mph_hash(unsigned d, unsigned x) {
-    x ^= d;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    return x;
+	x ^= d;
+	x = ((x >> 16) ^ x) * 0x45d9f3b;
+	return x;
 }
 
 #define CODE_NOT_FOUND ((unsigned) -1)
@@ -251,53 +242,60 @@ static inline unsigned php_unicode_tofold_simple(unsigned code, enum mbfl_no_enc
 	return code;
 }
 
-static inline unsigned php_unicode_tolower_full(
-		unsigned code, enum mbfl_no_encoding enc, unsigned *out) {
+static inline void php_unicode_tolower_full(unsigned code, enum mbfl_no_encoding enc,
+	mbfl_convert_filter* next_filter) {
 	code = php_unicode_tolower_raw(code, enc);
 	if (UNEXPECTED(code > 0xffffff)) {
 		unsigned len = code >> 24;
 		const unsigned *p = &_uccase_extra_table[code & 0xffffff];
-		memcpy(out, p + 1, len * sizeof(unsigned));
-		return len;
+		while (len--) {
+			(next_filter->filter_function)(*++p, next_filter);
+		}
+	} else {
+		(next_filter->filter_function)(code, next_filter);
 	}
-	*out = code;
-	return 1;
 }
-static inline unsigned php_unicode_toupper_full(
-		unsigned code, enum mbfl_no_encoding enc, unsigned *out) {
+
+static inline void php_unicode_toupper_full(unsigned code, enum mbfl_no_encoding enc,
+	mbfl_convert_filter* next_filter) {
 	code = php_unicode_toupper_raw(code, enc);
 	if (UNEXPECTED(code > 0xffffff)) {
 		unsigned len = code >> 24;
 		const unsigned *p = &_uccase_extra_table[code & 0xffffff];
-		memcpy(out, p + 1, len * sizeof(unsigned));
-		return len;
+		while (len--) {
+			(next_filter->filter_function)(*++p, next_filter);
+		}
+	} else {
+		(next_filter->filter_function)(code, next_filter);
 	}
-	*out = code;
-	return 1;
 }
-static inline unsigned php_unicode_totitle_full(
-		unsigned code, enum mbfl_no_encoding enc, unsigned *out) {
+
+static inline void php_unicode_totitle_full(unsigned code, enum mbfl_no_encoding enc,
+	mbfl_convert_filter* next_filter) {
 	code = php_unicode_totitle_raw(code, enc);
 	if (UNEXPECTED(code > 0xffffff)) {
 		unsigned len = code >> 24;
 		const unsigned *p = &_uccase_extra_table[code & 0xffffff];
-		memcpy(out, p + 1, len * sizeof(unsigned));
-		return len;
+		while (len--) {
+			(next_filter->filter_function)(*++p, next_filter);
+		}
+	} else {
+		(next_filter->filter_function)(code, next_filter);
 	}
-	*out = code;
-	return 1;
 }
-static inline unsigned php_unicode_tofold_full(
-		unsigned code, enum mbfl_no_encoding enc, unsigned *out) {
+
+static inline void php_unicode_tofold_full(unsigned code, enum mbfl_no_encoding enc,
+	mbfl_convert_filter* next_filter) {
 	code = php_unicode_tofold_raw(code, enc);
 	if (UNEXPECTED(code > 0xffffff)) {
 		unsigned len = code >> 24;
 		const unsigned *p = &_uccase_extra_table[code & 0xffffff];
-		memcpy(out, p + 1, len * sizeof(unsigned));
-		return len;
+		while (len--) {
+			(next_filter->filter_function)(*++p, next_filter);
+		}
+	} else {
+		(next_filter->filter_function)(code, next_filter);
 	}
-	*out = code;
-	return 1;
 }
 
 struct convert_case_data {
@@ -310,34 +308,41 @@ struct convert_case_data {
 static int convert_case_filter(int c, void *void_data)
 {
 	struct convert_case_data *data = (struct convert_case_data *) void_data;
-	unsigned out[3];
-	unsigned len, i;
+	unsigned code;
+
+	/* Handle invalid characters early, as we assign special meaning to
+	 * codepoints above 0xffffff. */
+	if (UNEXPECTED((unsigned) c > 0xffffff)) {
+		(*data->next_filter->filter_function)(c, data->next_filter);
+		return 0;
+	}
+
 	switch (data->case_mode) {
 		case PHP_UNICODE_CASE_UPPER_SIMPLE:
-			out[0] = php_unicode_toupper_simple(c, data->no_encoding);
-			len = 1;
+			code = php_unicode_toupper_simple(c, data->no_encoding);
+			(data->next_filter->filter_function)(code, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_UPPER:
-			len = php_unicode_toupper_full(c, data->no_encoding, out);
+			php_unicode_toupper_full(c, data->no_encoding, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_LOWER_SIMPLE:
-			out[0] = php_unicode_tolower_simple(c, data->no_encoding);
-			len = 1;
+			code = php_unicode_tolower_simple(c, data->no_encoding);
+			(data->next_filter->filter_function)(code, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_LOWER:
-			len = php_unicode_tolower_full(c, data->no_encoding, out);
+			php_unicode_tolower_full(c, data->no_encoding, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_FOLD:
-			len = php_unicode_tofold_full(c, data->no_encoding, out);
+			php_unicode_tofold_full(c, data->no_encoding, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_FOLD_SIMPLE:
-			out[0] = php_unicode_tofold_simple(c, data->no_encoding);
-			len = 1;
+			code = php_unicode_tofold_simple(c, data->no_encoding);
+			(data->next_filter->filter_function)(code, data->next_filter);
 			break;
 
 		case PHP_UNICODE_CASE_TITLE_SIMPLE:
@@ -345,17 +350,17 @@ static int convert_case_filter(int c, void *void_data)
 		{
 			if (data->title_mode) {
 				if (data->case_mode == PHP_UNICODE_CASE_TITLE_SIMPLE) {
-					out[0] = php_unicode_tolower_simple(c, data->no_encoding);
-					len = 1;
+					code = php_unicode_tolower_simple(c, data->no_encoding);
+					(data->next_filter->filter_function)(code, data->next_filter);
 				} else {
-					len = php_unicode_tolower_full(c, data->no_encoding, out);
+					php_unicode_tolower_full(c, data->no_encoding, data->next_filter);
 				}
 			} else {
 				if (data->case_mode == PHP_UNICODE_CASE_TITLE_SIMPLE) {
-					out[0] = php_unicode_totitle_simple(c, data->no_encoding);
-					len = 1;
+					code = php_unicode_totitle_simple(c, data->no_encoding);
+					(data->next_filter->filter_function)(code, data->next_filter);
 				} else {
-					len = php_unicode_totitle_full(c, data->no_encoding, out);
+					php_unicode_totitle_full(c, data->no_encoding, data->next_filter);
 				}
 			}
 			if (!php_unicode_is_case_ignorable(c)) {
@@ -363,20 +368,15 @@ static int convert_case_filter(int c, void *void_data)
 			}
 			break;
 		}
-		default:
-			assert(0);
-			break;
+		EMPTY_SWITCH_DEFAULT_CASE()
 	}
 
-	for (i = 0; i < len; i++) {
-		(*data->next_filter->filter_function)(out[i], data->next_filter);
-	}
 	return 0;
 }
 
 MBSTRING_API char *php_unicode_convert_case(
 		int case_mode, const char *srcstr, size_t srclen, size_t *ret_len,
-		const mbfl_encoding *src_encoding)
+		const mbfl_encoding *src_encoding, int illegal_mode, int illegal_substchar)
 {
 	struct convert_case_data data;
 	mbfl_convert_filter *from_wchar, *to_wchar;
@@ -402,6 +402,11 @@ MBSTRING_API char *php_unicode_convert_case(
 		mbfl_memory_device_clear(&device);
 		return NULL;
 	}
+
+	to_wchar->illegal_mode = illegal_mode;
+	to_wchar->illegal_substchar = illegal_substchar;
+	from_wchar->illegal_mode = illegal_mode;
+	from_wchar->illegal_substchar = illegal_substchar;
 
 	data.next_filter = from_wchar;
 	data.no_encoding = src_encoding->no_encoding;
@@ -433,15 +438,3 @@ MBSTRING_API char *php_unicode_convert_case(
 	*ret_len = result.len;
 	return (char *) result.val;
 }
-
-
-#endif /* HAVE_MBSTRING */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

@@ -1,11 +1,11 @@
 --TEST--
 oci_bind_array_by_name() and invalid values 8
---SKIPIF--
-<?php if (!extension_loaded('oci8')) die("skip no oci8 extension"); ?>
+--EXTENSIONS--
+oci8
 --FILE--
 <?php
 
-require dirname(__FILE__).'/connect.inc';
+require __DIR__.'/connect.inc';
 
 $statement = oci_parse($c, 'SELECT user FROM all_objects');
 
@@ -19,7 +19,7 @@ var_dump($array);
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 Warning: oci_bind_array_by_name(): ORA-01036: illegal variable name/number in %s on line %d
 array(5) {
   [0]=>

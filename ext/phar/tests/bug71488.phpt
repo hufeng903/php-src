@@ -1,7 +1,7 @@
 --TEST--
 Phar: bug #71488: Stack overflow when decompressing tar archives
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
+--EXTENSIONS--
+phar
 --FILE--
 <?php
 $p = new PharData(__DIR__."/bug71488.tar");
@@ -13,5 +13,9 @@ DONE
 <?php
 @unlink(__DIR__."/bug71488.test");
 ?>
---EXPECT--
-DONE
+--EXPECTF--
+Fatal error: Uncaught BadMethodCallException: tar-based phar "%s/bug71488.test" cannot be created, link "%s" is too long for format in %sbug71488.php:%d
+Stack trace:
+#0 %s(%d): PharData->decompress('test')
+#1 {main}
+  thrown in %s on line %d

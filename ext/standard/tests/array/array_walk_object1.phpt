@@ -1,25 +1,12 @@
 --TEST--
-Test array_walk() function : object functionality  
+Test array_walk() function : object functionality
 --FILE--
 <?php
-/* Prototype  : bool array_walk(array $input, string $funcname [, mixed $userdata])
- * Description: Apply a user function to every member of an array 
- * Source code: ext/standard/array.c
-*/
-
 /*
-* Pasing object in place of 'input' argument to test object functionatlity
+* Passing object in place of 'input' argument to test object functionality
 */
 
 echo "*** Testing array_walk() : object functionality ***\n";
-
-/*
- * Prototype : callback(mixed $value, mixed $key, int $addvalue
- * Parameters : $value - values in given input array
- *              $key - keys in given input array
- *              $addvalue - value to be added
- * Description : Function adds the addvalue to each element of an array
-*/
 
 function callback($value, $key, $user_data)
 {
@@ -40,10 +27,10 @@ class MyClass
     $this->pub_value = $setVal;
     $this->pro_value = $setVal;
   }
-};    
+};
 
 // object for 'input' argument
-$input = new MyClass(10); 
+$input = new MyClass(10);
 
 var_dump( array_walk($input, "callback", 1));
 

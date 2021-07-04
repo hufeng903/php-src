@@ -1,7 +1,7 @@
 --TEST--
 xmlwriter_write_attribute_ns basic function tests
---SKIPIF--
-<?php if (!extension_loaded("xmlwriter")) print "skip"; ?>
+--EXTENSIONS--
+xmlwriter
 --FILE--
 <?php
 $xw = xmlwriter_open_memory();
@@ -25,4 +25,3 @@ Koen Kuipers koenk82@gmail.com
 <root prefix:id="elem1" xmlns:prefix="http://www.php.net/uri">
  <elem1 attr1="first"/>
 </root>
-

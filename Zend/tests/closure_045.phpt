@@ -13,6 +13,6 @@ $a = A::foo();
 $a->bindTo(new A);
 
 echo "Done.\n";
-
+?>
 --EXPECT--
 Done.

@@ -6,6 +6,7 @@ date.timezone=Europe/Berlin
 <?php
 $z = '';
 var_dump(date_parse_from_format("aHa0", "0=G{$z}9UCNnF"));
+?>
 --EXPECT--
 array(12) {
   ["year"]=>
@@ -21,7 +22,7 @@ array(12) {
   ["second"]=>
   int(0)
   ["fraction"]=>
-  bool(false)
+  float(0)
   ["warning_count"]=>
   int(0)
   ["warnings"]=>
@@ -41,4 +42,3 @@ array(12) {
   ["is_localtime"]=>
   bool(false)
 }
-

@@ -4,10 +4,14 @@ Test exception doesn't cause RSHUTDOWN bypass, variation 0
 assert.bail=1
 assert.exception=1
 --FILE--
-<?php 
+<?php
 
 define ("XXXXX", 1);
-assert(false);
+try {
+    assert(false);
+} catch (AssertionError $error) {
+    echo "Caught\n";
+}
 
 ?>
 --EXPECTHEADERS--

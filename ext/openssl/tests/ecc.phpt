@@ -1,20 +1,22 @@
 --TEST--
 openssl_*() with OPENSSL_KEYTYPE_EC
+--EXTENSIONS--
+openssl
 --SKIPIF--
-<?php if (!extension_loaded("openssl") || !defined("OPENSSL_KEYTYPE_EC")) print "skip"; ?>
+<?php if (!defined("OPENSSL_KEYTYPE_EC")) print "skip"; ?>
 --FILE--
 <?php
 $args = array(
-	"curve_name" => "secp384r1",
-	"private_key_type" => OPENSSL_KEYTYPE_EC,
+    "curve_name" => "secp384r1",
+    "private_key_type" => OPENSSL_KEYTYPE_EC,
 );
 echo "Testing openssl_pkey_new\n";
 $key1 = openssl_pkey_new($args);
 var_dump($key1);
 
 $argsFailed = array(
-	"curve_name" => "invalid_cuve_name",
-	"private_key_type" => OPENSSL_KEYTYPE_EC,
+    "curve_name" => "invalid_cuve_name",
+    "private_key_type" => OPENSSL_KEYTYPE_EC,
 );
 
 $keyFailed = openssl_pkey_new($argsFailed);
@@ -34,11 +36,11 @@ $d2 = openssl_pkey_get_details($key2);
 var_dump($d1 === $d2);
 
 $dn = array(
-	"countryName" => "BR",
-	"stateOrProvinceName" => "Rio Grande do Sul",
-	"localityName" => "Porto Alegre",
-	"commonName" => "Henrique do N. Angelo",
-	"emailAddress" => "hnangelo@php.net"
+    "countryName" => "BR",
+    "stateOrProvinceName" => "Rio Grande do Sul",
+    "localityName" => "Porto Alegre",
+    "commonName" => "Henrique do N. Angelo",
+    "emailAddress" => "hnangelo@php.net"
 );
 
 // openssl_csr_new creates a new public key pair if the key argument is null
@@ -74,14 +76,15 @@ $curve_names = openssl_get_curve_names();
 var_dump(is_array($curve_names));
 
 foreach ($curve_names as $curve_name) {
-	if ("secp384r1" === $curve_name) {
-		echo "Found secp384r1 in curve names\n";
-	}
+    if ("secp384r1" === $curve_name) {
+        echo "Found secp384r1 in curve names\n";
+    }
 }
 ?>
 --EXPECTF--
 Testing openssl_pkey_new
-resource(%d) of type (OpenSSL key)
+object(OpenSSLAsymmetricKey)#1 (0) {
+}
 
 Warning: openssl_pkey_new(): Unknown elliptic curve (short) name invalid_cuve_name in %s on line %d
 bool(false)
@@ -89,19 +92,23 @@ int(384)
 int(215)
 string(9) "secp384r1"
 bool(true)
-resource(%d) of type (OpenSSL key)
+object(OpenSSLAsymmetricKey)#%d (0) {
+}
 bool(true)
 Testing openssl_csr_new with key generation
 NULL
-resource(%d) of type (OpenSSL key)
+object(OpenSSLAsymmetricKey)#%d (0) {
+}
 Testing openssl_csr_new with existing ecc key
-resource(%d) of type (OpenSSL X.509 CSR)
+object(OpenSSLCertificateSigningRequest)#%d (0) {
+}
 bool(false)
 array(1) {
   ["d"]=>
   string(%d) "%a"
 }
-resource(%d) of type (OpenSSL X.509)
+object(OpenSSLCertificate)#%d (0) {
+}
 Testing openssl_x509_check_private_key
 bool(true)
 bool(false)

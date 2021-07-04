@@ -1,5 +1,3 @@
-
-	/* $Id: fpm_status.c 312262 2011-06-18 17:41:56Z felipe $ */
 	/* (c) 2009 Jerome Loyet */
 
 #include "php.h"
@@ -207,8 +205,11 @@ int fpm_log_write(char *log_format) /* {{{ */
 							len2 = snprintf(b, FPM_LOG_BUFFER - len, "%.3f", proc.duration.tv_sec + proc.duration.tv_usec / 1000000.);
 						}
 
-					/* miliseconds */
-					} else if (!strcasecmp(format, "miliseconds") || !strcasecmp(format, "mili")) {
+					/* milliseconds */
+					} else if (!strcasecmp(format, "milliseconds") || !strcasecmp(format, "milli") ||
+						   /* mili/miliseconds are supported for backwards compatibility */
+						   !strcasecmp(format, "miliseconds") || !strcasecmp(format, "mili")
+					) {
 						if (!test) {
 							len2 = snprintf(b, FPM_LOG_BUFFER - len, "%.3f", proc.duration.tv_sec * 1000. + proc.duration.tv_usec / 1000.);
 						}
@@ -220,7 +221,7 @@ int fpm_log_write(char *log_format) /* {{{ */
 						}
 
 					} else {
-						zlog(ZLOG_WARNING, "only 'seconds', 'mili', 'miliseconds', 'micro' or 'microseconds' are allowed as a modifier for %%%c ('%s')", *s, format);
+						zlog(ZLOG_WARNING, "only 'seconds', 'milli', 'milliseconds', 'micro' or 'microseconds' are allowed as a modifier for %%%c ('%s')", *s, format);
 						return -1;
 					}
 					format[0] = '\0';
@@ -312,7 +313,7 @@ int fpm_log_write(char *log_format) /* {{{ */
 								continue;
 							}
 
-							/* test if enought char after the header name + ': ' */
+							/* test if enough char after the header name + ': ' */
 							if (h->header_len <= format_len + 2) {
 								h = (sapi_header_struct*)zend_llist_get_next_ex(&sapi_headers->headers, &pos);
 								continue;

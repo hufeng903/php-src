@@ -1,14 +1,16 @@
 --TEST--
 oci_bind_array_by_name() and SQLT_FLT
+--EXTENSIONS--
+oci8
 --SKIPIF--
 <?php
 $target_dbs = array('oracledb' => true, 'timesten' => false);  // test runs on these DBs
-require(dirname(__FILE__).'/skipif.inc');
-?> 
+require(__DIR__.'/skipif.inc');
+?>
 --FILE--
 <?php
 
-require dirname(__FILE__).'/connect.inc';
+require __DIR__.'/connect.inc';
 
 $drop = "DROP table bind_test";
 $statement = oci_parse($c, $drop);
@@ -19,15 +21,15 @@ $statement = oci_parse($c, $create);
 oci_execute($statement);
 
 $create_pkg = "
-CREATE OR REPLACE PACKAGE ARRAY_BIND_FLOAT1_PKG AS 
-  TYPE ARRTYPE IS TABLE OF FLOAT INDEX BY BINARY_INTEGER; 
-  PROCEDURE iobind(c1 IN OUT ARRTYPE); 
+CREATE OR REPLACE PACKAGE ARRAY_BIND_FLOAT1_PKG AS
+  TYPE ARRTYPE IS TABLE OF FLOAT INDEX BY BINARY_INTEGER;
+  PROCEDURE iobind(c1 IN OUT ARRTYPE);
 END ARRAY_BIND_FLOAT1_PKG;";
 $statement = oci_parse($c, $create_pkg);
 oci_execute($statement);
 
 $create_pkg_body = "
-CREATE OR REPLACE PACKAGE BODY ARRAY_BIND_FLOAT1_PKG AS 
+CREATE OR REPLACE PACKAGE BODY ARRAY_BIND_FLOAT1_PKG AS
   CURSOR CUR IS SELECT name FROM bind_test;
   PROCEDURE iobind(c1 IN OUT ARRTYPE) IS
     BEGIN
@@ -61,7 +63,7 @@ var_dump($array);
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECTF--
 array(5) {
   [0]=>
   float(5.9999)
@@ -70,7 +72,7 @@ array(5) {
   [2]=>
   float(3.4234)
   [3]=>
-  float(2.5658)
+  float(2.5658%S)
   [4]=>
   float(1.243)
 }

@@ -1,14 +1,9 @@
 --TEST--
 Test ctype_cntrl() function : usage variations - Different data types as $c arg
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+ctype
 --FILE--
 <?php
-/* Prototype  : bool ctype_cntrl(mixed $c)
- * Description: Checks for control character(s) 
- * Source code: ext/ctype/ctype.c
- */
-
 /*
  * Pass different data types as $c argument to ctype_cntrl() to test behaviour
  */
@@ -62,7 +57,7 @@ $inputs = array(
        false,
        TRUE,
        FALSE,
-       
+
        // empty data
 /*16*/ "",
        '',
@@ -73,7 +68,7 @@ $inputs = array(
        '
 ',
        $heredoc,
-       
+
        // object data
 /*22*/ new classA(),
 
@@ -99,7 +94,6 @@ fclose($fp);
 
 setlocale(LC_CTYPE, $orig);
 ?>
-===DONE===
 --EXPECT--
 *** Testing ctype_cntrl() : usage variations ***
 
@@ -177,4 +171,3 @@ bool(false)
 
 -- Iteration 25 --
 bool(false)
-===DONE===

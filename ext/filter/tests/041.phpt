@@ -1,14 +1,14 @@
 --TEST--
 COOKIE multiple cookie test
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --INI--
 filter.default=stripped
 filter.default_flags=0
 --COOKIE--
 abc=dir; def=true; abc=root; xyz="foo bar";
 --FILE--
-<?php 
+<?php
 var_dump($_COOKIE);
 var_dump(filter_has_var(INPUT_COOKIE, "abc"));
 var_dump(filter_input(INPUT_COOKIE, "abc"));

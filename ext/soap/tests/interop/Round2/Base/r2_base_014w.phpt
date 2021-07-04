@@ -1,7 +1,7 @@
 --TEST--
 SOAP Interop Round2 base 014 (php/wsdl): echoStruct
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 precision=14
 soap.wsdl_cache_enabled=0
@@ -15,7 +15,7 @@ class SOAPStruct {
     }
 }
 
-$client = new SoapClient(dirname(__FILE__)."/round2_base.wsdl",array("trace"=>1,"exceptions"=>0));
+$client = new SoapClient(__DIR__."/round2_base.wsdl",array("trace"=>1,"exceptions"=>0));
 $client->echoStruct(new SOAPStruct('arg',34,325.325));
 echo $client->__getlastrequest();
 $HTTP_RAW_POST_DATA = $client->__getlastrequest();

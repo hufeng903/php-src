@@ -1,8 +1,9 @@
 --TEST--
 PDO Common: PDOStatement::setFetchMode
+--EXTENSIONS--
+pdo
 --SKIPIF--
-<?php # vim:ft=php
-if (!extension_loaded('pdo')) die('skip');
+<?php
 $dir = getenv('REDIR_TEST_DIR');
 if (false == $dir) die('skip no driver');
 require_once $dir . 'pdo_test.inc';
@@ -10,13 +11,13 @@ PDOTest::skip();
 ?>
 --FILE--
 <?php
-if (getenv('REDIR_TEST_DIR') === false) putenv('REDIR_TEST_DIR='.dirname(__FILE__) . '/../../pdo/tests/');
+if (getenv('REDIR_TEST_DIR') === false) putenv('REDIR_TEST_DIR='.__DIR__ . '/../../pdo/tests/');
 require_once getenv('REDIR_TEST_DIR') . 'pdo_test.inc';
 $db = PDOTest::factory();
 
 $db->exec('CREATE TABLE test(id int NOT NULL PRIMARY KEY, val VARCHAR(10), grp VARCHAR(10))');
-$db->exec('INSERT INTO test VALUES(1, \'A\', \'Group1\')'); 
-$db->exec('INSERT INTO test VALUES(2, \'B\', \'Group2\')'); 
+$db->exec('INSERT INTO test VALUES(1, \'A\', \'Group1\')');
+$db->exec('INSERT INTO test VALUES(2, \'B\', \'Group2\')');
 
 $SELECT = 'SELECT val, grp FROM test';
 
@@ -25,10 +26,10 @@ var_dump($stmt->fetchAll());
 
 class Test
 {
-	function __construct($name = 'N/A')
-	{
-		echo __METHOD__ . "($name)\n";
-	}
+    function __construct($name = 'N/A')
+    {
+        echo __METHOD__ . "($name)\n";
+    }
 }
 
 unset($stmt);

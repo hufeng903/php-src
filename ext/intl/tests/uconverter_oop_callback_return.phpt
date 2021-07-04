@@ -1,7 +1,7 @@
 --TEST--
 UConverter::convert() w/ Callback Return Values
---SKIPIF--
-<?php if( !extension_loaded( 'intl' ) ) print 'skip'; ?>
+--EXTENSIONS--
+intl
 --FILE--
 <?php
 class MyConverter extends UConverter {
@@ -35,6 +35,7 @@ $c = new MyConverter('ascii', 'utf-8');
 var_dump($c->convert("\x80\x81\x82\x83"));
 // This line will trigger fromUCallback
 var_dump($c->convert("\xC3\xB1\xC3\xB2\xC3\xB3\xC3\xB4"));
+?>
 --EXPECT--
 string(3) "abc"
 string(3) "ABC"

@@ -1,17 +1,13 @@
 --TEST--
 Test mb_ereg_match() function : basic functionality
+--EXTENSIONS--
+mbstring
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip');
 function_exists('mb_ereg_match') or die("skip mb_ereg_match() is not available in this build");
 ?>
 --FILE--
 <?php
-/* Prototype  : bool mb_ereg_match(string $pattern, string $string [,string $option])
- * Description: Regular expression match for multibyte string 
- * Source code: ext/mbstring/php_mbregex.c
- */
-
 /*
  * Test basic functionality of mb_ereg_match
  */
@@ -27,7 +23,7 @@ $string_mb = base64_decode('5pel5pys6Kqe44OG44Kt44K544OI44Gn44GZ44CCMDEyMzTvvJXv
 echo "\n-- ASCII string 1 --\n";
 var_dump(mb_ereg_match('.*def', $string_ascii));
 
-//will return false as pattern would match half way through string 
+//will return false as pattern would match half way through string
 echo "\n-- ASCII string 2 --\n";
 var_dump(mb_ereg_match('def', $string_ascii));
 
@@ -42,7 +38,6 @@ var_dump(mb_ereg_match($regex2, $string_mb));
 echo "Done";
 ?>
 --EXPECT--
-
 *** Testing mb_ereg_match() : basic functionality ***
 
 -- ASCII string 1 --

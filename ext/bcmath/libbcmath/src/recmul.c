@@ -11,7 +11,7 @@
     This library is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.  (COPYING.LIB)
+    Lesser General Public License for more details.  (LICENSE)
 
     You should have received a copy of the GNU Lesser General Public
     License along with this library; if not, write to:
@@ -50,10 +50,7 @@ int mul_base_digits = MUL_BASE_DIGITS;
 
 /* Multiply utility routines */
 
-static bc_num
-new_sub_num (length, scale, value)
-     int length, scale;
-     char *value;
+static bc_num new_sub_num(int length, int scale, char *value)
 {
   bc_num temp;
 

@@ -1,5 +1,7 @@
 --TEST--
 Test session_commit() function : variation
+--EXTENSIONS--
+session
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --INI--
@@ -8,12 +10,6 @@ session.auto_start=1
 <?php
 
 ob_start();
-
-/* 
- * Prototype : bool session_commit(void)
- * Description : Write session data and end session
- * Source code : ext/session/session.c 
- */
 
 echo "*** Testing session_commit() : variation ***\n";
 
@@ -36,4 +32,3 @@ array(0) {
 bool(true)
 bool(true)
 Done
-

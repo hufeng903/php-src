@@ -1,9 +1,11 @@
 --TEST--
 Bug #61728 (PHP crash when calling ob_start in request_shutdown phase)
+--EXTENSIONS--
+session
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --FILE--
-<?php 
+<?php
 function output_html($ext) {
     return strlen($ext);
 }
@@ -37,5 +39,6 @@ function gc ($maxlifetime) {
 
 session_set_save_handler ("open", "close", "read", "write", "destroy", "gc");
 session_start();
+?>
 --EXPECT--
 8

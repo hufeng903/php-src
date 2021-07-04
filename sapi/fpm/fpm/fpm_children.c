@@ -1,5 +1,3 @@
-
-	/* $Id: fpm_children.c,v 1.32.2.2 2008/12/13 03:21:18 anight Exp $ */
 	/* (c) 2007,2008 Andrei Nigmatulin */
 
 #include "fpm_config.h"
@@ -40,7 +38,7 @@ static void fpm_children_cleanup(int which, void *arg) /* {{{ */
 }
 /* }}} */
 
-static struct fpm_child_s *fpm_child_alloc() /* {{{ */
+static struct fpm_child_s *fpm_child_alloc(void) /* {{{ */
 {
 	struct fpm_child_s *ret;
 
@@ -58,6 +56,10 @@ static struct fpm_child_s *fpm_child_alloc() /* {{{ */
 
 static void fpm_child_free(struct fpm_child_s *child) /* {{{ */
 {
+	if (child->log_stream) {
+		zlog_stream_close(child->log_stream);
+		free(child->log_stream);
+	}
 	free(child);
 }
 /* }}} */
@@ -146,6 +148,7 @@ static struct fpm_child_s *fpm_child_find(pid_t pid) /* {{{ */
 static void fpm_child_init(struct fpm_worker_pool_s *wp) /* {{{ */
 {
 	fpm_globals.max_requests = wp->config->pm_max_requests;
+	fpm_globals.listening_socket = dup(wp->listening_socket);
 
 	if (0 > fpm_stdio_init_child(wp)  ||
 	    0 > fpm_log_init_child(wp)    ||
@@ -192,7 +195,7 @@ void fpm_children_bury() /* {{{ */
 			snprintf(buf, sizeof(buf), "with code %d", WEXITSTATUS(status));
 
 			/* if it's been killed because of dynamic process management
-			 * don't restart it automaticaly
+			 * don't restart it automatically
 			 */
 			if (child && child->idle_kill) {
 				restart_child = 0;
@@ -204,7 +207,11 @@ void fpm_children_bury() /* {{{ */
 
 		} else if (WIFSIGNALED(status)) {
 			const char *signame = fpm_signal_names[WTERMSIG(status)];
+#ifdef WCOREDUMP
 			const char *have_core = WCOREDUMP(status) ? " - core dumped" : "";
+#else
+			const char* have_core = "";
+#endif
 
 			if (signame == NULL) {
 				signame = "";
@@ -213,7 +220,7 @@ void fpm_children_bury() /* {{{ */
 			snprintf(buf, sizeof(buf), "on signal %d (%s%s)", WTERMSIG(status), signame, have_core);
 
 			/* if it's been killed because of dynamic process management
-			 * don't restart it automaticaly
+			 * don't restart it automatically
 			 */
 			if (child && child->idle_kill && WTERMSIG(status) == SIGQUIT) {
 				restart_child = 0;
@@ -339,7 +346,7 @@ static void fpm_child_resources_use(struct fpm_child_s *child) /* {{{ */
 {
 	struct fpm_worker_pool_s *wp;
 	for (wp = fpm_worker_all_pools; wp; wp = wp->next) {
-		if (wp == child->wp) {
+		if (wp == child->wp || wp == child->wp->shared) {
 			continue;
 		}
 		fpm_scoreboard_free(wp->scoreboard);
@@ -386,7 +393,7 @@ int fpm_children_make(struct fpm_worker_pool_s *wp, int in_event_loop, int nb_to
 	 *   - fpm_pctl_can_spawn_children : FPM is running in a NORMAL state (aka not restart, stop or reload)
 	 *   - wp->running_children < max  : there is less than the max process for the current pool
 	 *   - (fpm_global_config.process_max < 1 || fpm_globals.running_children < fpm_global_config.process_max):
-	 *     if fpm_global_config.process_max is set, FPM has not fork this number of processes (globaly)
+	 *     if fpm_global_config.process_max is set, FPM has not fork this number of processes (globally)
 	 */
 	while (fpm_pctl_can_spawn_children() && wp->running_children < max && (fpm_global_config.process_max < 1 || fpm_globals.running_children < fpm_global_config.process_max)) {
 
@@ -395,6 +402,11 @@ int fpm_children_make(struct fpm_worker_pool_s *wp, int in_event_loop, int nb_to
 
 		if (!child) {
 			return 2;
+		}
+
+		zlog(ZLOG_DEBUG, "blocking signals before child birth");
+		if (0 > fpm_signals_child_block()) {
+			zlog(ZLOG_WARNING, "child may miss signals");
 		}
 
 		pid = fork();
@@ -408,12 +420,16 @@ int fpm_children_make(struct fpm_worker_pool_s *wp, int in_event_loop, int nb_to
 				return 0;
 
 			case -1 :
+				zlog(ZLOG_DEBUG, "unblocking signals");
+				fpm_signals_unblock();
 				zlog(ZLOG_SYSERROR, "fork() failed");
 
 				fpm_resources_discard(child);
 				return 2;
 
 			default :
+				zlog(ZLOG_DEBUG, "unblocking signals, child born");
+				fpm_signals_unblock();
 				child->pid = pid;
 				fpm_clock_get(&child->started);
 				fpm_parent_resources_use(child);
@@ -424,10 +440,10 @@ int fpm_children_make(struct fpm_worker_pool_s *wp, int in_event_loop, int nb_to
 	}
 
 	if (!warned && fpm_global_config.process_max > 0 && fpm_globals.running_children >= fpm_global_config.process_max) {
-               if (wp->running_children < max) {
-                       warned = 1;
-                       zlog(ZLOG_WARNING, "The maximum number of processes has been reached. Please review your configuration and consider raising 'process.max'");
-               }
+		if (wp->running_children < max) {
+			warned = 1;
+			zlog(ZLOG_WARNING, "The maximum number of processes has been reached. Please review your configuration and consider raising 'process.max'");
+		}
 	}
 
 	return 1; /* we are done */
@@ -477,4 +493,3 @@ int fpm_children_init_main() /* {{{ */
 	return 0;
 }
 /* }}} */
-

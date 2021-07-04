@@ -1,5 +1,7 @@
 --TEST--
 PostgreSQL notice function
+--EXTENSIONS--
+pgsql
 --SKIPIF--
 <?php
 
@@ -42,10 +44,15 @@ var_dump(pg_last_notice($db, PGSQL_NOTICE_LAST));
 var_dump(pg_last_notice($db, PGSQL_NOTICE_ALL));
 
 // Invalid option
-var_dump(pg_last_notice($db, 99));
+try {
+    var_dump(pg_last_notice($db, 99));
+} catch (\ValueError $e) {
+    echo $e->getMessage() . \PHP_EOL;
+}
 ?>
 --EXPECTF--
-resource(%d) of type (pgsql result)
+object(PgSql\Result)#%d (0) {
+}
 string(0) ""
 array(0) {
 }
@@ -68,6 +75,4 @@ bool(true)
 string(0) ""
 array(0) {
 }
-
-Warning: pg_last_notice(): Invalid option specified (99) in %s%e09notice.php on line %d
-bool(false)
+pg_last_notice(): Argument #2 ($mode) must be one of PGSQL_NOTICE_LAST, PGSQL_NOTICE_ALL, or PGSQL_NOTICE_CLEAR
