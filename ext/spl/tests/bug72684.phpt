@@ -11,11 +11,11 @@ $appendIterator->append($generator);
 
 iterator_to_array($appendIterator);
 try {
-	iterator_to_array($appendIterator);
+    iterator_to_array($appendIterator);
 } catch (\Exception $e) {
-	echo $e->getMessage();
+    echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 
 ?>
 --EXPECT--
-Cannot traverse an already closed generator
+Exception: Cannot traverse an already closed generator

@@ -1,7 +1,7 @@
 --TEST--
 Check for libsodium auth
---SKIPIF--
-<?php if (!extension_loaded("sodium")) print "skip"; ?>
+--EXTENSIONS--
+sodium
 --FILE--
 <?php
 $msg = random_bytes(1000);
@@ -16,7 +16,7 @@ try {
     $mac = sodium_crypto_auth($msg, $bad_key);
     echo 'Fail!', PHP_EOL;
 } catch (SodiumException $ex) {
-  echo $ex->getMessage(), PHP_EOL;
+  echo $ex::class, ': ', $ex->getMessage(), PHP_EOL;
 }
 
 // Flip the first bit
@@ -41,7 +41,7 @@ var_dump(sodium_crypto_auth_verify($badmac, $msg, $key));
 ?>
 --EXPECT--
 bool(true)
-key must be SODIUM_CRYPTO_AUTH_KEYBYTES bytes
+SodiumException: sodium_crypto_auth(): Argument #2 ($key) must be SODIUM_CRYPTO_AUTH_KEYBYTES bytes long
 bool(false)
 bool(false)
 bool(false)

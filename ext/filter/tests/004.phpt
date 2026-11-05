@@ -1,16 +1,17 @@
 --TEST--
 GET/POST/REQUEST Test with filtered data
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --INI--
 filter.default=special_chars
+error_reporting=E_ALL&~E_DEPRECATED
 --POST--
 d="quotes"&e=\slash
 --GET--
 a=O'Henry&b=&c=<b>Bold</b>
 --FILE--
 <?php echo $_GET['a'];
-echo $_GET['b']; 
+echo $_GET['b'];
 echo $_GET['c'];
 echo $_POST['d'];
 echo $_POST['e'];

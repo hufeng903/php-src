@@ -1,17 +1,13 @@
 --TEST--
 Test mb_ereg() function : usage variations - different regex features in $pattern
+--EXTENSIONS--
+mbstring
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip');
 function_exists('mb_ereg') or die("skip mb_ereg() is not available in this build");
 ?>
 --FILE--
 <?php
-/* Prototype  : int mb_ereg(string $pattern, string $string [, array $registers])
- * Description: Regular expression match for multibyte string 
- * Source code: ext/mbstring/php_mbregex.c
- */
-
 /*
  * Testing the following regular expression features match correctly:
  * 1. definite quantifiers
@@ -22,9 +18,9 @@ function_exists('mb_ereg') or die("skip mb_ereg() is not available in this build
 echo "*** Testing mb_ereg() : usage variations ***\n";
 
 if(mb_regex_encoding('utf-8') == true) {
-	echo "Regex encoding set to utf-8\n";
+    echo "Regex encoding set to utf-8\n";
 } else {
-	echo "Could not set regex encoding to utf-8\n";
+    echo "Could not set regex encoding to utf-8\n";
 }
 
 $string_ascii = 'This is an English string. 0123456789.';
@@ -43,29 +39,33 @@ base64_encode_var_dump($regs_mb);
  * @param array $regs
  */
 function base64_encode_var_dump($regs) {
-	if ($regs) {
-		echo "array(" . count($regs) . ") {\n";
-		foreach ($regs as $key => $value) {
-			echo "  [$key]=>\n  ";
-			if (is_string($value)) {
-				var_dump(base64_encode($value));
-			} else {
-				var_dump($value);
-			}
-		}
-		echo "}\n";
-	} else {
-		echo "NULL\n";
-	}
+    if ($regs) {
+        echo "array(" . count($regs) . ") {\n";
+        foreach ($regs as $key => $value) {
+            echo "  [$key]=>\n  ";
+            if (is_string($value)) {
+                var_dump(base64_encode($value));
+            } else {
+                var_dump($value);
+            }
+        }
+        echo "}\n";
+    } else {
+        echo "NULL\n";
+    }
 }
 
 echo "Done";
 
 ?>
---EXPECT--
+--EXPECTF--
 *** Testing mb_ereg() : usage variations ***
+
+Deprecated: Function mb_regex_encoding() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 Regex encoding set to utf-8
-int(38)
+
+Deprecated: Function mb_ereg() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
+bool(true)
 array(5) {
   [0]=>
   string(52) "VGhpcyBpcyBhbiBFbmdsaXNoIHN0cmluZy4gMDEyMzQ1Njc4OS4="
@@ -78,7 +78,9 @@ array(5) {
   [4]=>
   string(4) "ODk="
 }
-int(64)
+
+Deprecated: Function mb_ereg() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
+bool(true)
 array(5) {
   [0]=>
   string(88) "zpHPhc+Ez4wgzrXOr869zrHOuSDOtc67zrvOt869zrnOus+MIM66zrXOr868zrXOvc6/LiAwMTIzNDU2Nzg5Lg=="

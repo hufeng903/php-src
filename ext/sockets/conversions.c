@@ -1,3 +1,21 @@
+/*
+   +----------------------------------------------------------------------+
+   | Copyright © The PHP Group and Contributors.                          |
+   +----------------------------------------------------------------------+
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
+   +----------------------------------------------------------------------+
+   | Authors: Gustavo Lopes    <cataphract@php.net>                       |
+   +----------------------------------------------------------------------+
+ */
+
+#ifdef __sun
+/* to enable 'new' ancillary data layout instead */
+# define _XPG4_2
+#endif
 #include "sockaddr_conv.h"
 #include "conversions.h"
 #include "sendrecvmsg.h" /* for ancillary registry */
@@ -17,7 +35,7 @@
 # include <sys/ioctl.h>
 # include <net/if.h>
 #else
-# include <win32/php_stdint.h>
+# include <stdint.h>
 #endif
 
 #include <limits.h>
@@ -36,16 +54,6 @@ struct _WSAMSG {
     WSABUF           Control;			//void *msg_control, size_t msg_controllen
     DWORD            dwFlags;			//int msg_flags
 }
-struct __WSABUF {
-  u_long			len;				//size_t iov_len (2nd member)
-  char FAR			*buf;				//void *iov_base (1st member)
-}
-struct _WSACMSGHDR {
-  UINT        cmsg_len;					//socklen_t cmsg_len
-  INT         cmsg_level;				//int       cmsg_level
-  INT         cmsg_type;				//int       cmsg_type;
-  followed by UCHAR cmsg_data[]
-}
 */
 # define msg_name		name
 # define msg_namelen	namelen
@@ -57,7 +65,6 @@ struct _WSACMSGHDR {
 # define iov_base		buf
 # define iov_len		len
 
-# define cmsghdr		_WSACMSGHDR
 # ifdef CMSG_DATA
 #  undef CMSG_DATA
 # endif
@@ -66,6 +73,14 @@ struct _WSACMSGHDR {
 
 #define MAX_USER_BUFF_SIZE ((size_t)(100*1024*1024))
 #define DEFAULT_BUFF_SIZE 8192
+
+/* The CMSG_DATA macro does pointer arithmetics on NULL which triggers errors in the Clang UBSAN build */
+#ifdef __has_feature
+# if __has_feature(undefined_behavior_sanitizer)
+#  undef CMSG_DATA
+#  define CMSG_DATA(cmsg) ((unsigned char *) ((uintptr_t) (cmsg) + sizeof(struct cmsghdr)))
+# endif
+#endif
 
 struct _ser_context {
 	HashTable		params; /* stores pointers; has to be first */
@@ -85,7 +100,7 @@ typedef struct {
 	/* zval info */
 	const char *name;
 	unsigned name_size;
-	int required;
+	bool required;
 
 	/* structure info */
 	size_t field_offset; /* 0 to pass full structure, e.g. when more than
@@ -199,7 +214,7 @@ static void do_to_zval_err(res_context *ctx, const char *fmt, ...)
 void err_msg_dispose(struct err_s *err)
 {
 	if (err->msg != NULL) {
-		php_error_docref0(NULL, err->level, "%s", err->msg);
+		php_error_docref(NULL, err->level, "%s", err->msg);
 		if (err->should_free) {
 			efree(err->msg);
 		}
@@ -237,9 +252,9 @@ static unsigned from_array_iterate(const zval *arr,
 			break;
 		}
 		i++;
-    } ZEND_HASH_FOREACH_END();
+	} ZEND_HASH_FOREACH_END();
 
-    return i -1;
+	return i -1;
 }
 
 /* Generic Aggregated conversions */
@@ -332,16 +347,19 @@ double_case:
 		zend_long lval;
 		double dval;
 
-		convert_to_string(&lzval);
+		if (!try_convert_to_string(&lzval)) {
+			ctx->err.has_error = 1;
+			break;
+		}
 
 		switch (is_numeric_string(Z_STRVAL(lzval), Z_STRLEN(lzval), &lval, &dval, 0)) {
 		case IS_DOUBLE:
-			zval_dtor(&lzval);
+			zval_ptr_dtor_str(&lzval);
 			ZVAL_DOUBLE(&lzval, dval);
 			goto double_case;
 
 		case IS_LONG:
-			zval_dtor(&lzval);
+			zval_ptr_dtor_str(&lzval);
 			ZVAL_LONG(&lzval, lval);
 			goto long_case;
 		}
@@ -358,7 +376,7 @@ double_case:
 		break;
 	}
 
-	zval_dtor(&lzval);
+	zval_ptr_dtor(&lzval);
 
 	return ret;
 }
@@ -438,6 +456,8 @@ static void from_zval_write_sa_family(const zval *arr_value, char *field, ser_co
 	ival = (sa_family_t)lval;
 	memcpy(field, &ival, sizeof(ival));
 }
+
+#if defined(SO_PASSCRED) || defined(LOCAL_CREDS_PERSISTENT) || defined(LOCAL_CREDS)
 static void from_zval_write_pid_t(const zval *arr_value, char *field, ser_context *ctx)
 {
 	zend_long lval;
@@ -485,17 +505,11 @@ static void from_zval_write_uid_t(const zval *arr_value, char *field, ser_contex
 	ival = (uid_t)lval;
 	memcpy(field, &ival, sizeof(ival));
 }
+#endif
 
 void to_zval_read_int(const char *data, zval *zv, res_context *ctx)
 {
 	int ival;
-	memcpy(&ival, data, sizeof(ival));
-
-	ZVAL_LONG(zv, (zend_long)ival);
-}
-static void to_zval_read_unsigned(const char *data, zval *zv, res_context *ctx)
-{
-	unsigned ival;
 	memcpy(&ival, data, sizeof(ival));
 
 	ZVAL_LONG(zv, (zend_long)ival);
@@ -507,13 +521,6 @@ static void to_zval_read_net_uint16(const char *data, zval *zv, res_context *ctx
 
 	ZVAL_LONG(zv, (zend_long)ntohs(ival));
 }
-static void to_zval_read_uint32(const char *data, zval *zv, res_context *ctx)
-{
-	uint32_t ival;
-	memcpy(&ival, data, sizeof(ival));
-
-	ZVAL_LONG(zv, (zend_long)ival);
-}
 static void to_zval_read_sa_family(const char *data, zval *zv, res_context *ctx)
 {
 	sa_family_t ival;
@@ -521,6 +528,23 @@ static void to_zval_read_sa_family(const char *data, zval *zv, res_context *ctx)
 
 	ZVAL_LONG(zv, (zend_long)ival);
 }
+#ifdef HAVE_IPV6
+static void to_zval_read_unsigned(const char *data, zval *zv, res_context *ctx)
+{
+	unsigned ival;
+	memcpy(&ival, data, sizeof(ival));
+
+	ZVAL_LONG(zv, (zend_long)ival);
+}
+static void to_zval_read_uint32(const char *data, zval *zv, res_context *ctx)
+{
+	uint32_t ival;
+	memcpy(&ival, data, sizeof(ival));
+
+	ZVAL_LONG(zv, (zend_long)ival);
+}
+#endif
+#if defined(SO_PASSCRED) || defined(LOCAL_CREDS_PERSISTENT) || defined(LOCAL_CREDS)
 static void to_zval_read_pid_t(const char *data, zval *zv, res_context *ctx)
 {
 	pid_t ival;
@@ -535,6 +559,7 @@ static void to_zval_read_uid_t(const char *data, zval *zv, res_context *ctx)
 
 	ZVAL_LONG(zv, (zend_long)ival);
 }
+#endif
 
 /* CONVERSIONS for sockaddr */
 static void from_zval_write_sin_addr(const zval *zaddr_str, char *inaddr, ser_context *ctx)
@@ -544,7 +569,7 @@ static void from_zval_write_sin_addr(const zval *zaddr_str, char *inaddr, ser_co
 	zend_string			*addr_str, *tmp_addr_str;
 
 	addr_str = zval_get_tmp_string((zval *) zaddr_str, &tmp_addr_str);
-	res = php_set_inet_addr(&saddr, ZSTR_VAL(addr_str), ctx->sock);
+	res = php_set_inet_addr(&saddr, addr_str, ctx->sock);
 	if (res) {
 		memcpy(inaddr, &saddr.sin_addr, sizeof saddr.sin_addr);
 	} else {
@@ -560,7 +585,6 @@ static void to_zval_read_sin_addr(const char *data, zval *zv, res_context *ctx)
 	const struct in_addr *addr = (const struct in_addr *)data;
 	socklen_t size = INET_ADDRSTRLEN;
 	zend_string *str = zend_string_alloc(size - 1, 0);
-	memset(ZSTR_VAL(str), '\0', size);
 
 	ZVAL_NEW_STR(zv, str);
 
@@ -570,12 +594,12 @@ static void to_zval_read_sin_addr(const char *data, zval *zv, res_context *ctx)
 		return;
 	}
 
-	Z_STRLEN_P(zv) = strlen(Z_STRVAL_P(zv));
+	Z_STR_P(zv) = zend_string_truncate(Z_STR_P(zv), strlen(Z_STRVAL_P(zv)), 0);
 }
 static const field_descriptor descriptors_sockaddr_in[] = {
-		{"family", sizeof("family"), 0, offsetof(struct sockaddr_in, sin_family), from_zval_write_sa_family, to_zval_read_sa_family},
-		{"addr", sizeof("addr"), 0, offsetof(struct sockaddr_in, sin_addr), from_zval_write_sin_addr, to_zval_read_sin_addr},
-		{"port", sizeof("port"), 0, offsetof(struct sockaddr_in, sin_port), from_zval_write_net_uint16, to_zval_read_net_uint16},
+		{"family", sizeof("family"), false, offsetof(struct sockaddr_in, sin_family), from_zval_write_sa_family, to_zval_read_sa_family},
+		{"addr", sizeof("addr"), false, offsetof(struct sockaddr_in, sin_addr), from_zval_write_sin_addr, to_zval_read_sin_addr},
+		{"port", sizeof("port"), false, offsetof(struct sockaddr_in, sin_port), from_zval_write_net_uint16, to_zval_read_net_uint16},
 		{0}
 };
 static void from_zval_write_sockaddr_in(const zval *container, char *sockaddr, ser_context *ctx)
@@ -586,7 +610,7 @@ static void to_zval_read_sockaddr_in(const char *data, zval *zv, res_context *ct
 {
 	to_zval_read_aggregation(data, zv, descriptors_sockaddr_in, ctx);
 }
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 static void from_zval_write_sin6_addr(const zval *zaddr_str, char *addr6, ser_context *ctx)
 {
 	int					res;
@@ -594,13 +618,13 @@ static void from_zval_write_sin6_addr(const zval *zaddr_str, char *addr6, ser_co
 	zend_string			*addr_str, *tmp_addr_str;
 
 	addr_str = zval_get_tmp_string((zval *) zaddr_str, &tmp_addr_str);
-	res = php_set_inet6_addr(&saddr6, ZSTR_VAL(addr_str), ctx->sock);
+	res = php_set_inet6_addr(&saddr6, addr_str, ctx->sock);
 	if (res) {
 		memcpy(addr6, &saddr6.sin6_addr, sizeof saddr6.sin6_addr);
 	} else {
 		/* error already emitted, but let's emit another more relevant */
 		do_from_zval_err(ctx, "could not resolve address '%s' to get an AF_INET6 "
-				"address", Z_STRVAL_P(zaddr_str));
+				"address", ZSTR_VAL(addr_str));
 	}
 
 	zend_tmp_string_release(tmp_addr_str);
@@ -611,8 +635,6 @@ static void to_zval_read_sin6_addr(const char *data, zval *zv, res_context *ctx)
 	socklen_t size = INET6_ADDRSTRLEN;
 	zend_string *str = zend_string_alloc(size - 1, 0);
 
-	memset(ZSTR_VAL(str), '\0', size);
-
 	ZVAL_NEW_STR(zv, str);
 
 	if (inet_ntop(AF_INET6, addr, Z_STRVAL_P(zv), size) == NULL) {
@@ -621,14 +643,14 @@ static void to_zval_read_sin6_addr(const char *data, zval *zv, res_context *ctx)
 		return;
 	}
 
-	Z_STRLEN_P(zv) = strlen(Z_STRVAL_P(zv));
+	Z_STR_P(zv) = zend_string_truncate(Z_STR_P(zv), strlen(Z_STRVAL_P(zv)), 0);
 }
 static const field_descriptor descriptors_sockaddr_in6[] = {
-		{"family", sizeof("family"), 0, offsetof(struct sockaddr_in6, sin6_family), from_zval_write_sa_family, to_zval_read_sa_family},
-		{"addr", sizeof("addr"), 0, offsetof(struct sockaddr_in6, sin6_addr), from_zval_write_sin6_addr, to_zval_read_sin6_addr},
-		{"port", sizeof("port"), 0, offsetof(struct sockaddr_in6, sin6_port), from_zval_write_net_uint16, to_zval_read_net_uint16},
-		{"flowinfo", sizeof("flowinfo"), 0, offsetof(struct sockaddr_in6, sin6_flowinfo), from_zval_write_uint32, to_zval_read_uint32},
-		{"scope_id", sizeof("scope_id"), 0, offsetof(struct sockaddr_in6, sin6_scope_id), from_zval_write_uint32, to_zval_read_uint32},
+		{"family", sizeof("family"), false, offsetof(struct sockaddr_in6, sin6_family), from_zval_write_sa_family, to_zval_read_sa_family},
+		{"addr", sizeof("addr"), false, offsetof(struct sockaddr_in6, sin6_addr), from_zval_write_sin6_addr, to_zval_read_sin6_addr},
+		{"port", sizeof("port"), false, offsetof(struct sockaddr_in6, sin6_port), from_zval_write_net_uint16, to_zval_read_net_uint16},
+		{"flowinfo", sizeof("flowinfo"), false, offsetof(struct sockaddr_in6, sin6_flowinfo), from_zval_write_uint32, to_zval_read_uint32},
+		{"scope_id", sizeof("scope_id"), false, offsetof(struct sockaddr_in6, sin6_scope_id), from_zval_write_uint32, to_zval_read_uint32},
 		{0}
 };
 static void from_zval_write_sockaddr_in6(const zval *container, char *sockaddr6, ser_context *ctx)
@@ -651,7 +673,7 @@ static void from_zval_write_sun_path(const zval *path, char *sockaddr_un_c, ser_
 	 * this is not required, at least on linux for abstract paths. It also
 	 * assumes that the path is not empty */
 	if (ZSTR_LEN(path_str) == 0) {
-		do_from_zval_err(ctx, "%s", "the path is cannot be empty");
+		do_from_zval_err(ctx, "%s", "the path is must not be empty");
 		zend_tmp_string_release(tmp_path_str);
 		return;
 	}
@@ -701,6 +723,9 @@ static void from_zval_write_sockaddr_aux(const zval *container,
 	zval	*elem;
 	int		fill_sockaddr;
 
+	*sockaddr_ptr = NULL;
+	*sockaddr_len = 0;
+
 	if (Z_TYPE_P(container) != IS_ARRAY) {
 		do_from_zval_err(ctx, "%s", "expected an array here");
 		return;
@@ -712,8 +737,13 @@ static void from_zval_write_sockaddr_aux(const zval *container,
 			&& Z_TYPE_P(elem) != IS_NULL) {
 		const char *node = "family";
 		zend_llist_add_element(&ctx->keys, &node);
+		family = 0; /* Silence compiler warning */
 		from_zval_write_int(elem, (char*)&family, ctx);
 		zend_llist_remove_tail(&ctx->keys);
+
+		if (UNEXPECTED(ctx->err.has_error)) {
+			return;
+		}
 	} else {
 		family = ctx->sock->type;
 	}
@@ -734,7 +764,7 @@ static void from_zval_write_sockaddr_aux(const zval *container,
 		}
 		break;
 
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 	case AF_INET6:
 		if (ctx->sock->type != AF_INET6) {
 			do_from_zval_err(ctx, "the specified family (AF_INET6) is not "
@@ -798,7 +828,7 @@ static void to_zval_read_sockaddr_aux(const char *sockaddr_c, zval *zv, res_cont
 		to_zval_read_sockaddr_in(sockaddr_c, zv, ctx);
 		break;
 
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 	case AF_INET6:
 		to_zval_read_sockaddr_in6(sockaddr_c, zv, ctx);
 		break;
@@ -911,7 +941,7 @@ static void from_zval_write_control_array(const zval *arr, char *msghdr_c, ser_c
 	char				*bufp = buf;
 	zval				*elem;
 	uint32_t			i = 0;
-	int					num_elems;
+	uint32_t			num_elems;
 	void				*control_buf;
 	zend_llist_element	*alloc;
 	size_t				control_len,
@@ -949,8 +979,8 @@ static void from_zval_write_control_array(const zval *arr, char *msghdr_c, ser_c
 		zend_llist_remove_tail(&ctx->keys);
 	} ZEND_HASH_FOREACH_END();
 
-    msg->msg_control = control_buf;
-    msg->msg_controllen = cur_offset; /* not control_len, which may be larger */
+	msg->msg_control = control_buf;
+	msg->msg_controllen = cur_offset; /* not control_len, which may be larger */
 }
 static void to_zval_read_cmsg_data(const char *cmsghdr_c, zval *zv, res_context *ctx)
 {
@@ -1004,14 +1034,8 @@ static void to_zval_read_control_array(const char *msghdr_c, zval *zv, res_conte
 	char			*bufp = buf;
 	uint32_t		i = 1;
 
-	/*if (msg->msg_flags & MSG_CTRUNC) {
-		php_error_docref0(NULL, E_WARNING, "The MSG_CTRUNC flag is present; will not "
-				"attempt to read control messages");
-		ZVAL_FALSE(zv);
-		return;
-	}*/
-
 	array_init(zv);
+	zend_hash_real_init_packed(Z_ARRVAL_P(zv));
 
 	for (cmsg = CMSG_FIRSTHDR(msg);
 			cmsg != NULL && !ctx->err.has_error;
@@ -1089,7 +1113,7 @@ static void from_zval_write_iov_array_aux(zval *elem, unsigned i, void **args, s
 }
 static void from_zval_write_iov_array(const zval *arr, char *msghdr_c, ser_context *ctx)
 {
-	int				num_elem;
+	uint32_t	num_elem;
 	struct msghdr	*msg = (struct msghdr*)msghdr_c;
 
 	if (Z_TYPE_P(arr) != IS_ARRAY) {
@@ -1105,18 +1129,21 @@ static void from_zval_write_iov_array(const zval *arr, char *msghdr_c, ser_conte
 	msg->msg_iov = accounted_safe_ecalloc(num_elem, sizeof *msg->msg_iov, 0, ctx);
 	msg->msg_iovlen = (size_t)num_elem;
 
-    from_array_iterate(arr, from_zval_write_iov_array_aux, (void**)&msg, ctx);
+	from_array_iterate(arr, from_zval_write_iov_array_aux, (void**)&msg, ctx);
 }
 static void from_zval_write_controllen(const zval *elem, char *msghdr_c, ser_context *ctx)
 {
 	struct msghdr *msghdr = (struct msghdr *)msghdr_c;
-	uint32_t len;
+	uint32_t len = 0; /* Silence compiler warning */
 
 	/* controllen should be an unsigned with at least 32-bit. Let's assume
 	 * this least common denominator
 	 */
 	from_zval_write_uint32(elem, (char*)&len, ctx);
-	if (!ctx->err.has_error && len == 0) {
+	if (ctx->err.has_error) {
+		return;
+	}
+	if (len == 0) {
 		do_from_zval_err(ctx, "controllen cannot be 0");
 		return;
 	}
@@ -1191,6 +1218,7 @@ static void to_zval_read_iov(const char *msghdr_c, zval *zv, res_context *ctx)
 	if (iovlen > UINT_MAX) {
 		do_to_zval_err(ctx, "unexpectedly large value for iov_len: %lu",
 				(unsigned long)iovlen);
+		return;
 	}
 	array_init_size(zv, (uint32_t)iovlen);
 
@@ -1228,6 +1256,7 @@ void to_zval_read_msghdr(const char *msghdr_c, zval *zv, res_context *ctx)
 	to_zval_read_aggregation(msghdr_c, zv, descriptors, ctx);
 }
 
+#if defined(IPV6_PKTINFO) && defined(HAVE_IPV6)
 /* CONVERSIONS for if_index */
 static void from_zval_write_ifindex(const zval *zv, char *uinteger, ser_context *ctx)
 {
@@ -1245,7 +1274,7 @@ static void from_zval_write_ifindex(const zval *zv, char *uinteger, ser_context 
 
 		str = zval_get_tmp_string((zval *) zv, &tmp_str);
 
-#if HAVE_IF_NAMETOINDEX
+#ifdef HAVE_IF_NAMETOINDEX
 		ret = if_nametoindex(ZSTR_VAL(str));
 		if (ret == 0) {
 			do_from_zval_err(ctx, "no interface with name \"%s\" could be found", ZSTR_VAL(str));
@@ -1284,10 +1313,9 @@ static void from_zval_write_ifindex(const zval *zv, char *uinteger, ser_context 
 }
 
 /* CONVERSIONS for struct in6_pktinfo */
-#if defined(IPV6_PKTINFO) && HAVE_IPV6
 static const field_descriptor descriptors_in6_pktinfo[] = {
-		{"addr", sizeof("addr"), 1, offsetof(struct in6_pktinfo, ipi6_addr), from_zval_write_sin6_addr, to_zval_read_sin6_addr},
-		{"ifindex", sizeof("ifindex"), 1, offsetof(struct in6_pktinfo, ipi6_ifindex), from_zval_write_ifindex, to_zval_read_unsigned},
+		{"addr", sizeof("addr"), true, offsetof(struct in6_pktinfo, ipi6_addr), from_zval_write_sin6_addr, to_zval_read_sin6_addr},
+		{"ifindex", sizeof("ifindex"), true, offsetof(struct in6_pktinfo, ipi6_ifindex), from_zval_write_ifindex, to_zval_read_unsigned},
 		{0}
 };
 void from_zval_write_in6_pktinfo(const zval *container, char *in6_pktinfo_c, ser_context *ctx)
@@ -1303,12 +1331,29 @@ void to_zval_read_in6_pktinfo(const char *data, zval *zv, res_context *ctx)
 #endif
 
 /* CONVERSIONS for struct ucred */
-#ifdef SO_PASSCRED
+#if defined(SO_PASSCRED) || defined(LOCAL_CREDS_PERSISTENT) || defined(LOCAL_CREDS)
 static const field_descriptor descriptors_ucred[] = {
-		{"pid", sizeof("pid"), 1, offsetof(struct ucred, pid), from_zval_write_pid_t, to_zval_read_pid_t},
-		{"uid", sizeof("uid"), 1, offsetof(struct ucred, uid), from_zval_write_uid_t, to_zval_read_uid_t},
+#if defined(LOCAL_CREDS_PERSISTENT)
+		{"pid", sizeof("pid"), true, offsetof(struct sockcred2, sc_pid), from_zval_write_pid_t, to_zval_read_pid_t},
+		{"uid", sizeof("uid"), true, offsetof(struct sockcred2, sc_euid), from_zval_write_uid_t, to_zval_read_uid_t},
+		/* the type gid_t is the same as uid_t: */
+		{"gid", sizeof("gid"), true, offsetof(struct sockcred2, sc_egid), from_zval_write_uid_t, to_zval_read_uid_t},
+#elif defined(LOCAL_CREDS)
+		{"pid", sizeof("pid"), true, offsetof(struct sockcred, sc_pid), from_zval_write_pid_t, to_zval_read_pid_t},
+		{"uid", sizeof("uid"), true, offsetof(struct sockcred, sc_euid), from_zval_write_uid_t, to_zval_read_uid_t},
+		/* the type gid_t is the same as uid_t: */
+		{"gid", sizeof("gid"), true, offsetof(struct sockcred, sc_egid), from_zval_write_uid_t, to_zval_read_uid_t},
+#elif defined(HAVE_STRUCT_CMSGCRED)
+		{"pid", sizeof("pid"), true, offsetof(struct cmsgcred, cmcred_pid), from_zval_write_pid_t, to_zval_read_pid_t},
+		{"uid", sizeof("uid"), true, offsetof(struct cmsgcred, cmcred_uid), from_zval_write_uid_t, to_zval_read_uid_t},
 		/* assume the type gid_t is the same as uid_t: */
-		{"gid", sizeof("gid"), 1, offsetof(struct ucred, gid), from_zval_write_uid_t, to_zval_read_uid_t},
+		{"gid", sizeof("gid"), true, offsetof(struct cmsgcred, cmcred_gid), from_zval_write_uid_t, to_zval_read_uid_t},
+#elif defined(SO_PASSCRED)
+		{"pid", sizeof("pid"), true, offsetof(struct ucred, pid), from_zval_write_pid_t, to_zval_read_pid_t},
+		{"uid", sizeof("uid"), true, offsetof(struct ucred, uid), from_zval_write_uid_t, to_zval_read_uid_t},
+		/* assume the type gid_t is the same as uid_t: */
+		{"gid", sizeof("gid"), true, offsetof(struct ucred, gid), from_zval_write_uid_t, to_zval_read_uid_t},
+#endif
 		{0}
 };
 void from_zval_write_ucred(const zval *container, char *ucred_c, ser_context *ctx)
@@ -1327,7 +1372,7 @@ void to_zval_read_ucred(const char *data, zval *zv, res_context *ctx)
 #ifdef SCM_RIGHTS
 size_t calculate_scm_rights_space(const zval *arr, ser_context *ctx)
 {
-	int num_elems;
+	uint32_t num_elems;
 
 	if (Z_TYPE_P(arr) != IS_ARRAY) {
 		do_from_zval_err(ctx, "%s", "expected an array here");
@@ -1340,35 +1385,38 @@ size_t calculate_scm_rights_space(const zval *arr, ser_context *ctx)
 		return (size_t)-1;
 	}
 
-	return zend_hash_num_elements(Z_ARRVAL_P(arr)) * sizeof(int);
+	return num_elems * sizeof(int);
 }
 static void from_zval_write_fd_array_aux(zval *elem, unsigned i, void **args, ser_context *ctx)
 {
 	int *iarr = args[0];
 
-	if (Z_TYPE_P(elem) == IS_RESOURCE) {
-		php_stream *stream;
-		php_socket *sock;
-
-		sock = (php_socket *)zend_fetch_resource_ex(elem, NULL, php_sockets_le_socket());
-		if (sock) {
-			iarr[i] = sock->bsd_socket;
+	if (Z_TYPE_P(elem) == IS_OBJECT && Z_OBJCE_P(elem) == socket_ce) {
+		php_socket *sock = Z_SOCKET_P(elem);
+		if (IS_INVALID_SOCKET(sock)) {
+			do_from_zval_err(ctx, "socket is already closed");
 			return;
 		}
+
+		iarr[i - 1] = sock->bsd_socket;
+		return;
+	}
+
+	if (Z_TYPE_P(elem) == IS_RESOURCE) {
+		php_stream *stream;
 
 		stream = (php_stream *)zend_fetch_resource2_ex(elem, NULL, php_file_le_stream(), php_file_le_pstream());
 		if (stream == NULL) {
-			do_from_zval_err(ctx, "resource is not a stream or a socket");
+			do_from_zval_err(ctx, "resource is not a stream");
 			return;
 		}
 
-		if (php_stream_cast(stream, PHP_STREAM_AS_FD, (void **)&iarr[i - 1],
-				REPORT_ERRORS) == FAILURE) {
+		if (php_stream_cast(stream, PHP_STREAM_AS_FD, (void **)&iarr[i - 1], REPORT_ERRORS) == FAILURE) {
 			do_from_zval_err(ctx, "cast stream to file descriptor failed");
 			return;
 		}
 	} else {
-		do_from_zval_err(ctx, "expected a resource variable");
+		do_from_zval_err(ctx, "expected a Socket object or a stream resource");
 	}
 }
 void from_zval_write_fd_array(const zval *arr, char *int_arr, ser_context *ctx)
@@ -1378,12 +1426,12 @@ void from_zval_write_fd_array(const zval *arr, char *int_arr, ser_context *ctx)
 		return;
 	}
 
-   from_array_iterate(arr, &from_zval_write_fd_array_aux, (void**)&int_arr, ctx);
+	from_array_iterate(arr, &from_zval_write_fd_array_aux, (void**)&int_arr, ctx);
 }
 void to_zval_read_fd_array(const char *data, zval *zv, res_context *ctx)
 {
 	size_t			*cmsg_len;
-	int				num_elems,
+	uint32_t				num_elems,
 					i;
 	struct cmsghdr	*dummy_cmsg = 0;
 	size_t			data_offset;
@@ -1419,8 +1467,14 @@ void to_zval_read_fd_array(const char *data, zval *zv, res_context *ctx)
 			return;
 		}
 		if (S_ISSOCK(statbuf.st_mode)) {
-			php_socket *sock = socket_import_file_descriptor(fd);
-			ZVAL_RES(&elem, zend_register_resource(sock, php_sockets_le_socket()));
+			object_init_ex(&elem, socket_ce);
+			php_socket *sock = Z_SOCKET_P(&elem);
+
+			if (!socket_import_file_descriptor(fd, sock)) {
+				do_to_zval_err(ctx, "error getting protocol descriptor %d: getsockopt() call failed with errno %d", fd, errno);
+				zval_ptr_dtor(&elem);
+				return;
+			}
 		} else {
 			php_stream *stream = php_stream_fopen_from_fd(fd, "rw", NULL);
 			php_stream_to_zval(stream, &elem);

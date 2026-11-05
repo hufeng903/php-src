@@ -1,46 +1,44 @@
 --TEST--
 Phar: Phar::extractTo() - check that phar exists
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
+--EXTENSIONS--
+phar
 --INI--
 phar.readonly=0
 --FILE--
 <?php
 
-$fname   = dirname(__FILE__) . '/files/bogus.zip';
-$fname2  = dirname(__FILE__) . '/files/notbogus.zip';
-$extract = dirname(__FILE__) . '/test-extract3';
+$fname   = __DIR__ . '/files/bogus.zip';
+$fname2  = __DIR__ . '/files/notbogus.zip';
+$extract = __DIR__ . '/test-extract3';
 
 $phar = new PharData($fname);
 
 try {
-	$phar->extractTo($extract);
+    $phar->extractTo($extract);
 } catch (Exception $e) {
-	echo $e->getMessage(), "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 $phar = new PharData($fname2);
 foreach ($phar as $filename) {
-	echo "$filename\n";
+    echo "$filename\n";
 }
 
 try {
-	$phar->extractTo($extract);
+    $phar->extractTo($extract);
 } catch (Exception $e) {
-	echo $e->getMessage(), "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 ?>
-===DONE===
 --CLEAN--
 <?php
-$dir = dirname(__FILE__) . '/test-extract3/';
+$dir = __DIR__ . '/test-extract3/';
 @unlink($dir . 'stuff.txt');
 @unlink($dir . 'nonsense.txt');
 @rmdir($dir);
 ?>
 --EXPECTF--
-Invalid argument, %sfiles/bogus.zip cannot be found
+InvalidArgumentException: Invalid argument, %sfiles/bogus.zip cannot be found
 phar://%sfiles/notbogus.zip%cnonsense.txt
 phar://%sfiles/notbogus.zip%cstuff.txt
-===DONE===

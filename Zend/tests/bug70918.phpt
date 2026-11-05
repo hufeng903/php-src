@@ -3,45 +3,45 @@ Bug #70918 (Segfault using static outside of class scope)
 --FILE--
 <?php
 try {
-	static::x;
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    static::x;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
-	parent::x;
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    parent::x;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
-	self::x;
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    self::x;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
-	new static;
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    new static;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
-	static::x();
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    static::x();
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
-	static::$i;
-} catch (Error $e) {
-	var_dump($e->getMessage());
+    static::$i;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 ?>
 --EXPECT--
-string(52) "Cannot access static:: when no class scope is active"
-string(52) "Cannot access parent:: when no class scope is active"
-string(50) "Cannot access self:: when no class scope is active"
-string(52) "Cannot access static:: when no class scope is active"
-string(52) "Cannot access static:: when no class scope is active"
-string(52) "Cannot access static:: when no class scope is active"
+Error: Cannot access "static" when no class scope is active
+Error: Cannot access "parent" when no class scope is active
+Error: Cannot access "self" when no class scope is active
+Error: Cannot access "static" when no class scope is active
+Error: Cannot access "static" when no class scope is active
+Error: Cannot access "static" when no class scope is active

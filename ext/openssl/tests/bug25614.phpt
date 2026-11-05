@@ -1,12 +1,13 @@
 --TEST--
 openssl: get public key from generated private key
+--EXTENSIONS--
+openssl
 --SKIPIF--
-<?php 
-if (!extension_loaded("openssl")) die("skip"); 
-if (!@openssl_pkey_new()) die("skip cannot create private key"); 
+<?php
+if (!@openssl_pkey_new()) die("skip cannot create private key");
 ?>
 --FILE--
-<?php 
+<?php
 $priv = openssl_pkey_new();
 $pub = openssl_pkey_get_public($priv);
 ?>

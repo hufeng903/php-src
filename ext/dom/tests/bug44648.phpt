@@ -1,7 +1,7 @@
 --TEST--
 Bug #44648 (Attribute names not checked for well formedness)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 
@@ -13,33 +13,33 @@ $root = $doc->documentElement;
 try {
   $attr = new DOMAttr('@acb', '123');
   $root->setAttributeNode($attr);
-} catch (DOMException $e) {
-  echo $e->getMessage()."\n";
+} catch (Throwable $e) {
+  echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
   $root->setAttribute('@def', '456');
-} catch (DOMException $e) {
-  echo $e->getMessage()."\n";
+} catch (Throwable $e) {
+  echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
   $root->setAttributeNS(NULL, '@ghi', '789');
-} catch (DOMException $e) {
-  echo $e->getMessage()."\n";
+} catch (Throwable $e) {
+  echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
   $root->setAttributeNS('urn::test', 'a:g@hi', '789');
-} catch (DOMException $e) {
-  echo $e->getMessage()."\n";
+} catch (Throwable $e) {
+  echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 echo $doc->saveXML($root);
 ?>
 --EXPECT--
-Invalid Character Error
-Invalid Character Error
-Invalid Character Error
-Namespace Error
+DOMException: Invalid Character Error
+DOMException: Invalid Character Error
+DOMException: Invalid Character Error
+DOMException: Namespace Error
 <root/>

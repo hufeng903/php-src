@@ -3,17 +3,16 @@ DOMDocumentFragment::appendXML() with unbound fragment.
 --CREDITS--
 Eric Lee Stewart <ericleestewart@gmail.com>
 # TestFest Atlanta 2009-05-24
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 $fragment = new DOMDocumentFragment();
-$fragment->appendXML('<bait>crankbait</bait>');
-$document->appendChild($fragment);
+try {
+    $fragment->appendXML('<bait>crankbait</bait>');
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Fatal error: Uncaught DOMException: No Modification Allowed Error in %s:%d
-Stack trace:
-#0 %s(%d): DOMDocumentFragment->appendXML('<bait>crankbait...')
-#1 {main}
-  thrown in %s on line %d
+--EXPECT--
+DOMException: No Modification Allowed Error

@@ -6,7 +6,12 @@ trait Stream00ploiter{
   public function s() {}
   public function n($_) {}
 }
-stream_wrapper_register('e0ploit','Stream00ploiter');
-$s=fopen('e0ploit://',0);
---EXPECTF--
-Warning: fopen(e0ploit://): failed to open stream: operation failed in %s%ebug74951.php on line 7
+
+try {
+	stream_wrapper_register('e0ploit','Stream00ploiter');
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+?>
+--EXPECT--
+ValueError: stream_wrapper_register(): Argument #2 ($class) must be a concrete class

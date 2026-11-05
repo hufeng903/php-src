@@ -1,14 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Gustavo Lopes <cataphract@netcabo.pt>                       |
    +----------------------------------------------------------------------+
@@ -34,9 +32,7 @@ typedef struct {
 	zend_object     zo;
 } Transliterator_object;
 
-static inline Transliterator_object *php_intl_transliterator_fetch_object(zend_object *obj) {
-	return (Transliterator_object *)((char*)(obj) - XtOffsetOf(Transliterator_object, zo));
-}
+#define php_intl_transliterator_fetch_object(obj) ZEND_CONTAINER_OF(obj, Transliterator_object, zo)
 #define Z_INTL_TRANSLITERATOR_P(zv) php_intl_transliterator_fetch_object(Z_OBJ_P(zv))
 
 #define TRANSLITERATOR_FORWARD UTRANS_FORWARD
@@ -54,17 +50,19 @@ static inline Transliterator_object *php_intl_transliterator_fetch_object(zend_o
 	TRANSLITERATOR_METHOD_FETCH_OBJECT_NO_CHECK; \
 	if( to->utrans == NULL ) \
 	{ \
-		intl_errors_set( &to->err, U_ILLEGAL_ARGUMENT_ERROR, "Found unconstructed transliterator", 0 ); \
-		RETURN_FALSE; \
+		zend_throw_error(NULL, "Found unconstructed transliterator"); \
+		RETURN_THROWS(); \
 	}
 
 int transliterator_object_construct( zval *object,
 									 UTransliterator *utrans,
 									 UErrorCode *status );
 
+BEGIN_EXTERN_C()
 void transliterator_register_Transliterator_class( void );
 
 extern zend_class_entry *Transliterator_ce_ptr;
 extern zend_object_handlers Transliterator_handlers;
+END_EXTERN_C()
 
 #endif /* #ifndef TRANSLITERATOR_CLASS_H */

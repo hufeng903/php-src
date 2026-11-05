@@ -1,23 +1,17 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Shane Caraveo <shane@caraveo.com>                            |
    |         Ilia Alshanetsky <ilia@prohost.org>                          |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #include "php.h"
 #include "php_scandir.h"
@@ -33,7 +27,6 @@
 #ifndef HAVE_SCANDIR
 
 #ifdef PHP_WIN32
-#include "win32/param.h"
 #include "win32/readdir.h"
 #endif
 
@@ -44,9 +37,7 @@
 
 #ifndef HAVE_ALPHASORT
 
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
 
 PHPAPI int php_alphasort(const struct dirent **a, const struct dirent **b)
 {
@@ -61,8 +52,7 @@ PHPAPI int php_scandir(const char *dirname, struct dirent **namelist[], int (*se
 	struct dirent **vector = NULL;
 	int vector_size = 0;
 	int nfiles = 0;
-	char entry[sizeof(struct dirent)+MAXPATHLEN];
-	struct dirent *dp = (struct dirent *)&entry;
+	struct dirent *dp;
 
 	if (namelist == NULL) {
 		return -1;
@@ -72,7 +62,7 @@ PHPAPI int php_scandir(const char *dirname, struct dirent **namelist[], int (*se
 		return -1;
 	}
 
-	while (!php_readdir_r(dirp, (struct dirent *)entry, &dp) && dp) {
+	while ((dp = readdir(dirp))) {
 		size_t dsize = 0;
 		struct dirent *newdp = NULL;
 
@@ -90,7 +80,7 @@ PHPAPI int php_scandir(const char *dirname, struct dirent **namelist[], int (*se
 
 			newv = (struct dirent **) realloc (vector, vector_size * sizeof (struct dirent *));
 			if (!newv) {
-				return -1;
+				goto fail;
 			}
 			vector = newv;
 		}
@@ -120,15 +110,7 @@ fail:
 		free(vector[nfiles]);
 	}
 	free(vector);
+	closedir(dirp);
 	return -1;
 }
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

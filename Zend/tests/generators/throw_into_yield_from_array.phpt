@@ -6,23 +6,23 @@ Throwing into a generator yielding from an array/iterator
 $data = [1, 2, 3];
 
 function yielditer($arr) {
-	foreach($arr as $val) {
-		yield $val;
-	}
+    foreach($arr as $val) {
+        yield $val;
+    }
 }
 
 function yf($in) {
-	yield from $in;
+    yield from $in;
 }
 
 function test($g) {
-	var_dump($g->current());
-	try {
-		$g->throw(new Exception("Exception!"));
-	} catch (Exception $e) {
-		echo "{$e->getMessage()}\n";
-	}
-	var_dump($g->current());
+    var_dump($g->current());
+    try {
+        $g->throw(new Exception("Exception!"));
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+    var_dump($g->current());
 }
 
 $yfiter = yf($data);
@@ -35,9 +35,9 @@ test(yf(yielditer($data)));
 ?>
 --EXPECT--
 int(1)
-Exception!
+Exception: Exception!
 NULL
 
 int(1)
-Exception!
+Exception: Exception!
 NULL

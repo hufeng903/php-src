@@ -15,12 +15,19 @@ var_dump(array_slice(range(1, 3), -1, NULL, 1));
 
 
 $a = 'foo';
-var_dump(array_slice(range(1, 3), 0, $a));
-var_dump(array_slice(range(1, 3), 0, $a));
+try {
+    var_dump(array_slice(range(1, 3), 0, $a));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+    var_dump(array_slice(range(1, 3), 0, $a));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 var_dump($a);
 
 ?>
-
 --EXPECT--
 array(3) {
   [0]=>
@@ -54,8 +61,6 @@ array(1) {
   [2]=>
   int(3)
 }
-array(0) {
-}
-array(0) {
-}
+TypeError: array_slice(): Argument #3 ($length) must be of type ?int, string given
+TypeError: array_slice(): Argument #3 ($length) must be of type ?int, string given
 string(3) "foo"

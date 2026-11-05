@@ -1,19 +1,16 @@
 --TEST--
-Test gmstrftime() function : usage variation - Checking time related formats which are supported other than on Windows. 
+Test gmstrftime() function : usage variation - Checking time related formats which are supported other than on Windows.
 --SKIPIF--
 <?php
 if (strtoupper(substr(PHP_OS, 0, 3)) == 'WIN') {
     die("skip Test is not valid for Windows");
 }
+if (PHP_OS_FAMILY === 'Solaris') {
+    die("skip Solaris uses ' 8:08:08 AM' for %r (time format differs)");
+}
 ?>
 --FILE--
 <?php
-/* Prototype  : string gmstrftime(string format [, int timestamp])
- * Description: Format a GMT/UCT time/date according to locale settings 
- * Source code: ext/date/php_date.c
- * Alias to functions: 
- */
-
 echo "*** Testing gmstrftime() : usage variation ***\n";
 
 // Initialise function arguments not being substituted (if any)
@@ -23,9 +20,9 @@ date_default_timezone_set("Asia/Calcutta");
 
 //array of values to iterate over
 $inputs = array(
-	  'Time in a.m/p.m notation' => "%r",
-	  'Time in 24 hour notation' => "%R",
-	  'Current time %H:%M:%S format' => "%T",
+      'Time in a.m/p.m notation' => "%r",
+      'Time in 24 hour notation' => "%R",
+      'Current time %H:%M:%S format' => "%T",
 );
 
 // loop through each element of the array for timestamp
@@ -37,19 +34,29 @@ foreach($inputs as $key =>$value) {
 };
 
 ?>
-===DONE===
 --EXPECTF--
 *** Testing gmstrftime() : usage variation ***
 
 --Time in a.m/p.m notation--
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(%d) "%d:%d:%d %s"
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(11) "02:08:08 PM"
 
 --Time in 24 hour notation--
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(%d) "%d:%d"
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(5) "14:08"
 
 --Current time %H:%M:%S format--
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(%d) "%d:%d:%d"
+
+Deprecated: Function gmstrftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
 string(8) "14:08:08"
-===DONE===

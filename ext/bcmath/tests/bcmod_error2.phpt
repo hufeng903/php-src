@@ -1,12 +1,28 @@
 --TEST--
 bcmod() - mod by 0
---SKIPIF--
-<?php if(!extension_loaded("bcmath")) print "skip"; ?>
+--EXTENSIONS--
+bcmath
 --INI--
 bcmath.scale=0
 --FILE--
 <?php
-echo bcmod("10", "0");
+try {
+    bcmod("10", "0");
+} catch (Throwable $ex) {
+    echo $ex::class, ': ', $ex->getMessage(), "\n";
+}
+try {
+    bcmod("10", "0.000");
+} catch (Throwable $ex) {
+    echo $ex::class, ': ', $ex->getMessage(), "\n";
+}
+try {
+    bcmod("10", "-0.0");
+} catch (Throwable $ex) {
+    echo $ex::class, ': ', $ex->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Warning: bcmod(): Division by zero in %s on line %d
+--EXPECT--
+DivisionByZeroError: Modulo by zero
+DivisionByZeroError: Modulo by zero
+DivisionByZeroError: Modulo by zero

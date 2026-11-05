@@ -2,11 +2,6 @@
 Ensure type hints are enforced for functions invoked as callbacks.
 --FILE--
 <?php
-  set_error_handler('myErrorHandler', E_RECOVERABLE_ERROR);
-  function myErrorHandler($errno, $errstr, $errfile, $errline) {
-      echo "$errno: $errstr - $errfile($errline)\n";
-      return true;
-  }
 
   echo "---> Type hints with callback function:\n";
   class A  {  }
@@ -19,32 +14,32 @@ Ensure type hints are enforced for functions invoked as callbacks.
   try {
     call_user_func('f1', 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func('f1', new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func('f2', 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func('f2');
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func('f2', new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func('f2', null);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
 
   echo "\n\n---> Type hints with callback static method:\n";
@@ -68,32 +63,32 @@ Ensure type hints are enforced for functions invoked as callbacks.
   try {
     call_user_func(array('C', 'f1'), 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array('C', 'f1'), new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array('C', 'f2'), 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array('C', 'f2'));
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array('C', 'f2'), new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array('C', 'f2'), null);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
 
   echo "\n\n---> Type hints with callback instance method:\n";
@@ -118,64 +113,63 @@ Ensure type hints are enforced for functions invoked as callbacks.
   try {
     call_user_func(array($d, 'f1'), 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array($d, 'f1'), new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array($d, 'f2'), 1);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array($d, 'f2'));
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array($d, 'f2'), new A);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
   try {
     call_user_func(array($d, 'f2'), null);
   } catch (Error $ex) {
-    echo "{$ex->getCode()}: {$ex->getMessage()} - {$ex->getFile()}({$ex->getLine()})\n\n";
+    echo $ex::class, ': ', $ex->getCode(), ': ', $ex->getMessage(), ' in ', $ex->getFile(), ' on line ', $ex->getLine(), "\n";
   }
 
 ?>
 --EXPECTF--
+Deprecated: f2(): Implicitly marking parameter $a as nullable is deprecated, the explicit nullable type must be used instead in %s on line %d
+
+Deprecated: C::f2(): Implicitly marking parameter $a as nullable is deprecated, the explicit nullable type must be used instead in %s on line %d
+
+Deprecated: D::f2(): Implicitly marking parameter $a as nullable is deprecated, the explicit nullable type must be used instead in %s on line %d
 ---> Type hints with callback function:
-0: Argument 1 passed to f1() must be an instance of A, int given%s(%d)
-
+TypeError: 0: f1(): Argument #1 ($a) must be of type A, int given%s in %s on line %d
 in f1;
-0: Argument 1 passed to f2() must be an instance of A or null, int given%s(%d)
-
+TypeError: 0: f2(): Argument #1 ($a) must be of type ?A, int given%s in %s on line %d
 in f2;
 in f2;
 in f2;
 
 
 ---> Type hints with callback static method:
-0: Argument 1 passed to C::f1() must be an instance of A, int given%s(%d)
-
+TypeError: 0: C::f1(): Argument #1 ($a) must be of type A, int given%s in %s on line %d
 in C::f1 (static);
-0: Argument 1 passed to C::f2() must be an instance of A or null, int given%s(%d)
-
+TypeError: 0: C::f2(): Argument #1 ($a) must be of type ?A, int given%s in %s on line %d
 in C::f2 (static);
 in C::f2 (static);
 in C::f2 (static);
 
 
 ---> Type hints with callback instance method:
-0: Argument 1 passed to D::f1() must be an instance of A, int given%s(%d)
-
+TypeError: 0: D::f1(): Argument #1 ($a) must be of type A, int given%s in %s on line %d
 in C::f1 (instance);
-0: Argument 1 passed to D::f2() must be an instance of A or null, int given%s(%d)
-
+TypeError: 0: D::f2(): Argument #1 ($a) must be of type ?A, int given%s in %s on line %d
 in C::f2 (instance);
 in C::f2 (instance);
 in C::f2 (instance);

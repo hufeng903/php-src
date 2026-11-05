@@ -8,16 +8,13 @@ if (substr(PHP_OS, 0, 3) != 'WIN') {
 ?>
 --FILE--
 <?php
-/* Prototype : bool unlink ( string $filename [, resource $context] );
-   Description : Deletes filename
-*/
 
 /* Delete file having default permission but its dir having readonly permission
    Delete file having readonly permission but dir having default permission
 */
 
 
-$file_path = dirname(__FILE__);
+$file_path = __DIR__;
 
 // temp dir name used here
 $dirname = "$file_path/unlink_variation1";
@@ -78,7 +75,7 @@ bool(true)
 -- Unlinking file without write permission, its dir having default permission --
 bool(true)
 
-Warning: unlink(%s/unlink_variation1/unlink_variation1-win32.tmp): Permission denied in %s on line %d
+Warning: unlink(): Permission denied in %s on line %d
 bool(false)
 bool(true)
 bool(false)

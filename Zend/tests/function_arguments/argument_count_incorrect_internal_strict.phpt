@@ -4,15 +4,17 @@ Call internal function with incorrect number of arguments with strict types
 <?php
 declare(strict_types=1);
 try {
-	substr("foo");
-} catch (\Error $e) {
-	echo get_class($e) . PHP_EOL;
-	echo $e->getMessage() . PHP_EOL;
+    substr("foo");
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
-array_diff([]);
---EXPECTF--
-ArgumentCountError
-substr() expects at least 2 parameters, 1 given
-
-Warning: array_diff(): at least 2 parameters are required, 1 given in %s
+try {
+    array_diff();
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+?>
+--EXPECT--
+ArgumentCountError: substr() expects at least 2 arguments, 1 given
+ArgumentCountError: array_diff() expects at least 1 argument, 0 given

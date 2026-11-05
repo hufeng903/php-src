@@ -1,18 +1,22 @@
 --TEST--
 Bug #37773 (iconv_substr() gives "Unknown error" when string length = 1")
+--EXTENSIONS--
+iconv
 --SKIPIF--
-<?php 
-include('skipif.inc'); 
+<?php
 
 $test = @iconv_strpos("abbttt","ttt",0,"UTF-8");
 if ($test === false) {
-	die("skip UTF-8 is not supported?");
+    die("skip UTF-8 is not supported?");
 }
 
+if (PHP_OS_FAMILY === 'Solaris') {
+    die("skip Solaris iconv behaves differently");
+}
 ?>
 --FILE--
 <?php
-	var_dump(iconv_substr('x', 0, 1, 'UTF-8'));
+    var_dump(iconv_substr('x', 0, 1, 'UTF-8'));
 ?>
 --EXPECT--
 string(1) "x"

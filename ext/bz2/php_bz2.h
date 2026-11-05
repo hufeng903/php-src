@@ -1,27 +1,21 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Author: Sterling Hughes <sterling@php.net>                           |
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef PHP_BZ2_H
 #define PHP_BZ2_H
 
-#if HAVE_BZ2
+#ifdef HAVE_BZ2
 
 extern zend_module_entry bz2_module_entry;
 #define phpext_bz2_ptr &bz2_module_entry
@@ -67,11 +61,3 @@ extern const php_stream_ops php_stream_bz2io_ops;
 #define PHP_BZ2_FILTER_DEFAULT_WORKFACTOR       0
 
 #endif
-
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- */

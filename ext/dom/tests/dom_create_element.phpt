@@ -1,7 +1,7 @@
 --TEST--
 Test 1: Creating Elements with and without Namespaces
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 
@@ -221,7 +221,7 @@ try {
     print $e->getMessage() . "\n";
 }
 
-/* the qualifiedName has a prefix that is "xml" and the  namespaceURI 
+/* the qualifiedName has a prefix that is "xml" and the  namespaceURI
    is different from "http://www.w3.org/XML/1998/namespace" [XML Namespaces] */
 
 print "26 DOMDocument::createElementNS('http://wrong.namespaceURI.com', 'xml:valid')\n";
@@ -251,17 +251,13 @@ try {
     print $e->getMessage() . "\n";
 }
 
-/* This isn't because the xml namespace isn't there and we can't create it */
-print "29 DOMElement::__construct('xml:valid', '', 'http://www.w3.org/XML/1998/namespace')\n";
-try {
-    $element = new DomElement('xml:valid', '', 'http://www.w3.org/XML/1998/namespace');
-    print "valid\n";
-} catch (Exception $e) {
-    print $e->getMessage() . "\n";
-}
+/* There used to be a 29 here that tested DOMElement::__construct('xml:valid', '', 'http://www.w3.org/XML/1998/namespace').
+ * In libxml2 version 2.12 or prior this didn't work because the xml namespace isn't there and you can't create it without
+ * a document. Starting from libxml2 version 2.13 it does actually work because the XML namespace is statically defined.
+ * The behaviour from version 2.13 is actually the desired behaviour anyway. */
 
 
-/* the qualifiedName or its prefix is "xmlns" and the  namespaceURI is 
+/* the qualifiedName or its prefix is "xmlns" and the  namespaceURI is
    different from  "http://www.w3.org/2000/xmlns/" */
 
 print "30 DOMDocument::createElementNS('http://wrong.namespaceURI.com', 'xmlns:valid')\n";
@@ -298,7 +294,7 @@ try {
     print $e->getMessage() . "\n";
 }
 
-/* the namespaceURI is "http://www.w3.org/2000/xmlns/" and neither the 
+/* the namespaceURI is "http://www.w3.org/2000/xmlns/" and neither the
    qualifiedName nor its prefix is "xmlns". */
 
 print "34 DOMDocument::createElementNS('http://www.w3.org/2000/xmlns/', 'wrongprefix:valid')\n";
@@ -378,8 +374,6 @@ Namespace Error
 Namespace Error
 28 DOMDocument::createElementNS('http://www.w3.org/XML/1998/namespace', 'xml:valid')
 valid
-29 DOMElement::__construct('xml:valid', '', 'http://www.w3.org/XML/1998/namespace')
-Namespace Error
 30 DOMDocument::createElementNS('http://wrong.namespaceURI.com', 'xmlns:valid')
 Namespace Error
 31 DOMElement::__construct('xmlns:valid', '', 'http://wrong.namespaceURI.com')

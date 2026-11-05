@@ -1,17 +1,13 @@
 --TEST--
 Test mb_regex_encoding() function : basic functionality
+--EXTENSIONS--
+mbstring
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip');
 function_exists('mb_regex_encoding') or die("skip mb_regex_encoding() is not available in this build");
 ?>
 --FILE--
 <?php
-/* Prototype  : proto string mb_regex_encoding([string encoding])
- * Description: Returns the current encoding for regex as a string. 
- * Source code: ext/mbstring/php_mbregex.c 
- */
-
 /*
  * Test Basic functionality of mb_regex_encoding
  */
@@ -29,7 +25,13 @@ echo "Done";
 ?>
 --EXPECTF--
 *** Testing mb_regex_encoding() : basic functionality ***
+
+Deprecated: Function mb_regex_encoding() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(%d) "%s"
+
+Deprecated: Function mb_regex_encoding() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 bool(true)
+
+Deprecated: Function mb_regex_encoding() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(5) "UTF-8"
 Done

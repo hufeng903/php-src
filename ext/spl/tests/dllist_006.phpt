@@ -24,29 +24,27 @@ var_dump($a[2]);
 try {
     var_dump($a["1"]);
 } catch (OutOfRangeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
     var_dump($a["a"]);
-} catch (OutOfRangeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+} catch (TypeError $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
     var_dump($a["0"]);
 } catch (OutOfRangeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
     var_dump($a["9"]);
 } catch (OutOfRangeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 ?>
-===DONE===
-<?php exit(0); ?>
 --EXPECT--
 int(1)
 int(2)
@@ -56,7 +54,6 @@ Unsetting..
 int(3)
 int(4)
 int(2)
-Exception: Offset invalid or out of range
+TypeError: SplDoublyLinkedList::offsetGet(): Argument #1 ($index) must be of type int, string given
 int(1)
-Exception: Offset invalid or out of range
-===DONE===
+OutOfRangeException: SplDoublyLinkedList::offsetGet(): Argument #1 ($index) is out of range

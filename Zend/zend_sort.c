@@ -2,93 +2,23 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Xinchen Hui <laruence@php.net>                              |
    |          Sterling Hughes <sterling@php.net>                          |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include "zend.h"
 #include "zend_sort.h"
 #include <limits.h>
-
-#define QSORT_STACK_SIZE (sizeof(size_t) * CHAR_BIT)
-
-ZEND_API void zend_qsort(void *base, size_t nmemb, size_t siz, compare_func_t compare, swap_func_t swp) /* {{{ */
-{
-	void           *begin_stack[QSORT_STACK_SIZE];
-	void           *end_stack[QSORT_STACK_SIZE];
-	register char  *begin;
-	register char  *end;
-	register char  *seg1;
-	register char  *seg2;
-	register char  *seg2p;
-	register int    loop;
-	size_t          offset;
-
-	begin_stack[0] = (char *) base;
-	end_stack[0]   = (char *) base + ((nmemb - 1) * siz);
-
-	for (loop = 0; loop >= 0; --loop) {
-		begin = begin_stack[loop];
-		end   = end_stack[loop];
-
-		while (begin < end) {
-			offset = (end - begin) >> Z_L(1);
-			swp(begin, begin + (offset - (offset % siz)));
-
-			seg1 = begin + siz;
-			seg2 = end;
-
-			while (1) {
-				for (; seg1 < seg2 && compare(begin, seg1) > 0;
-				     seg1 += siz);
-
-				for (; seg2 >= seg1 && compare(seg2, begin) > 0;
-				     seg2 -= siz);
-
-				if (seg1 >= seg2)
-					break;
-
-				swp(seg1, seg2);
-
-				seg1 += siz;
-				seg2 -= siz;
-			}
-
-			swp(begin, seg2);
-
-			seg2p = seg2;
-
-			if ((seg2p - begin) <= (end - seg2p)) {
-				if ((seg2p + siz) < end) {
-					begin_stack[loop] = seg2p + siz;
-					end_stack[loop++] = end;
-				}
-				end = seg2p - siz;
-			}
-			else {
-				if ((seg2p - siz) > begin) {
-					begin_stack[loop] = begin;
-					end_stack[loop++] = seg2p - siz;
-				}
-				begin = seg2p + siz;
-			}
-		}
-	}
-}
-/* }}} */
 
 static inline void zend_sort_2(void *a, void *b, compare_func_t cmp, swap_func_t swp) /* {{{ */ {
 	if (cmp(a, b) > 0) {
@@ -374,12 +304,3 @@ done:
 	}
 }
 /* }}} */
-
-/*
- * Local Variables:
- * c-basic-offset: 4
- * tab-width: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

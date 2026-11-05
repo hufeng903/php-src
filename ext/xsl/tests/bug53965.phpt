@@ -1,13 +1,11 @@
 --TEST--
 Bug #53965 (<xsl:include> cannot find files with relative paths when loaded with "file://")
---SKIPIF--
-<?php
-if (!extension_loaded('xsl')) die("skip Extension XSL is required\n");
-?>
+--EXTENSIONS--
+xsl
 --FILE--
 <?php
 
-$base = 'file://' . dirname(__FILE__) . DIRECTORY_SEPARATOR . '53965';
+$base = 'file://' . __DIR__ . DIRECTORY_SEPARATOR . '53965';
 
 $xml = new DOMDocument();
 $xml->load($base . DIRECTORY_SEPARATOR . 'collection.xml');

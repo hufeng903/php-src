@@ -12,11 +12,11 @@ var_dump($it->getIteratorClass());
 
 try
 {
-	foreach(new RecursiveIteratorIterator(new ArrayObject($ar)) as $v) echo "$v\n";
+    foreach(new RecursiveIteratorIterator(new ArrayObject($ar)) as $v) echo "$v\n";
 }
 catch (InvalidArgumentException $e)
 {
-	echo $e->getMessage() . "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 echo "===MANUAL===\n";
@@ -27,8 +27,6 @@ foreach(new RecursiveIteratorIterator($it) as $v) echo "$v\n";
 
 
 ?>
-===DONE===
-<?php exit(0); ?>
 --EXPECT--
 1
 2
@@ -37,7 +35,7 @@ foreach(new RecursiveIteratorIterator($it) as $v) echo "$v\n";
 331
 4
 string(13) "ArrayIterator"
-An instance of RecursiveIterator or IteratorAggregate creating it is required
+InvalidArgumentException: An instance of RecursiveIterator or IteratorAggregate creating it is required
 ===MANUAL===
 string(22) "RecursiveArrayIterator"
 1
@@ -46,4 +44,3 @@ string(22) "RecursiveArrayIterator"
 32
 331
 4
-===DONE===

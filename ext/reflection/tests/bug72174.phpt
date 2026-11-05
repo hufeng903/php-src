@@ -17,7 +17,7 @@ class Foo
         var_dump(__METHOD__);
         return true;
     }
-    
+
     public function __get($name)
     {
         var_dump(__METHOD__);
@@ -27,7 +27,6 @@ class Foo
 
 $instance = new Foo();
 $reflectionBar = (new ReflectionProperty(Foo::class, 'bar'));
-$reflectionBar->setAccessible(true);
 var_dump($reflectionBar->getValue($instance));
 
 ?>

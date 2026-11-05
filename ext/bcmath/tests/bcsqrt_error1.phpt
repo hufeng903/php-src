@@ -3,11 +3,15 @@ bcsqrt — Get the square root of an arbitrary precision number
 --CREDITS--
 Antoni Torrents
 antoni@solucionsinternet.com
---SKIPIF--
-<?php if(!extension_loaded("bcmath")) print "skip"; ?>
+--EXTENSIONS--
+bcmath
 --FILE--
 <?php
-echo bcsqrt('-9');
+try {
+    bcsqrt('-9');
+} catch (Throwable $ex) {
+    echo $ex::class, ': ', $ex->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Warning: bcsqrt(): Square root of negative number in %s.php on line %d
+--EXPECT--
+ValueError: bcsqrt(): Argument #1 ($num) must be greater than or equal to 0

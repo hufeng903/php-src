@@ -27,13 +27,11 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: buffer.c,v 1.4 2018/02/21 21:26:00 christos Exp $")
+FILE_RCSID("@(#)$File: buffer.c,v 1.14 2025/05/28 19:22:22 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
-#ifdef PHP_WIN32
-#include "win32/unistd.h"
-#else
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #include <string.h>
@@ -41,10 +39,13 @@ FILE_RCSID("@(#)$File: buffer.c,v 1.4 2018/02/21 21:26:00 christos Exp $")
 #include <sys/stat.h>
 
 void
-buffer_init(struct buffer *b, int fd, const void *data, size_t len)
+buffer_init(struct buffer *b, int fd, const zend_stat_t *st, const void *data,
+    size_t len)
 {
 	b->fd = fd;
-	if (b->fd == -1 || zend_fstat(b->fd, &b->st) == -1)
+	if (st)
+		memcpy(&b->st, st, sizeof(b->st));
+	else if (b->fd == -1 || zend_fstat(b->fd, &b->st) == -1)
 		memset(&b->st, 0, sizeof(b->st));
 	b->fbuf = data;
 	b->flen = len;
@@ -57,6 +58,8 @@ void
 buffer_fini(struct buffer *b)
 {
 	efree(b->ebuf);
+	b->ebuf = NULL;
+	b->elen = 0;
 }
 
 int
@@ -65,13 +68,22 @@ buffer_fill(const struct buffer *bb)
 	struct buffer *b = CCAST(struct buffer *, bb);
 
 	if (b->elen != 0)
-		return b->elen == (size_t)~0 ? -1 : 0;
+		return b->elen == FILE_BADSIZE ? -1 : 0;
+
+	// Nothing to refill, everything is in memory
+	if (b->fd == -1)
+		return 0;
 
 	if (!S_ISREG(b->st.st_mode))
 		goto out;
 
-	b->elen =  (size_t)b->st.st_size < b->flen ?
-	    (size_t)b->st.st_size : b->flen;
+	b->elen = CAST(size_t, b->st.st_size) < b->flen ?
+	    CAST(size_t, b->st.st_size) : b->flen;
+	if (b->elen == 0) {
+		efree(b->ebuf);
+		b->ebuf = NULL;
+		return 0;
+	}
 	if ((b->ebuf = emalloc(b->elen)) == NULL)
 		goto out;
 
@@ -80,11 +92,12 @@ buffer_fill(const struct buffer *bb)
 		FINFO_READ_FUNC(b->fd, b->ebuf, b->elen) != (ssize_t)b->elen)
 	{
 		efree(b->ebuf);
+		b->ebuf = NULL;
 		goto out;
 	}
 
 	return 0;
 out:
-	b->elen = (size_t)~0;
+	b->elen = FILE_BADSIZE;
 	return -1;
 }

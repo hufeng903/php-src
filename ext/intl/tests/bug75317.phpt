@@ -1,9 +1,7 @@
 --TEST--
-Bug #75317 (UConverter::setDestinationEncoding changes source instead of destinatination)
---SKIPIF--
-<?php
-if (!extension_loaded('intl')) die('skip intl extension is not available');
-?>
+Bug #75317 (UConverter::setDestinationEncoding changes source instead of destination)
+--EXTENSIONS--
+intl
 --FILE--
 <?php
 $utf8 = UConverter::getAliases('utf-8')[0];
@@ -31,7 +29,7 @@ var_dump($c->setSourceEncoding('utf-32'));
 printResult($c->getDestinationEncoding(), $utf8);
 printResult($c->getSourceEncoding(), $utf32);
 
-// test invalid inputs dont change values
+// test invalid inputs don't change values
 var_dump($c->setDestinationEncoding('foobar') === false);
 var_dump($c->setSourceEncoding('foobar') === false);
 printResult($c->getDestinationEncoding(), $utf8);

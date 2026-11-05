@@ -14,8 +14,8 @@ trait THello2 {
 echo "PRE-CLASS-GUARD\n";
 
 class TraitsTest {
-	use THello1;
-	use THello2;
+    use THello1;
+    use THello2;
 }
 
 echo "POST-CLASS-GUARD\n";
@@ -23,7 +23,7 @@ echo "POST-CLASS-GUARD\n";
 $t = new TraitsTest;
 $t->hello = "foo";
 ?>
---EXPECTF--	
+--EXPECTF--
 PRE-CLASS-GUARD
 
 Fatal error: THello1 and THello2 define the same property ($hello) in the composition of TraitsTest. However, the definition differs and is considered incompatible. Class was composed in %s on line %d

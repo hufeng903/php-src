@@ -1,7 +1,9 @@
 --TEST--
 session object serialization
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.use_cookies=0
 session.cache_limiter=
@@ -11,10 +13,11 @@ session.save_handler=files
 <?php
 error_reporting(E_ALL);
 
+#[AllowDynamicProperties]
 class foo {
-	public $bar = "ok";
+    public $bar = "ok";
 
-	function method() { $this->yes = "done"; }
+    function method() { $this->yes = "done"; }
 }
 
 $baz = new foo;
@@ -31,6 +34,6 @@ $_SESSION["arr"] = $arr;
 print session_encode()."\n";
 
 session_destroy();
+?>
 --EXPECT--
 baz|O:3:"foo":2:{s:3:"bar";s:2:"ok";s:3:"yes";s:4:"done";}arr|a:1:{i:3;O:3:"foo":2:{s:3:"bar";s:2:"ok";s:3:"yes";s:4:"done";}}
-

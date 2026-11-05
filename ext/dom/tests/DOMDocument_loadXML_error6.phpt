@@ -1,0 +1,16 @@
+--TEST--
+Test DOMDocument::loadXML() with empty file path
+--EXTENSIONS--
+dom
+--FILE--
+<?php
+// create dom document
+$dom = new DOMDocument();
+try {
+    $dom->loadXML("");
+} catch (Throwable $exception) {
+    echo $exception::class, ': ', $exception->getMessage(), "\n";
+}
+?>
+--EXPECT--
+ValueError: DOMDocument::loadXML(): Argument #1 ($source) must not be empty

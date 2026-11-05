@@ -2,19 +2,20 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Anatol Belski <ab@php.net>                                  |
    +----------------------------------------------------------------------+
 */
+
+/* internal header; not supposed to be installed; FIXME but unfortunately is */
 
 #ifndef ZEND_STRTOD_INT_H
 #define ZEND_STRTOD_INT_H
@@ -42,27 +43,7 @@
 	https://wiki.php.net/rfc/remove_hex_support_in_numeric_strings */
 #define NO_HEX_FP 1
 
-#if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
-#elif defined(HAVE_STDINT_H)
-#include <stdint.h>
-#endif
-
-#ifndef HAVE_INT32_T
-# if SIZEOF_INT == 4
-typedef int int32_t;
-# elif SIZEOF_LONG == 4
-typedef long int int32_t;
-# endif
-#endif
-
-#ifndef HAVE_UINT32_T
-# if SIZEOF_INT == 4
-typedef unsigned int uint32_t;
-# elif SIZEOF_LONG == 4
-typedef unsigned long int uint32_t;
-# endif
-#endif
 
 #ifdef USE_LOCALE
 #undef USE_LOCALE
@@ -124,34 +105,4 @@ typedef unsigned long int uint32_t;
 #endif
 #endif
 
-#ifdef ZTS
-#define MULTIPLE_THREADS 1
-
-#define  ACQUIRE_DTOA_LOCK(x) \
-	if (0 == x) { \
-		tsrm_mutex_lock(dtoa_mutex); \
-	} else if (1 == x) { \
-		tsrm_mutex_lock(pow5mult_mutex); \
-	}
-
-#define FREE_DTOA_LOCK(x) \
-	if (0 == x) { \
-		tsrm_mutex_unlock(dtoa_mutex); \
-	} else if (1 == x) { \
-		tsrm_mutex_unlock(pow5mult_mutex); \
-	}
-
-
-#endif
-
 #endif /* ZEND_STRTOD_INT_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

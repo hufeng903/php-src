@@ -1,17 +1,14 @@
+#!/usr/bin/env php
 <?php
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Gustavo Lopes  <cataphract@php.net>                         |
    +----------------------------------------------------------------------+
@@ -23,21 +20,15 @@
 $t = <<<CODE
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-%s The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
 */
-
-/* \$Id$ */
 
 #ifndef HTML_TABLES_H
 #define HTML_TABLES_H
@@ -60,45 +51,48 @@ enum entity_charset { cs_utf_8, cs_8859_1, cs_cp1252, cs_8859_15, cs_cp1251,
 #define CHARSET_SINGLE_BYTE(cs)		((cs) > cs_utf_8 && (cs) < cs_big5)
 #define CHARSET_PARTIAL_SUPPORT(cs)	((cs) >= cs_big5)
 
+/* codesets must be lowercase, since lookup_charset() compares them with a lowercase copy of the hint */
 static const struct {
 	const char *codeset;
 	uint32_t codeset_len;
 	enum entity_charset charset;
 } charset_map[] = {
-	{ "ISO-8859-1",		sizeof("ISO-8859-1")-1,		cs_8859_1 },
-	{ "ISO8859-1",		sizeof("ISO8859-1")-1,		cs_8859_1 },
-	{ "ISO-8859-15",	sizeof("ISO-8859-15")-1,	cs_8859_15 },
-	{ "ISO8859-15",		sizeof("ISO8859-15")-1,		cs_8859_15 },
-	{ "utf-8",			sizeof("utf-8")-1,			cs_utf_8 },
+	{ "iso-8859-1",		sizeof("iso-8859-1")-1,		cs_8859_1 },
+	{ "iso8859-1",		sizeof("iso8859-1")-1,		cs_8859_1 },
+	{ "iso-8859-15",	sizeof("iso-8859-15")-1,	cs_8859_15 },
+	{ "iso8859-15",		sizeof("iso8859-15")-1,		cs_8859_15 },
 	{ "cp1252", 		sizeof("cp1252")-1, 		cs_cp1252 },
-	{ "Windows-1252",	sizeof("Windows-1252")-1,	cs_cp1252 },
+	{ "windows-1252",	sizeof("windows-1252")-1,	cs_cp1252 },
 	{ "1252",			sizeof("1252")-1,			cs_cp1252 },
-	{ "BIG5",			sizeof("BIG5")-1,			cs_big5 },
+	{ "big5",			sizeof("big5")-1,			cs_big5 },
 	{ "950",			sizeof("950")-1,			cs_big5 },
-	{ "GB2312",			sizeof("GB2312")-1,			cs_gb2312 },
+	{ "gb2312",			sizeof("gb2312")-1,			cs_gb2312 },
 	{ "936",			sizeof("936")-1,			cs_gb2312 },
-	{ "BIG5-HKSCS",		sizeof("BIG5-HKSCS")-1,		cs_big5hkscs },
-	{ "Shift_JIS",		sizeof("Shift_JIS")-1,		cs_sjis },
-	{ "SJIS",			sizeof("SJIS")-1,			cs_sjis },
+	{ "big5-hkscs",		sizeof("big5-hkscs")-1,		cs_big5hkscs },
+	{ "shift_jis",		sizeof("shift_jis")-1,		cs_sjis },
+	{ "sjis",			sizeof("sjis")-1,			cs_sjis },
 	{ "932",			sizeof("932")-1,			cs_sjis },
-	{ "SJIS-win",		sizeof("SJIS-win")-1,		cs_sjis },
-	{ "CP932",			sizeof("CP932")-1,			cs_sjis },
-	{ "EUCJP",			sizeof("EUCJP")-1,			cs_eucjp },
-	{ "EUC-JP",			sizeof("EUC-JP")-1,			cs_eucjp },
-	{ "eucJP-win",		sizeof("eucJP-win")-1,		cs_eucjp },
-	{ "KOI8-R",			sizeof("KOI8-R")-1,			cs_koi8r },
+	{ "sjis-win",		sizeof("sjis-win")-1,		cs_sjis },
+	{ "cp932",			sizeof("cp932")-1,			cs_sjis },
+	{ "eucjp",			sizeof("eucjp")-1,			cs_eucjp },
+	{ "euc-jp",			sizeof("euc-jp")-1,			cs_eucjp },
+	{ "eucjp-win",		sizeof("eucjp-win")-1,		cs_eucjp },
+	{ "koi8-r",			sizeof("koi8-r")-1,			cs_koi8r },
 	{ "koi8-ru",		sizeof("koi8-ru")-1,		cs_koi8r },
 	{ "koi8r",			sizeof("koi8r")-1,			cs_koi8r },
 	{ "cp1251",			sizeof("cp1251")-1,			cs_cp1251 },
-	{ "Windows-1251",	sizeof("Windows-1251")-1,	cs_cp1251 },
+	{ "windows-1251",	sizeof("windows-1251")-1,	cs_cp1251 },
 	{ "win-1251",		sizeof("win-1251")-1,		cs_cp1251 },
 	{ "iso8859-5",		sizeof("iso8859-5")-1,		cs_8859_5 },
 	{ "iso-8859-5",		sizeof("iso-8859-5")-1,		cs_8859_5 },
 	{ "cp866",			sizeof("cp866")-1,			cs_cp866 },
 	{ "866",			sizeof("866")-1,			cs_cp866 },
 	{ "ibm866",			sizeof("ibm866")-1,			cs_cp866 },
-	{ "MacRoman",		sizeof("MacRoman")-1,		cs_macroman }
+	{ "macroman",		sizeof("macroman")-1,		cs_macroman }
 };
+
+/* length of the longest codeset */
+#define LONGEST_CODESET_LENGTH 12
 
 /* longest entity name length excluding & and ; */
 #define LONGEST_ENTITY_LENGTH 31
@@ -122,7 +116,7 @@ typedef struct {
 
 CODE;
 
-echo sprintf($t, date("Y"));
+echo $t;
 
 $encodings = array(
     array(
@@ -185,15 +179,15 @@ foreach ($encodings as $e) {
 
     /* process file */
     $map = array();
-    $lines = explode("\n", file_get_contents($e{'file'}));
+    $lines = explode("\n", file_get_contents($e['file']));
     foreach ($lines as $l) {
         if (preg_match("/^0x([0-9A-Z]{2})\t0x([0-9A-Z]{2,})/i", $l, $matches))
             $map[] = array($matches[1], $matches[2]);
     }
-    
+
     $mappy = array();
     foreach ($map as $v) { $mappy[hexdec($v[0])] = hexdec($v[1]); }
-    
+
     $mstable = array("ident" => $e['ident']);
     /* calculate two-stage tables */
     for ($i = 0; $i < 4; $i++) {
@@ -202,7 +196,7 @@ foreach ($encodings as $e) {
             $mstable[$i][$j] = isset($mappy[$cp]) ? $mappy[$cp] : NULL;
         }
     }
-    
+
     echo
 "/* {{{ Stage 2 tables for {$e['name']} */\n\n";
 
@@ -212,9 +206,9 @@ foreach ($encodings as $e) {
             $s2tables_idents[$i] = $encodings[$t[0]/5]["ident"];
             continue;
         }
-        
+
         $s2tables_idents[$i] = $e["ident"];
-        
+
         echo "static const enc_to_uni_stage2 enc_to_uni_s2_{$e['ident']}_".
             sprintf("%02X", $i << 6)." = { {\n";
         for ($j = 0; $j < 64; $j++) {
@@ -227,10 +221,10 @@ foreach ($encodings as $e) {
                 echo "0xFFFF,"; /* special value; indicates no mapping */
         }
         echo "\n} };\n\n";
-        
+
         $prevStage2[] = $mstable[$i];
     }
-    
+
     echo
 "/* end of stage 2 tables for {$e['name']} }}} */\n\n";
 
@@ -328,28 +322,28 @@ foreach ($encodings as $e) {
 
     /* process file */
     $map = array();
-    $lines = explode("\n", file_get_contents($e{'file'}));
+    $lines = explode("\n", file_get_contents($e['file']));
     foreach ($lines as $l) {
         if (preg_match("/^0x([0-9A-Z]{2})\t0x([0-9A-Z]{2,})\s+#\s*(.*)$/i", $l, $matches))
             $map[] = array($matches[1], $matches[2], rtrim($matches[3]));
     }
-    
+
     $mappy = array();
     foreach ($map as $v) {
         if (hexdec($v[0]) >= $e['range'][0] && hexdec($v[0]) <= $e['range'][1])
             $mappy[hexdec($v[1])] = array(hexdec($v[0]), strtolower($v[2]));
     }
     ksort($mappy);
-    
+
     echo
 "static const uni_to_enc unimap_{$e['ident']}[] = {\n";
-    
+
     foreach ($mappy as $k => $v) {
         echo "\t{ ", sprintf("0x%04X", $k), ", ", sprintf("0x%02X", $v[0]), " },\t/* ",
             $v[1], " */\n";
     }
     echo "};\n";
-    
+
     echo
 "/* {{{ end of mappings *from* Unicode for {$e['name']} */\n\n";
 }
@@ -476,7 +470,7 @@ foreach ($multicp_rows as $k => $v) {
             $v['default'] = "gt";
 		echo "\t{ {", sprintf("\"%-21s", $v["default"].'",'),
 			"\t", sprintf("%02d", (count($v) - 1)), ",\t\t",
-            sprintf("% 2d", strlen($v["default"])), '} },', "\n"; 
+            sprintf("% 2d", strlen($v["default"])), '} },', "\n";
 	} else {
 		echo "\t{ {", sprintf("%-22s", 'NULL,'),
 			"\t", sprintf("%02d", count($v)), ",\t\t0} },\n";
@@ -484,7 +478,7 @@ foreach ($multicp_rows as $k => $v) {
 	unset($v["default"]);
 	foreach ($v as $l => $w) {
 		echo "\t{ {", sprintf("\"%-21s", $w.'",'), "\t", sprintf("0x%05s", $l), ",\t",
-            sprintf("% 2d", strlen($w)), '} },', "\n"; 
+            sprintf("% 2d", strlen($w)), '} },', "\n";
 	}
 	echo "};\n";
 }
@@ -561,7 +555,7 @@ for ($i = 0; $i < 0x1E; $i++) {
 				else
 					echo "{1, { {(void *)", sprintf("multi_cp_{$ident}_%05X",
 						($i << 12) | ($k << 6) | $y ), ", 0} } },";
-				
+
 			}
 			echo "\n};\n\n";
 		}
@@ -685,7 +679,7 @@ echo
 //			die("violated assumption for traverse_for_entities");
 //		}
 //	}
-//	
+//
 //	$k++;
 //}
 //echo "\n};\n\n";

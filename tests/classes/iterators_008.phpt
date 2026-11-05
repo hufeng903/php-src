@@ -5,31 +5,33 @@ Ensure plain userspace superclass does not override special iterator behaviour o
 Class C {}
 
 class D extends C implements Iterator {
-  
+
   private $counter = 2;
-  
-  public function valid() {
+
+  public function valid(): bool {
     echo __METHOD__ . "($this->counter)\n";
-    return $this->counter;    
+    return $this->counter;
   }
-  
-  public function next() {
-    $this->counter--;   
-    echo __METHOD__ . "($this->counter)\n";
-  }
-  
-  public function rewind() {
+
+  public function next(): void {
+    $this->counter--;
     echo __METHOD__ . "($this->counter)\n";
   }
-  
-  public function current() {
+
+  public function rewind(): void {
     echo __METHOD__ . "($this->counter)\n";
   }
-  
-  public function key() {
+
+  public function current(): mixed {
     echo __METHOD__ . "($this->counter)\n";
+    return null;
   }
-  
+
+  public function key(): mixed {
+    echo __METHOD__ . "($this->counter)\n";
+    return "";
+  }
+
 }
 
 foreach (new D as $x) {}

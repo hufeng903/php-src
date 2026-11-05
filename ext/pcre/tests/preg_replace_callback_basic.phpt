@@ -1,9 +1,8 @@
 --TEST--
-Test preg_replace_callback() function : basic functionality 
+Test preg_replace_callback() function : basic functionality
 --FILE--
 <?php
 /*
-* proto string preg_replace(mixed regex, mixed replace, mixed subject [, int limit [, count]])
 * Function is implemented in ext/pcre/php_pcre.c
 */
 /*
@@ -13,7 +12,7 @@ $replacement = array('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seve
 function integer_word($matches) {
     global $replacement;
     return $replacement[$matches[0]]; //all examples will be looking for an integer value, if one is found it will be stored in $matches[0] which corresponds to a key in the $replacements array
-    
+
 }
 $subject1 = 'there are 7 words in this sentence.';
 $new_subject1 = preg_replace_callback('/\d/', "integer_word", $subject1);

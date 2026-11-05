@@ -1,12 +1,7 @@
 --TEST--
 SQLite3_stmt::readOnly check
---SKIPIF--
-<?php require_once(__DIR__ . '/skipif.inc');
-$version = SQLite3::version();
-if ($version['versionNumber'] < 3007004) {
-  die("skip");
-}
-?>
+--EXTENSIONS--
+sqlite3
 --FILE--
 <?php
 

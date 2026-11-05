@@ -1,21 +1,19 @@
 --TEST--
 Test json_decode() function : JSON_THROW_ON_ERROR flag
---SKIPIF--
-<?php if(!extension_loaded('json')) die('skip json extension not loaded') ?>
 --FILE--
 <?php
 
 try {
-	var_dump(json_decode("{", false, 512, JSON_THROW_ON_ERROR));
+    var_dump(json_decode("{", false, 512, JSON_THROW_ON_ERROR));
 } catch (JsonException $e) {
-	var_dump($e);
+    var_dump($e);
 }
 
 ?>
 --EXPECTF--
 object(JsonException)#1 (7) {
   ["message":protected]=>
-  string(12) "Syntax error"
+  string(30) "Syntax error near location 1:2"
   ["string":"Exception":private]=>
   string(0) ""
   ["code":protected]=>

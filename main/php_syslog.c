@@ -1,26 +1,19 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 2017-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Philip Prindeville <philipp@redfish-solutions.com>           |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <stdlib.h>
 #include "php.h"
 #include "php_syslog.h"
@@ -37,10 +30,70 @@
 #define syslog std_syslog
 #endif
 
+PHPAPI void php_syslog_str(int priority, const zend_string* message)
+{
+	smart_string sbuf = {0};
+
+	if (PG(syslog_filter) == PHP_SYSLOG_FILTER_RAW) {
+		/* Just send it directly to the syslog */
+		syslog(priority, "%s", ZSTR_VAL(message));
+		return;
+	}
+
+	/* We use < because we don't want the final NUL byte to be converted to '\x00' */
+	for (size_t i = 0; i < ZSTR_LEN(message); ++i) {
+		unsigned char c = ZSTR_VAL(message)[i];
+
+		/* check for NVT ASCII only unless test disabled */
+		if (((0x20 <= c) && (c <= 0x7e))) {
+			smart_string_appendc(&sbuf, c);
+		} else if ((c >= 0x80) && (PG(syslog_filter) != PHP_SYSLOG_FILTER_ASCII)) {
+			smart_string_appendc(&sbuf, c);
+		} else if (c == '\n') {
+			/* Smart string is not NUL terminated */
+			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
+			smart_string_reset(&sbuf);
+		} else if ((c < 0x20) && (PG(syslog_filter) == PHP_SYSLOG_FILTER_ALL)) {
+			smart_string_appendc(&sbuf, c);
+		} else {
+			static const char xdigits[] = "0123456789abcdef";
+
+			smart_string_appendl(&sbuf, "\\x", 2);
+			smart_string_appendc(&sbuf, xdigits[c >> 4]);
+			smart_string_appendc(&sbuf, xdigits[c & 0xf]);
+		}
+	}
+
+	/* Smart string is not NUL terminated */
+	syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
+	smart_string_free(&sbuf);
+}
+
+void php_openlog(const char *ident, int option, int facility)
+{
+	openlog(ident, option, facility);
+	PG(have_called_openlog) = 1;
+}
+
+void php_closelog(void)
+{
+	closelog();
+	PG(have_called_openlog) = 0;
+}
+
 #ifdef PHP_WIN32
 PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 {
 	va_list args;
+
+	/*
+	 * don't rely on openlog() being called by syslog() if it's
+	 * not already been done; call it ourselves and pass the
+	 * correct parameters!
+	 */
+	if (!PG(have_called_openlog)) {
+		php_openlog(PG(syslog_ident), 0, PG(syslog_facility));
+	}
 
 	va_start(args, format);
 	vsyslog(priority, format, args);
@@ -50,43 +103,25 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 #else
 PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 {
-	const char *ptr;
-	unsigned char c;
-	smart_string fbuf = {0};
-	smart_string sbuf = {0};
+	zend_string *fbuf = NULL;
 	va_list args;
 
-	va_start(args, format);
-	zend_printf_to_smart_string(&fbuf, format, args);
-	smart_string_0(&fbuf);
-	va_end(args);
-
-	for (ptr = fbuf.c; ; ++ptr) {
-		c = *ptr;
-		if (c == '\0') {
-			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
-			break;
-		}
-
-		if (c != '\n')
-			smart_string_appendc(&sbuf, c);
-		else {
-			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
-			smart_string_reset(&sbuf);
-		}
+	/*
+	 * don't rely on openlog() being called by syslog() if it's
+	 * not already been done; call it ourselves and pass the
+	 * correct parameters!
+	 */
+	if (!PG(have_called_openlog)) {
+		php_openlog(PG(syslog_ident), 0, PG(syslog_facility));
 	}
 
-	smart_string_free(&fbuf);
-	smart_string_free(&sbuf);
+	va_start(args, format);
+	fbuf = zend_vstrpprintf(0, format, args);
+	va_end(args);
+
+	php_syslog_str(priority, fbuf);
+
+	zend_string_release(fbuf);
 }
 /* }}} */
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

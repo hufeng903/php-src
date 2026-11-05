@@ -1,7 +1,7 @@
 --TEST--
 filter_var() and FILTER_VALIDATE_IP
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 var_dump(filter_var("192.168.0.1", FILTER_VALIDATE_IP));
@@ -30,7 +30,7 @@ var_dump(filter_var("::1", FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO
 var_dump(filter_var("127.0.0.1", FILTER_VALIDATE_IP, FILTER_FLAG_IPV4));
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 string(11) "192.168.0.1"
 bool(false)
 string(3) "::1"

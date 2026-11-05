@@ -1,7 +1,7 @@
 --TEST--
 gmp_binomial(): Binomial coefficients
---SKIPIF--
-<?php if (!extension_loaded('gmp')) die('skip gmp extension not loaded'); ?>
+--EXTENSIONS--
+gmp
 --FILE--
 <?php
 
@@ -20,8 +20,11 @@ var_dump(gmp_binomial(1, 1));
 var_dump(gmp_binomial(-1, 5)); // == -(1 + 5 - 1 over 5)
 var_dump(gmp_binomial(-2, 6)); // == (2 + 6 - 1 over 6)
 
-var_dump(gmp_binomial(5, -2));
-
+try {
+    var_dump(gmp_binomial(5, -2));
+} catch (\ValueError $e) {
+    echo $e::class, ': ', $e->getMessage(), PHP_EOL;
+}
 ?>
 --EXPECTF--
 object(GMP)#1 (1) {
@@ -64,6 +67,4 @@ object(GMP)#2 (1) {
   ["num"]=>
   string(1) "7"
 }
-
-Warning: gmp_binomial(): k cannot be negative in %s on line %d
-bool(false)
+ValueError: gmp_binomial(): Argument #2 ($k) must be between 0 and %d

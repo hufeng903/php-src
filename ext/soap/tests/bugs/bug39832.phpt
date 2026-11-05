@@ -1,7 +1,7 @@
 --TEST--
 Bug #39832 (SOAP Server: parameter not matching the WSDL specified type are set to 0)
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+soap
 --INI--
 soap.wsdl_cache_enabled=0
 --FILE--
@@ -20,10 +20,10 @@ function Test($x) {
   return $x->priority;
 }
 
-$x = new SoapServer(dirname(__FILE__)."/bug39832.wsdl");
+$x = new SoapServer(__DIR__."/bug39832.wsdl");
 $x->addFunction("Test");
 $x->handle($HTTP_RAW_POST_DATA);
 ?>
 --EXPECT--
 <?xml version="1.0" encoding="UTF-8"?>
-<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>SOAP-ENV:Server</faultcode><faultstring>SOAP-ERROR: Encoding: Violation of encoding rules</faultstring></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>SOAP-ENV:Server</faultcode><faultstring>SOAP-ERROR: Encoding: Invalid value for type 'integer'</faultstring></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>

@@ -7,18 +7,13 @@ if(substr(PHP_OS, 0, 3) != "WIN")
 ?>
 --FILE--
 <?php
-/* Prototype: bool copy ( string $source, string $dest );
-   Description: Makes a copy of the file source to dest.
-     Returns TRUE on success or FALSE on failure.
-*/
-
 /* Test copy() function: In creation of destination file names containing special characters
      and checking the existence and size of destination files
 */
 
 echo "*** Test copy() function: destination file names containing special characters ***\n";
-$file_path = dirname(__FILE__);
-$src_file_name = $file_path."/copy_variation2.tmp"; 
+$file_path = __DIR__;
+$src_file_name = $file_path."/copy_variation2.tmp";
 $file_handle = fopen($src_file_name, "w");
 fwrite( $file_handle, str_repeat("Hello2World...\n", 100) );
 fclose($file_handle);
@@ -27,7 +22,7 @@ fclose($file_handle);
 $dest_files = array(
 
   /* File names containing special(non-alpha numeric) characters */
-  "_copy_variation2.tmp", 
+  "_copy_variation2.tmp",
   "@copy_variation2.tmp",
   "#copy_variation2.tmp",
   "+copy_variation2.tmp",
@@ -83,12 +78,10 @@ foreach($dest_files as $dest_file) {
 
 echo "*** Done ***\n";
 ?>
-
 --CLEAN--
 <?php
-unlink(dirname(__FILE__)."/copy_variation2.tmp");
+unlink(__DIR__."/copy_variation2.tmp");
 ?>
-
 --EXPECTF--
 *** Test copy() function: destination file names containing special characters ***
 Size of the source file before copy operation => int(1500)
@@ -124,13 +117,13 @@ Size of destination file => int(1500)
 
 -- Iteration 5 --
 Copy operation => 
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 Existence of destination file => bool(false)
 
 -- Iteration 6 --
 Copy operation => 
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 Existence of destination file => bool(false)
 
@@ -157,7 +150,7 @@ Size of destination file => int(1500)
 
 -- Iteration 10 --
 Copy operation => 
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 Existence of destination file => bool(false)
 
@@ -198,7 +191,7 @@ Size of destination file => int(1500)
 
 -- Iteration 16 --
 Copy operation => 
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 Existence of destination file => bool(false)
 

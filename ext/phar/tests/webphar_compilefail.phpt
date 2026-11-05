@@ -1,7 +1,7 @@
 --TEST--
 Phar: Phar::webPhar, open compiled file fails
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip");?>
+--EXTENSIONS--
+phar
 --INI--
 phar.readonly=1
 --FILE--
@@ -9,9 +9,9 @@ phar.readonly=1
 try {
 Phar::webPhar('oopsiedaisy.phar', '/index.php');
 } catch (Exception $e) {
-echo $e->getMessage() . "\n";
+echo $e::class, ': ', $e->getMessage(), "\n";
 }
 __HALT_COMPILER();
 ?>
 --EXPECTF--
-internal corruption of phar "%swebphar_compilefail.php" (truncated manifest at manifest length)
+PharException: internal corruption of phar "%swebphar_compilefail.php" (truncated manifest at manifest length)

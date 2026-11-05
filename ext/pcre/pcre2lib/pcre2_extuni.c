@@ -7,7 +7,7 @@ and semantics are as close as possible to those of the Perl 5 language.
 
                        Written by Philip Hazel
      Original API code Copyright (c) 1997-2012 University of Cambridge
-          New API code Copyright (c) 2016-2018 University of Cambridge
+          New API code Copyright (c) 2016-2024 University of Cambridge
 
 -----------------------------------------------------------------------------
 Redistribution and use in source and binary forms, with or without
@@ -75,7 +75,11 @@ return NULL;
 *      Match an extended grapheme sequence       *
 *************************************************/
 
-/*
+/* NOTE: The logic contained in this function is replicated in three special-
+purpose functions in the pcre2_jit_compile.c module. If the logic below is
+changed, they must be kept in step so that the interpreter and the JIT have the
+same behaviour.
+
 Arguments:
   c              the first character
   eptr           pointer to next character
@@ -92,6 +96,7 @@ PCRE2_SPTR
 PRIV(extuni)(uint32_t c, PCRE2_SPTR eptr, PCRE2_SPTR start_subject,
   PCRE2_SPTR end_subject, BOOL utf, int *xcount)
 {
+BOOL was_ep_ZWJ = FALSE;
 int lgb = UCD_GRAPHBREAK(c);
 
 while (eptr < end_subject)
@@ -100,12 +105,18 @@ while (eptr < end_subject)
   int len = 1;
   if (!utf) c = *eptr; else { GETCHARLEN(c, eptr, len); }
   rgb = UCD_GRAPHBREAK(c);
-  if ((PRIV(ucp_gbtable)[lgb] & (1 << rgb)) == 0) break;
+  if ((PRIV(ucp_gbtable)[lgb] & (1u << rgb)) == 0) break;
+
+  /* ZWJ followed by Extended Pictographic is allowed only if the ZWJ was
+  preceded by Extended Pictographic. */
+
+  if (lgb == ucp_gbZWJ && rgb == ucp_gbExtended_Pictographic && !was_ep_ZWJ)
+    break;
 
   /* Not breaking between Regional Indicators is allowed only if there
   are an even number of preceding RIs. */
 
-  if (lgb == ucp_gbRegionalIndicator && rgb == ucp_gbRegionalIndicator)
+  if (lgb == ucp_gbRegional_Indicator && rgb == ucp_gbRegional_Indicator)
     {
     int ricount = 0;
     PCRE2_SPTR bptr = eptr - 1;
@@ -123,18 +134,21 @@ while (eptr < end_subject)
         }
       else
       c = *bptr;
-      if (UCD_GRAPHBREAK(c) != ucp_gbRegionalIndicator) break;
+      if (UCD_GRAPHBREAK(c) != ucp_gbRegional_Indicator) break;
       ricount++;
       }
     if ((ricount & 1) != 0) break;  /* Grapheme break required */
     }
 
-  /* If Extend follows E_Base[_GAZ] do not update lgb; this allows
-  any number of Extend before a following E_Modifier. */
+  /* Set a flag when ZWJ follows Extended Pictographic (with optional Extend in
+  between; see next statement). */
 
-  if (rgb != ucp_gbExtend ||
-      (lgb != ucp_gbE_Base && lgb != ucp_gbE_Base_GAZ))
-    lgb = rgb;
+  was_ep_ZWJ = (lgb == ucp_gbExtended_Pictographic && rgb == ucp_gbZWJ);
+
+  /* If Extend follows Extended_Pictographic, do not update lgb; this allows
+  any number of them before a following ZWJ. */
+
+  if (rgb != ucp_gbExtend || lgb != ucp_gbExtended_Pictographic) lgb = rgb;
 
   eptr += len;
   if (xcount != NULL) *xcount += 1;

@@ -2,25 +2,24 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Andi Gutmans <andi@zend.com>                                |
-   |          Zeev Suraski <zeev@zend.com>                                |
+   | Authors: Andi Gutmans <andi@php.net>                                 |
+   |          Zeev Suraski <zeev@php.net>                                 |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef ZEND_HIGHLIGHT_H
 #define ZEND_HIGHLIGHT_H
+
+#include "zend_types.h"
 
 #define HL_COMMENT_COLOR     "#FF8000"    /* orange */
 #define HL_DEFAULT_COLOR     "#0000BB"    /* blue */
@@ -30,19 +29,19 @@
 
 
 typedef struct _zend_syntax_highlighter_ini {
-	char *highlight_html;
-	char *highlight_comment;
-	char *highlight_default;
-	char *highlight_string;
-	char *highlight_keyword;
+	const char *highlight_html;
+	const char *highlight_comment;
+	const char *highlight_default;
+	const char *highlight_string;
+	const char *highlight_keyword;
 } zend_syntax_highlighter_ini;
 
 
 BEGIN_EXTERN_C()
 ZEND_API void zend_highlight(zend_syntax_highlighter_ini *syntax_highlighter_ini);
 ZEND_API void zend_strip(void);
-ZEND_API int highlight_file(char *filename, zend_syntax_highlighter_ini *syntax_highlighter_ini);
-ZEND_API int highlight_string(zval *str, zend_syntax_highlighter_ini *syntax_highlighter_ini, char *str_name);
+ZEND_API zend_result highlight_file(const char *filename, zend_syntax_highlighter_ini *syntax_highlighter_ini);
+ZEND_API void highlight_string(zend_string *str, zend_syntax_highlighter_ini *syntax_highlighter_ini, const char *str_name);
 ZEND_API void zend_html_putc(char c);
 ZEND_API void zend_html_puts(const char *s, size_t len);
 END_EXTERN_C()
@@ -50,13 +49,3 @@ END_EXTERN_C()
 extern zend_syntax_highlighter_ini syntax_highlighter_ini;
 
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

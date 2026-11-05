@@ -3,9 +3,12 @@ Calling get_called_class() outside a class
 --FILE--
 <?php
 
-var_dump(get_called_class());
+try {
+    var_dump(get_called_class());
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 ?>
---EXPECTF--
-Warning: get_called_class() called from outside a class in %s on line %d
-bool(false)
+--EXPECT--
+Error: get_called_class() must be called from within a class

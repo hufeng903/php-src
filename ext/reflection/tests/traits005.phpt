@@ -9,7 +9,8 @@ class C2 { use T1; }
 class C3 { use T1 { m1 as a1; } }
 class C4 { use T1 { m1 as a1; m2 as a2; } }
 
-for ($c = "C1"; $c <= "C4"; $c++) {
+$classes  = ['C1', 'C2', 'C3', 'C4'];
+foreach ($classes as $c) {
     echo "class $c:\n";
     $r = new ReflectionClass($c);
     var_dump($r->getTraitAliases());
@@ -38,4 +39,3 @@ array(2) {
   ["a2"]=>
   string(6) "T1::m2"
 }
-

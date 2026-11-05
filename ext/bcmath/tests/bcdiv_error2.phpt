@@ -1,13 +1,23 @@
 --TEST--
-bcdiv — Divide two arbitrary precision numbers
---CREDITS--
-Antoni Torrents
-antoni@solucionsinternet.com
---SKIPIF--
-<?php if(!extension_loaded("bcmath")) print "skip"; ?>
+bcdiv() requires well-formed values
+--EXTENSIONS--
+bcmath
 --FILE--
 <?php
-echo bcdiv('1', '2', '3', '4');
+
+try {
+    bcdiv('a', '1');
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+    bcdiv('1', 'a');
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
 ?>
---EXPECTF--
-Warning: bcdiv() expects at most 3 parameters, 4 given in %s.php on line %d
+--EXPECT--
+ValueError: bcdiv(): Argument #1 ($num1) is not well-formed
+ValueError: bcdiv(): Argument #2 ($num2) is not well-formed

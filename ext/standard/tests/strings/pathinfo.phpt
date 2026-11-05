@@ -3,7 +3,6 @@ pathinfo() tests
 --FILE--
 <?php
 
-var_dump(pathinfo());
 var_dump(pathinfo(""));
 var_dump(pathinfo("."));
 var_dump(pathinfo(".."));
@@ -15,20 +14,52 @@ var_dump(pathinfo(__FILE__, PATHINFO_BASENAME));
 var_dump(pathinfo(__FILE__, PATHINFO_FILENAME));
 var_dump(pathinfo(__FILE__, PATHINFO_EXTENSION));
 var_dump(pathinfo(__FILE__, PATHINFO_DIRNAME));
-var_dump(pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_FILENAME|PATHINFO_DIRNAME));
-var_dump(pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_FILENAME|PATHINFO_BASENAME));
-var_dump(pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_FILENAME));
-var_dump(pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_BASENAME));
-var_dump(pathinfo(__FILE__, PATHINFO_FILENAME|PATHINFO_DIRNAME));
-var_dump(pathinfo(__FILE__, PATHINFO_FILENAME|PATHINFO_BASENAME));
-var_dump(pathinfo(__FILE__, PATHINFO_DIRNAME|PATHINFO_EXTENSION));
-var_dump(pathinfo(__FILE__, PATHINFO_DIRNAME|PATHINFO_BASENAME));
+
+try {
+	pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_FILENAME|PATHINFO_DIRNAME);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_FILENAME);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_EXTENSION|PATHINFO_DIRNAME);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_FILENAME|PATHINFO_BASENAME);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_DIRNAME|PATHINFO_EXTENSION);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_DIRNAME|PATHINFO_BASENAME);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+	pathinfo(__FILE__, PATHINFO_DIRNAME-1);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+	pathinfo(__FILE__, PATHINFO_ALL+1);
+} catch (Throwable $e) {
+	echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 echo "Done\n";
 ?>
---EXPECTF--	
-Warning: pathinfo() expects at least 1 parameter, 0 given in %s on line %d
-NULL
+--EXPECTF--
 array(2) {
   ["basename"]=>
   string(0) ""
@@ -97,12 +128,12 @@ string(12) "pathinfo.php"
 string(8) "pathinfo"
 string(3) "php"
 string(%d) "%s%estrings"
-string(%d) "%s%estrings"
-string(12) "pathinfo.php"
-string(3) "php"
-string(12) "pathinfo.php"
-string(%d) "%s%estrings"
-string(12) "pathinfo.php"
-string(%d) "%s%estrings"
-string(%d) "%s%estrings"
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be only one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be one of the PATHINFO_* constants
+ValueError: pathinfo(): Argument #2 ($flags) must be one of the PATHINFO_* constants
 Done

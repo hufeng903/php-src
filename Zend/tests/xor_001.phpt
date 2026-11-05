@@ -6,11 +6,14 @@ XORing arrays
 $a = array(1,2,3);
 $b = array();
 
-$c = $a ^ $b;
-var_dump($c);
+try {
+    $c = $a ^ $b;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 echo "Done\n";
 ?>
---EXPECT--	
-int(1)
+--EXPECT--
+TypeError: Unsupported operand types: array ^ array
 Done

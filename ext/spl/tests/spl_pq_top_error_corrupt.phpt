@@ -8,13 +8,13 @@ Nathaniel McHugh nat@fishtrap.co.uk
 
 class myPriorityQueue extends SplPriorityQueue{
 
-	public function compare($a, $b){
-	 	 if ($b == 2) {
-		throw new Exception('ignore me');
-		}  else {
-		return parent::compare($a, $b);
-		}
-	}
+    public function compare($a, $b): int {
+         if ($b == 2) {
+        throw new Exception('ignore me');
+        }  else {
+        return parent::compare($a, $b);
+        }
+    }
 }
 
 $priorityQueue = new myPriorityQueue();
@@ -30,9 +30,9 @@ try {
 try {
     $priorityQueue->top();
 } catch (RuntimeException $e) {
-  echo "Exception: ".$e->getMessage().PHP_EOL;
+  echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 
 ?>
 --EXPECT--
-Exception: Heap is corrupted, heap properties are no longer ensured.
+RuntimeException: Heap is corrupted, heap properties are no longer ensured.

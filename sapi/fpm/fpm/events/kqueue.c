@@ -1,29 +1,23 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Jerome Loyet <jerome@loyet.net>                             |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "../fpm_config.h"
 #include "../fpm_events.h"
 #include "../fpm.h"
 #include "../zlog.h"
 
-#if HAVE_KQUEUE
+#ifdef HAVE_KQUEUE
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -32,7 +26,7 @@
 #include <errno.h>
 
 static int fpm_event_kqueue_init(int max);
-static int fpm_event_kqueue_clean();
+static int fpm_event_kqueue_clean(void);
 static int fpm_event_kqueue_wait(struct fpm_event_queue_s *queue, unsigned long int timeout);
 static int fpm_event_kqueue_add(struct fpm_event_s *ev);
 static int fpm_event_kqueue_remove(struct fpm_event_s *ev);
@@ -56,9 +50,9 @@ static int kfd = 0;
 /*
  * Return the module configuration
  */
-struct fpm_event_module_s *fpm_event_kqueue_module() /* {{{ */
+struct fpm_event_module_s *fpm_event_kqueue_module(void) /* {{{ */
 {
-#if HAVE_KQUEUE
+#ifdef HAVE_KQUEUE
 	return &kqueue_module;
 #else
 	return NULL;
@@ -66,7 +60,7 @@ struct fpm_event_module_s *fpm_event_kqueue_module() /* {{{ */
 }
 /* }}} */
 
-#if HAVE_KQUEUE
+#ifdef HAVE_KQUEUE
 
 /*
  * init kqueue and stuff
@@ -83,13 +77,11 @@ static int fpm_event_kqueue_init(int max) /* {{{ */
 		return -1;
 	}
 
-	kevents = malloc(sizeof(struct kevent) * max);
+	kevents = calloc(max, sizeof(struct kevent));
 	if (!kevents) {
-		zlog(ZLOG_ERROR, "epoll: unable to allocate %d events", max);
+		zlog(ZLOG_ERROR, "kevent: unable to allocate %d events", max);
 		return -1;
 	}
-
-	memset(kevents, 0, sizeof(struct kevent) * max);
 
 	nkevents = max;
 
@@ -100,7 +92,7 @@ static int fpm_event_kqueue_init(int max) /* {{{ */
 /*
  * release kqueue stuff
  */
-static int fpm_event_kqueue_clean() /* {{{ */
+static int fpm_event_kqueue_clean(void) /* {{{ */
 {
 	if (kevents) {
 		free(kevents);
@@ -134,7 +126,7 @@ static int fpm_event_kqueue_wait(struct fpm_event_queue_s *queue, unsigned long 
 
 		/* trigger error unless signal interrupt */
 		if (errno != EINTR) {
-			zlog(ZLOG_WARNING, "epoll_wait() returns %d", errno);
+			zlog(ZLOG_WARNING, "kevent() returns %d", errno);
 			return -1;
 		}
 	}
@@ -156,7 +148,7 @@ static int fpm_event_kqueue_wait(struct fpm_event_queue_s *queue, unsigned long 
 /* }}} */
 
 /*
- * Add a FD to to kevent queue
+ * Add a FD to kevent queue
  */
 static int fpm_event_kqueue_add(struct fpm_event_s *ev) /* {{{ */
 {
@@ -195,11 +187,11 @@ static int fpm_event_kqueue_remove(struct fpm_event_s *ev) /* {{{ */
 	EV_SET(&k, ev->fd, EVFILT_READ, flags, 0, 0, (void *)ev);
 
 	if (kevent(kfd, &k, 1, NULL, 0, NULL) < 0) {
-		zlog(ZLOG_ERROR, "kevent: unable to add event");
+		zlog(ZLOG_ERROR, "kevent: unable to delete event");
 		return -1;
 	}
 
-	/* mark the vent as not registered */
+	/* mark the event as not registered */
 	ev->index = -1;
 	return 0;
 }

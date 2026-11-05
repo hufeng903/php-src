@@ -1,8 +1,9 @@
 --TEST--
-php-users@php.gr.jp #10830 
+php-users@php.gr.jp #10830
+--EXTENSIONS--
+mbstring
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip mbstring not available');
 function_exists('mb_ereg') or die("skip mb_ereg() is not available in this build");
 ?>
 --FILE--
@@ -12,7 +13,7 @@ $a="aaa\n<>";
 var_dump( mb_ereg("^[^><]+$",$a) );
 var_dump( !!preg_match("/^[^><]+$/",$a) );
 ?>
-
---EXPECT--
+--EXPECTF--
+Deprecated: Function mb_ereg() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 bool(false)
 bool(false)

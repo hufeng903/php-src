@@ -7,13 +7,13 @@ PHPNW Test Fest 2009 - Jeremy Coates jeremy@phpnw.org.uk
 
 try {
 
-	$dll = new SplQueue();
-	$dll->setIteratorMode(SplDoublyLinkedList::IT_MODE_LIFO);
+    $dll = new SplQueue();
+    $dll->setIteratorMode(SplDoublyLinkedList::IT_MODE_LIFO);
 
 } catch (Exception $e) {
-	echo $e->getMessage();
+    echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 
 ?>
 --EXPECT--
-Iterators' LIFO/FIFO modes for SplStack/SplQueue objects are frozen
+RuntimeException: Iterators' LIFO/FIFO modes for SplStack/SplQueue objects are frozen

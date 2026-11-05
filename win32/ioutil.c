@@ -1,16 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Anatol Belski <ab@php.net>                                   |
    +----------------------------------------------------------------------+
@@ -60,6 +56,8 @@
 #include "main/streams/php_stream_plain_wrapper.h"
 
 #include <pathcch.h>
+#include <winioctl.h>
+#include <winnt.h>
 
 /*
 #undef NONLS
@@ -67,9 +65,174 @@
 #include <winnls.h>
 */
 
-typedef HRESULT (__stdcall *MyPathCchCanonicalizeEx)(wchar_t *pszPathOut, size_t cchPathOut, const wchar_t *pszPathIn, unsigned long dwFlags);
+typedef ULONG (WINAPI *php_win32_ioutil_rtl_is_dos_device_name_u_t)(PCWSTR);
 
-static MyPathCchCanonicalizeEx canonicalize_path_w = NULL;
+/* Resolved on first use as there is no ioutil init hook on this branch. */
+static php_win32_ioutil_rtl_is_dos_device_name_u_t php_win32_ioutil_get_rtl_is_dos_device_name_u(void)
+{/*{{{*/
+	static php_win32_ioutil_rtl_is_dos_device_name_u_t fn = NULL;
+	static BOOL resolved = FALSE;
+
+	if (!resolved) {
+		HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+		if (hMod) {
+			fn = (php_win32_ioutil_rtl_is_dos_device_name_u_t)GetProcAddress(hMod, "RtlIsDosDeviceName_U");
+		}
+		resolved = TRUE;
+	}
+
+	return fn;
+}/*}}}*/
+
+static BOOL php_win32_ioutil_is_reserved_name_w(const wchar_t *name, size_t len)
+{/*{{{*/
+	if (len == 3) {
+		return _wcsnicmp(name, L"CON", 3) == 0
+			|| _wcsnicmp(name, L"PRN", 3) == 0
+			|| _wcsnicmp(name, L"AUX", 3) == 0
+			|| _wcsnicmp(name, L"NUL", 3) == 0;
+	}
+
+	if (len == 4 && (_wcsnicmp(name, L"COM", 3) == 0 || _wcsnicmp(name, L"LPT", 3) == 0)) {
+		return (name[3] >= L'1' && name[3] <= L'9')
+			|| name[3] == L'\u00B2'
+			|| name[3] == L'\u00B3'
+			|| name[3] == L'\u00B9';
+	}
+
+	return (len == 6 && _wcsnicmp(name, L"CONIN$", 6) == 0)
+		|| (len == 7 && _wcsnicmp(name, L"CONOUT$", 7) == 0);
+}/*}}}*/
+
+/* Also catches variants like NUL.txt, NUL:stream or "NUL ", as far as the OS treats them as devices. */
+static BOOL php_win32_ioutil_is_reserved_component_w(const wchar_t *name, size_t len)
+{/*{{{*/
+	size_t base_len = len;
+	wchar_t *tmp;
+	BOOL ret;
+	ALLOCA_FLAG(use_heap)
+
+	if (php_win32_ioutil_is_reserved_name_w(name, len)) {
+		return TRUE;
+	}
+
+	for (size_t i = 0; i < len; i++) {
+		if (name[i] == L'.' || name[i] == L':') {
+			base_len = i;
+			break;
+		}
+	}
+	while (base_len > 0 && name[base_len - 1] == L' ') {
+		base_len--;
+	}
+
+	if (base_len == len || !php_win32_ioutil_is_reserved_name_w(name, base_len)) {
+		return FALSE;
+	}
+
+	php_win32_ioutil_rtl_is_dos_device_name_u_t rtl_is_dos_device_name_u = php_win32_ioutil_get_rtl_is_dos_device_name_u();
+	if (!rtl_is_dos_device_name_u) {
+		return TRUE;
+	}
+
+	tmp = do_alloca((len + 1) * sizeof(wchar_t), use_heap);
+	memcpy(tmp, name, len * sizeof(wchar_t));
+	tmp[len] = L'\0';
+	ret = rtl_is_dos_device_name_u(tmp) > 0;
+	free_alloca(tmp, use_heap);
+
+	return ret;
+}/*}}}*/
+
+PW32IO php_win32_ioutil_path_kind php_win32_ioutil_path_kind_w(const wchar_t *path, size_t path_len)
+{/*{{{*/
+	size_t i = 0;
+
+	while (i < path_len && !PHP_WIN32_IOUTIL_IS_SLASHW(path[i])) {
+		i++;
+	}
+
+	if (i == path_len && !(path_len > 2 && PHP_WIN32_IOUTIL_IS_LETTERW(path[0]) && path[1] == L':')) {
+		if (path_len == 0) {
+			return PHP_WIN32_IOUTIL_PATH_OK;
+		}
+		/* Bare device names like NUL or NUL: are kept working for BC. */
+		if (php_win32_ioutil_is_reserved_name_w(path, path_len - (path[path_len - 1] == L':'))) {
+			return PHP_WIN32_IOUTIL_PATH_DEVICE;
+		}
+		return php_win32_ioutil_is_reserved_component_w(path, path_len)
+			? PHP_WIN32_IOUTIL_PATH_RESERVED : PHP_WIN32_IOUTIL_PATH_OK;
+	}
+
+	/* Windows does not map device names within DOS device paths (\\.\, \\?\ and \??\). */
+	if (path_len >= 4 && PHP_WIN32_IOUTIL_IS_SLASHW(path[3])
+		&& ((PHP_WIN32_IOUTIL_IS_SLASHW(path[0]) && PHP_WIN32_IOUTIL_IS_SLASHW(path[1]) && (path[2] == L'.' || path[2] == L'?'))
+			|| (path[0] == L'\\' && path[1] == L'?' && path[2] == L'?'))) {
+		return PHP_WIN32_IOUTIL_PATH_OK;
+	}
+
+	i = 0;
+	if (path_len >= 2 && PHP_WIN32_IOUTIL_IS_SLASHW(path[0]) && PHP_WIN32_IOUTIL_IS_SLASHW(path[1])) {
+		/* UNC, skip server and share. */
+		for (int n = 0; n < 2; n++) {
+			while (i < path_len && PHP_WIN32_IOUTIL_IS_SLASHW(path[i])) {
+				i++;
+			}
+			while (i < path_len && !PHP_WIN32_IOUTIL_IS_SLASHW(path[i])) {
+				i++;
+			}
+		}
+	} else if (path_len >= 2 && PHP_WIN32_IOUTIL_IS_LETTERW(path[0]) && path[1] == L':') {
+		i = 2;
+	}
+
+	while (i < path_len) {
+		size_t start;
+
+		while (i < path_len && PHP_WIN32_IOUTIL_IS_SLASHW(path[i])) {
+			i++;
+		}
+		start = i;
+		while (i < path_len && !PHP_WIN32_IOUTIL_IS_SLASHW(path[i])) {
+			i++;
+		}
+		if (i > start && php_win32_ioutil_is_reserved_component_w(path + start, i - start)) {
+			return PHP_WIN32_IOUTIL_PATH_RESERVED;
+		}
+	}
+
+	return PHP_WIN32_IOUTIL_PATH_OK;
+}/*}}}*/
+
+PW32IO php_win32_ioutil_path_kind php_win32_ioutil_path_kind_a(const char *path, size_t path_len)
+{/*{{{*/
+	wchar_t *pathw;
+	size_t i, pathw_len;
+	php_win32_ioutil_path_kind ret;
+	ALLOCA_FLAG(use_heap)
+
+	for (i = 0; i < path_len && !(path[i] & 0x80); i++);
+
+	if (i < path_len) {
+		pathw = php_win32_cp_conv_any_to_w(path, path_len, &pathw_len);
+		if (!pathw) {
+			return PHP_WIN32_IOUTIL_PATH_OK;
+		}
+		ret = php_win32_ioutil_path_kind_w(pathw, pathw_len);
+		free(pathw);
+		return ret;
+	}
+
+	/* ASCII only, widen on the stack instead of a full conversion. */
+	pathw = do_alloca((path_len + 1) * sizeof(wchar_t), use_heap);
+	for (i = 0; i < path_len; i++) {
+		pathw[i] = (wchar_t) path[i];
+	}
+	ret = php_win32_ioutil_path_kind_w(pathw, path_len);
+	free_alloca(pathw, use_heap);
+
+	return ret;
+}/*}}}*/
 
 PW32IO BOOL php_win32_ioutil_posix_to_open_opts(int flags, mode_t mode, php_ioutil_open_opts *opts)
 {/*{{{*/
@@ -286,6 +449,7 @@ PW32IO int php_win32_ioutil_close(int fd)
 PW32IO int php_win32_ioutil_mkdir_w(const wchar_t *path, mode_t mode)
 {/*{{{*/
 	size_t path_len;
+	DWORD dir_len = 0;
 	const wchar_t *my_path;
 
 	if (!path) {
@@ -296,7 +460,16 @@ PW32IO int php_win32_ioutil_mkdir_w(const wchar_t *path, mode_t mode)
 	PHP_WIN32_IOUTIL_CHECK_PATH_W(path, -1, 0)
 
 	path_len = wcslen(path);
-	if (path_len < _MAX_PATH && path_len > _MAX_PATH - 12) {
+#ifndef ZTS
+	if (!PHP_WIN32_IOUTIL_IS_ABSOLUTEW(path, path_len) && !PHP_WIN32_IOUTIL_IS_JUNCTION_PATHW(path, path_len) && !PHP_WIN32_IOUTIL_IS_UNC_PATHW(path, path_len)) {
+		dir_len = GetCurrentDirectoryW(0, NULL);
+		if (dir_len == 0) {
+			return -1;
+		}
+	}
+#endif
+
+	if (dir_len + path_len < _MAX_PATH && dir_len + path_len >= _MAX_PATH - 12) {
 		/* Special case here. From the doc:
 
 		 "When using an API to create a directory, the specified path cannot be
@@ -306,18 +479,57 @@ PW32IO int php_win32_ioutil_mkdir_w(const wchar_t *path, mode_t mode)
 		 already needs to be a long path. The given path is already normalized
 		 and prepared, need only to prefix it.
 		 */
-		wchar_t *tmp = (wchar_t *) malloc((path_len + PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW + 1) * sizeof(wchar_t));
+		wchar_t *tmp = (wchar_t *) malloc((path_len + 1) * sizeof(wchar_t));
 		if (!tmp) {
 			SET_ERRNO_FROM_WIN32_CODE(ERROR_NOT_ENOUGH_MEMORY);
 			return -1;
 		}
+		memcpy(tmp, path, (path_len + 1) * sizeof(wchar_t));
 
-		memmove(tmp, PHP_WIN32_IOUTIL_LONG_PATH_PREFIXW, PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW * sizeof(wchar_t));
-		memmove(tmp+PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW, path, path_len * sizeof(wchar_t));
-		path_len += PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW;
-		tmp[path_len] = L'\0';
+		if (PHP_WIN32_IOUTIL_NORM_FAIL == php_win32_ioutil_normalize_path_w(&tmp, path_len, &path_len)) {
+			free(tmp);
+			return -1;
+		}
+
+		if (!PHP_WIN32_IOUTIL_IS_LONG_PATHW(tmp, path_len)) {
+			wchar_t *_tmp = (wchar_t *) malloc((dir_len + path_len + PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW + 1) * sizeof(wchar_t));
+			wchar_t *src, *dst;
+			if (!_tmp) {
+				SET_ERRNO_FROM_WIN32_CODE(ERROR_NOT_ENOUGH_MEMORY);
+				free(tmp);
+				return -1;
+			}
+			memcpy(_tmp, PHP_WIN32_IOUTIL_LONG_PATH_PREFIXW, PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW * sizeof(wchar_t));
+			src = tmp;
+			dst = _tmp + PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW;
+#ifndef ZTS
+			if (dir_len > 0) {
+				DWORD len = GetCurrentDirectoryW(dir_len, dst);
+				if (len == 0 || len + 1 != dir_len) {
+					free(tmp);
+					free(_tmp);
+					return -1;
+				}
+				dst += len;
+				*dst++ = PHP_WIN32_IOUTIL_DEFAULT_SLASHW;
+			}
+#endif
+			while (src < tmp + path_len) {
+				if (*src == PHP_WIN32_IOUTIL_FW_SLASHW) {
+					*dst++ = PHP_WIN32_IOUTIL_DEFAULT_SLASHW;
+					src++;
+				} else {
+					*dst++ = *src++;
+				}
+			}
+			path_len += PHP_WIN32_IOUTIL_LONG_PATH_PREFIX_LENW + dir_len;
+			_tmp[path_len] = L'\0';
+			free(tmp);
+			tmp = _tmp;
+		}
 
 		my_path = tmp;
+
 	} else {
 		my_path = path;
 	}
@@ -573,7 +785,7 @@ PW32IO size_t php_win32_ioutil_dirname(char *path, size_t len)
 /* Partial normalization can still be acceptable, explicit fail has to be caught. */
 PW32IO php_win32_ioutil_normalization_result php_win32_ioutil_normalize_path_w(wchar_t **buf, size_t len, size_t *new_len)
 {/*{{{*/
-	wchar_t *pos, *idx = *buf, canonicalw[MAXPATHLEN];
+	wchar_t *idx = *buf, canonicalw[MAXPATHLEN], _tmp[MAXPATHLEN], *pos = _tmp;
 	size_t ret_len = len;
 
 	if (len >= MAXPATHLEN) {
@@ -582,12 +794,17 @@ PW32IO php_win32_ioutil_normalization_result php_win32_ioutil_normalize_path_w(w
 		return PHP_WIN32_IOUTIL_NORM_FAIL;
 	}
 
-	while (NULL != (pos = wcschr(idx, PHP_WIN32_IOUTIL_FW_SLASHW)) && (size_t)(idx - *buf) <= len) {
-		*pos = PHP_WIN32_IOUTIL_DEFAULT_SLASHW;
-		idx = pos++;
+	for (; (size_t)(idx - *buf) <= len; idx++, pos++) {
+		*pos = *idx;
+		if (PHP_WIN32_IOUTIL_FW_SLASHW == *pos) {
+			*pos = PHP_WIN32_IOUTIL_DEFAULT_SLASHW;
+		}
+		while (PHP_WIN32_IOUTIL_IS_SLASHW(*idx) && PHP_WIN32_IOUTIL_IS_SLASHW(*(idx+1))) {
+			idx++;
+		}
 	}
 
-	if (S_OK != canonicalize_path_w(canonicalw, MAXPATHLEN, *buf, PATHCCH_ALLOW_LONG_PATHS)) {
+	if (S_OK != PathCchCanonicalizeEx(canonicalw, MAXPATHLEN, _tmp, PATHCCH_ALLOW_LONG_PATHS)) {
 		/* Length unchanged. */
 		*new_len = len;
 		return PHP_WIN32_IOUTIL_NORM_PARTIAL;
@@ -611,32 +828,11 @@ PW32IO php_win32_ioutil_normalization_result php_win32_ioutil_normalize_path_w(w
 	return PHP_WIN32_IOUTIL_NORM_OK;
 }/*}}}*/
 
-static HRESULT __stdcall MyPathCchCanonicalizeExFallback(wchar_t *pszPathOut, size_t cchPathOut, const wchar_t *pszPathIn, unsigned long dwFlags)
-{/*{{{*/
-	return -42;
-}/*}}}*/
-
-BOOL php_win32_ioutil_init(void)
-{/*{{{*/
-	HMODULE hMod = GetModuleHandle("api-ms-win-core-path-l1-1-0");
-
-	if (hMod) {
-		canonicalize_path_w = (MyPathCchCanonicalizeEx)GetProcAddress(hMod, "PathCchCanonicalizeEx");
-		if (!canonicalize_path_w) {
-			canonicalize_path_w = (MyPathCchCanonicalizeEx)MyPathCchCanonicalizeExFallback;
-		}
-
-		FreeLibrary(hMod);
-	} else {
-		canonicalize_path_w = (MyPathCchCanonicalizeEx)MyPathCchCanonicalizeExFallback;
-	}
-
-	return TRUE;
-}/*}}}*/
-
 PW32IO int php_win32_ioutil_access_w(const wchar_t *path, mode_t mode)
 {/*{{{*/
 	DWORD attr;
+
+	PHP_WIN32_IOUTIL_CHECK_PATH_W(path, -1, 0)
 
 	if ((mode & X_OK) == X_OK) {
 		DWORD type;
@@ -787,11 +983,396 @@ PW32IO char *realpath(const char *path, char *resolved)
 	return php_win32_ioutil_realpath(path, resolved);
 }/*}}}*/
 
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */
+PW32IO int php_win32_ioutil_symlink_w(const wchar_t *target, const wchar_t *link)
+{/*{{{*/
+	DWORD attr;
+	BOOLEAN res;
+
+	if ((attr = GetFileAttributesW(target)) == INVALID_FILE_ATTRIBUTES) {
+		SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+		return -1;
+	}
+
+	res = CreateSymbolicLinkW(link, target, (attr & FILE_ATTRIBUTE_DIRECTORY ? 1 : 0));
+	if (!res) {
+		SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+		return -1;
+	}
+
+	return 0;
+}/*}}}*/
+
+PW32IO int php_win32_ioutil_link_w(const wchar_t *target, const wchar_t *link)
+{/*{{{*/
+	BOOL res;
+
+	res = CreateHardLinkW(link, target, NULL);
+	if (!res) {
+		SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+		return -1;
+	}
+
+	return 0;
+}/*}}}*/
+
+#define FILETIME_TO_UINT(filetime)                                          \
+   (*((uint64_t*) &(filetime)) - 116444736000000000ULL)
+
+#define FILETIME_TO_TIME_T(filetime)                                        \
+   (time_t)(FILETIME_TO_UINT(filetime) / 10000000ULL)
+
+static int php_win32_ioutil_fstat_int(HANDLE h, php_win32_ioutil_stat_t *buf, const wchar_t *pathw, size_t pathw_len, PBY_HANDLE_FILE_INFORMATION dp)
+{/*{{{*/
+	BY_HANDLE_FILE_INFORMATION d;
+	PBY_HANDLE_FILE_INFORMATION data;
+	LARGE_INTEGER t;
+	uint8_t is_dir;
+
+	data = !dp ? &d : dp;
+
+	if(!GetFileInformationByHandle(h, data)) {
+		if (INVALID_HANDLE_VALUE != h) {
+			/* Perhaps it's a fileless stream like stdio, reuse the normal stat info. */
+			struct __stat64 _buf;
+			if (_fstat64(_open_osfhandle((intptr_t)h, 0), &_buf)) {
+				return -1;
+			}
+			buf->st_dev = _buf.st_dev;
+			buf->st_ino = _buf.st_ino;
+			buf->st_mode = _buf.st_mode;
+			buf->st_nlink = _buf.st_nlink;
+			buf->st_uid = _buf.st_uid;
+			buf->st_gid = _buf.st_gid;
+			buf->st_rdev = _buf.st_rdev;
+			buf->st_size = _buf.st_size;
+			buf->st_atime = _buf.st_atime;
+			buf->st_mtime = _buf.st_mtime;
+			buf->st_ctime = _buf.st_ctime;
+			return 0;
+		} else if(h == INVALID_HANDLE_VALUE && pathw_len > 0) {
+			/* An abnormal situation it is. For example, the user is the file
+				owner, but the file has an empty DACL. In that case, it is
+				possible CreateFile would fail, but the attributes still can
+				be read. Some info is still going to be missing. */
+			WIN32_FILE_ATTRIBUTE_DATA _data;
+			if (!GetFileAttributesExW(pathw, GetFileExInfoStandard, &_data)) {
+				DWORD err = GetLastError();
+				SET_ERRNO_FROM_WIN32_CODE(err);
+				return -1;
+			}
+			data->dwFileAttributes = _data.dwFileAttributes;
+			data->ftCreationTime = _data.ftCreationTime;
+			data->ftLastAccessTime = _data.ftLastAccessTime;
+			data->ftLastWriteTime = _data.ftLastWriteTime;
+			data->nFileSizeHigh = _data.nFileSizeHigh;
+			data->nFileSizeLow = _data.nFileSizeLow;
+			data->dwVolumeSerialNumber = 0;
+			data->nNumberOfLinks = 1;
+			data->nFileIndexHigh = 0;
+			data->nFileIndexLow = 0;
+		} else {
+			DWORD err = GetLastError();
+			SET_ERRNO_FROM_WIN32_CODE(err);
+			return -1;
+		}
+	}
+
+	is_dir = (data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
+
+	buf->st_dev = data->dwVolumeSerialNumber;
+
+	buf->st_rdev = buf->st_uid = buf->st_gid = 0;
+
+	buf->st_ino = (((uint64_t)data->nFileIndexHigh) << 32) + data->nFileIndexLow;
+
+	buf->st_mode = 0;
+
+	if (!is_dir) {
+		if (pathw_len >= 4 &&
+			pathw[pathw_len-4] == L'.') {
+			if (_wcsnicmp(pathw+pathw_len-3, L"exe", 3) == 0 ||
+			_wcsnicmp(pathw+pathw_len-3, L"com", 3) == 0) {
+				DWORD type;
+				if (GetBinaryTypeW(pathw, &type)) {
+					buf->st_mode  |= (S_IEXEC|(S_IEXEC>>3)|(S_IEXEC>>6));
+				}
+			/* The below is actually incorrect, but keep for BC. */
+			} else if (_wcsnicmp(pathw+pathw_len-3, L"bat", 3) == 0 ||
+				_wcsnicmp(pathw+pathw_len-3, L"cmd", 3) == 0) {
+				buf->st_mode  |= (S_IEXEC|(S_IEXEC>>3)|(S_IEXEC>>6));
+			}
+		}
+	}
+
+	if ((data->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0) {
+		if (is_dir) {
+			buf->st_mode |= (S_IFDIR|S_IEXEC|(S_IEXEC>>3)|(S_IEXEC>>6));
+		} else {
+			switch (GetFileType(h)) {
+				case FILE_TYPE_CHAR:
+					buf->st_mode |= S_IFCHR;
+					break;
+				case FILE_TYPE_PIPE:
+					buf->st_mode |= S_IFIFO;
+					break;
+				default:
+					buf->st_mode |= S_IFREG;
+			}
+		}
+		buf->st_mode |= (data->dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? (S_IREAD|(S_IREAD>>3)|(S_IREAD>>6)) : (S_IREAD|(S_IREAD>>3)|(S_IREAD>>6)|S_IWRITE|(S_IWRITE>>3)|(S_IWRITE>>6));
+	}
+
+	buf->st_nlink = data->nNumberOfLinks;
+	t.HighPart = data->nFileSizeHigh;
+	t.LowPart = data->nFileSizeLow;
+	/* It's an overflow on 32 bit, however it won't fix as long
+	as zend_long is 32 bit. */
+	buf->st_size = (zend_long)t.QuadPart;
+	buf->st_atime = FILETIME_TO_TIME_T(data->ftLastAccessTime);
+	buf->st_ctime = FILETIME_TO_TIME_T(data->ftCreationTime);
+	buf->st_mtime = FILETIME_TO_TIME_T(data->ftLastWriteTime);
+
+	return 0;
+}/*}}}*/
+
+PW32IO int php_win32_ioutil_stat_ex_w(const wchar_t *path, size_t path_len, php_win32_ioutil_stat_t *buf, int lstat)
+{/*{{{*/
+	BY_HANDLE_FILE_INFORMATION data;
+	HANDLE hLink = NULL;
+	DWORD flags_and_attrs = lstat ? FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT : FILE_FLAG_BACKUP_SEMANTICS;
+	int ret;
+	ALLOCA_FLAG(use_heap_large)
+
+	PHP_WIN32_IOUTIL_CHECK_PATH_W(path, -1, 0)
+
+	hLink = CreateFileW(path,
+			FILE_READ_ATTRIBUTES,
+			PHP_WIN32_IOUTIL_DEFAULT_SHARE_MODE,
+			NULL,
+			OPEN_EXISTING,
+			flags_and_attrs,
+			NULL
+	);
+
+	ret = php_win32_ioutil_fstat_int(hLink, buf, path, path_len, &data);
+
+	if (lstat && data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+		/* File is a reparse point. Get the target */
+		PHP_WIN32_IOUTIL_REPARSE_DATA_BUFFER * pbuffer;
+		DWORD retlength = 0;
+
+		pbuffer = (PHP_WIN32_IOUTIL_REPARSE_DATA_BUFFER *)do_alloca(MAXIMUM_REPARSE_DATA_BUFFER_SIZE, use_heap_large);
+		if(!DeviceIoControl(hLink, FSCTL_GET_REPARSE_POINT, NULL, 0, pbuffer,  MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &retlength, NULL)) {
+			free_alloca(pbuffer, use_heap_large);
+			CloseHandle(hLink);
+			return -1;
+		}
+
+		if(pbuffer->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
+			buf->st_mode = S_IFLNK;
+			buf->st_mode |= (data.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? (S_IREAD|(S_IREAD>>3)|(S_IREAD>>6)) : (S_IREAD|(S_IREAD>>3)|(S_IREAD>>6)|S_IWRITE|(S_IWRITE>>3)|(S_IWRITE>>6));
+		}
+
+#if 0 /* Not used yet */
+		else if(pbuffer->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
+			buf->st_mode |=;
+		}
+#endif
+		free_alloca(pbuffer, use_heap_large);
+	}
+
+	CloseHandle(hLink);
+
+	return ret;
+
+}/*}}}*/
+
+PW32IO int php_win32_ioutil_fstat(int fd, php_win32_ioutil_stat_t *buf)
+{/*{{{*/
+	return php_win32_ioutil_fstat_int((HANDLE)_get_osfhandle(fd), buf, NULL, 0, NULL);
+}/*}}}*/
+
+static ssize_t php_win32_ioutil_readlink_int(HANDLE h, wchar_t *buf, size_t buf_len)
+{/*{{{*/
+	char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+	PHP_WIN32_IOUTIL_REPARSE_DATA_BUFFER *reparse_data = (PHP_WIN32_IOUTIL_REPARSE_DATA_BUFFER*) buffer;
+	wchar_t* reparse_target;
+	DWORD reparse_target_len;
+	DWORD bytes;
+
+	if (!DeviceIoControl(h,
+		FSCTL_GET_REPARSE_POINT,
+		NULL,
+		0,
+		buffer,
+		sizeof buffer,
+		&bytes,
+		NULL)) {
+		SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+		return -1;
+	}
+
+	if (reparse_data->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
+		/* Real symlink */
+
+		/* BC - relative links are shown as absolute */
+		if (reparse_data->SymbolicLinkReparseBuffer.Flags & SYMLINK_FLAG_RELATIVE) {
+			SET_ERRNO_FROM_WIN32_CODE(ERROR_SYMLINK_NOT_SUPPORTED);
+			return -1;
+		}
+
+		reparse_target = reparse_data->SymbolicLinkReparseBuffer.ReparseTarget +
+			(reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset /
+			sizeof(wchar_t));
+		reparse_target_len =
+			reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength /
+			sizeof(wchar_t);
+
+		/* Real symlinks can contain pretty much everything, but the only thing we
+		* really care about is undoing the implicit conversion to an NT namespaced
+		* path that CreateSymbolicLink will perform on absolute paths. If the path
+		* is win32-namespaced then the user must have explicitly made it so, and
+		* we better just return the unmodified reparse data. */
+		if (reparse_target_len >= 4 &&
+		reparse_target[0] == L'\\' &&
+		reparse_target[1] == L'?' &&
+		reparse_target[2] == L'?' &&
+		reparse_target[3] == L'\\') {
+			/* Starts with \??\ */
+			if (reparse_target_len >= 6 &&
+				((reparse_target[4] >= L'A' && reparse_target[4] <= L'Z') ||
+				(reparse_target[4] >= L'a' && reparse_target[4] <= L'z')) &&
+				reparse_target[5] == L':' &&
+				(reparse_target_len == 6 || reparse_target[6] == L'\\')) {
+				/* \??\<drive>:\ */
+				reparse_target += 4;
+				reparse_target_len -= 4;
+
+			} else if (reparse_target_len >= 8 &&
+				(reparse_target[4] == L'U' || reparse_target[4] == L'u') &&
+				(reparse_target[5] == L'N' || reparse_target[5] == L'n') &&
+				(reparse_target[6] == L'C' || reparse_target[6] == L'c') &&
+				reparse_target[7] == L'\\') {
+				/* \??\UNC\<server>\<share>\ - make sure the final path looks like
+				* \\<server>\<share>\ */
+				reparse_target += 6;
+				reparse_target[0] = L'\\';
+				reparse_target_len -= 6;
+			}
+		}
+
+	} else if (reparse_data->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
+		/* Junction. */
+		reparse_target = reparse_data->MountPointReparseBuffer.ReparseTarget +
+			(reparse_data->MountPointReparseBuffer.SubstituteNameOffset /
+			sizeof(wchar_t));
+		reparse_target_len = reparse_data->MountPointReparseBuffer.SubstituteNameLength / sizeof(wchar_t);
+
+		/* Only treat junctions that look like \??\<drive>:\ as symlink. Junctions
+		* can also be used as mount points, like \??\Volume{<guid>}, but that's
+		* confusing for programs since they wouldn't be able to actually
+		* understand such a path when returned by uv_readlink(). UNC paths are
+		* never valid for junctions so we don't care about them. */
+		if (!(reparse_target_len >= 6 &&
+			reparse_target[0] == L'\\' &&
+			reparse_target[1] == L'?' &&
+			reparse_target[2] == L'?' &&
+			reparse_target[3] == L'\\' &&
+			((reparse_target[4] >= L'A' && reparse_target[4] <= L'Z') ||
+			(reparse_target[4] >= L'a' && reparse_target[4] <= L'z')) &&
+			reparse_target[5] == L':' &&
+			(reparse_target_len == 6 || reparse_target[6] == L'\\'))) {
+			SET_ERRNO_FROM_WIN32_CODE(ERROR_SYMLINK_NOT_SUPPORTED);
+			return -1;
+		}
+
+		/* Remove leading \??\ */
+		reparse_target += 4;
+		reparse_target_len -= 4;
+
+	} else {
+		/* Reparse tag does not indicate a symlink. */
+		SET_ERRNO_FROM_WIN32_CODE(ERROR_SYMLINK_NOT_SUPPORTED);
+		return -1;
+	}
+
+	if (reparse_target_len >= buf_len) {
+		SET_ERRNO_FROM_WIN32_CODE(ERROR_NOT_ENOUGH_MEMORY);
+		return -1;
+	}
+
+	memcpy(buf, reparse_target, reparse_target_len*sizeof(wchar_t));
+	buf[reparse_target_len] = L'\0';
+
+	return reparse_target_len;
+}/*}}}*/
+
+PW32IO ssize_t php_win32_ioutil_readlink_w(const wchar_t *path, wchar_t *buf, size_t buf_len)
+{/*{{{*/
+	HANDLE h;
+	ssize_t ret;
+
+	/* Get a handle to the symbolic link (if path is a symbolic link) */
+	h = CreateFileW(path,
+					0,
+					0,
+					NULL,
+					OPEN_EXISTING,
+					FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+					NULL);
+
+	if (h == INVALID_HANDLE_VALUE) {
+		SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+		return -1;
+	}
+
+	ret = php_win32_ioutil_readlink_int(h, buf, buf_len);
+
+	if (ret < 0) {
+		wchar_t target[PHP_WIN32_IOUTIL_MAXPATHLEN];
+		size_t target_len;
+		size_t offset = 0;
+
+		/* BC - get a handle to the target (if path is a symbolic link) */
+		CloseHandle(h);
+		h = CreateFileW(path,
+						0,
+						0,
+						NULL,
+						OPEN_EXISTING,
+						FILE_FLAG_BACKUP_SEMANTICS,
+						NULL);
+
+		if (h == INVALID_HANDLE_VALUE) {
+			SET_ERRNO_FROM_WIN32_CODE(GetLastError());
+			return -1;
+		}
+
+		target_len = GetFinalPathNameByHandleW(h, target, PHP_WIN32_IOUTIL_MAXPATHLEN, VOLUME_NAME_DOS);
+
+		if(target_len >= buf_len || target_len >= PHP_WIN32_IOUTIL_MAXPATHLEN || target_len == 0) {
+			CloseHandle(h);
+			return -1;
+		}
+
+		if(target_len > 4) {
+			/* Skip first 4 characters if they are "\\?\" */
+			if(target[0] == L'\\' && target[1] == L'\\' && target[2] == L'?' && target[3] ==  L'\\') {
+				offset = 4;
+
+				/* \\?\UNC\ */
+				if (target_len > 7 && target[4] == L'U' && target[5] == L'N' && target[6] == L'C') {
+					offset += 2;
+					target[offset] = L'\\';
+				}
+			}
+		}
+
+		ret = target_len - offset;
+		memcpy(buf, target + offset, (ret + 1)*sizeof(wchar_t));
+	}
+
+	CloseHandle(h);
+
+	return ret;
+}/*}}}*/

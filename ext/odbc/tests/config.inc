@@ -1,19 +1,17 @@
 <?php
 
-putenv('ODBCINI=/etc/odbc.ini');
-putenv('ODBCSYSINI=/etc');
+defined('ODBC_SQLITE_DSN') || define('ODBC_SQLITE_DSN', "Driver=SQLite3;Database=:memory:");
 
 $dsn  = getenv("ODBC_TEST_DSN");
 $user = getenv("ODBC_TEST_USER");
 $pass = getenv("ODBC_TEST_PASS");
 
 if (false === $dsn) {
-	$dsn = 'myodbc3';
+    $dsn = 'myodbc3';
 }
 if (false === $user) {
-	$user = 'root';
+    $user = 'root';
 }
 if (false == $pass) {
-	$pass = '';
+    $pass = '';
 }
-

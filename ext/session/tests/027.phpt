@@ -1,7 +1,9 @@
 --TEST--
 unset($_SESSION["name"]); should work
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.use_cookies=0
 session.use_strict_mode=0
@@ -13,14 +15,14 @@ session.save_handler=files
 error_reporting(E_ALL);
 ob_start();
 
-session_id("abtest");
+session_id("test027");
 
 ### Phase 1 cleanup
 session_start();
 session_destroy();
 
 ### Phase 2 $_SESSION["c"] does not contain any value
-session_id("abtest");
+session_id("test027");
 session_start();
 var_dump($_SESSION);
 $_SESSION["name"] = "foo";

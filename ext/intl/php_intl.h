@@ -1,14 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Vadim Savchuk <vsavchuk@productengine.com>                  |
    |          Dmitry Lakhtyuk <dlakhtyuk@productengine.com>               |
@@ -22,9 +20,6 @@
 
 #include <php.h>
 
-/* Even if we're included from C++, don't introduce C++ definitions
- * because we were included with extern "C". The effect would be that
- * when the headers defined any method, they would do so with C linkage */
 #undef U_SHOW_CPLUSPLUS_API
 #define U_SHOW_CPLUSPLUS_API 0
 #include "collator/collator_sort.h"
@@ -45,14 +40,16 @@ extern zend_module_entry intl_module_entry;
 #include "TSRM.h"
 #endif
 
+BEGIN_EXTERN_C()
 ZEND_BEGIN_MODULE_GLOBALS(intl)
-	zval current_collator;
+	struct UCollator *current_collator;
+	intl_error *current_collator_error;
 	char* default_locale;
 	collator_compare_func_t compare_func;
 	UBreakIterator* grapheme_iterator;
 	intl_error g_error;
 	zend_long error_level;
-	zend_bool use_exceptions;
+	bool use_exceptions;
 ZEND_END_MODULE_GLOBALS(intl)
 
 #if defined(ZTS) && defined(COMPILE_DL_INTL)
@@ -70,16 +67,19 @@ PHP_RSHUTDOWN_FUNCTION(intl);
 PHP_MINFO_FUNCTION(intl);
 
 const char *intl_locale_get_default( void );
+char *canonicalize_locale_string(const char* locale);
 
-#define PHP_INTL_VERSION "1.1.0"
+END_EXTERN_C()
+
+#define PHP_INTL_FUNCTION_WITH_ERROR_RESET(name) \
+	static void php_intl_##name##_impl(INTERNAL_FUNCTION_PARAMETERS); \
+	U_CFUNC PHP_FUNCTION(name) \
+	{ \
+		intl_error_reset(NULL); \
+		php_intl_##name##_impl(INTERNAL_FUNCTION_PARAM_PASSTHRU); \
+	} \
+	static void php_intl_##name##_impl(INTERNAL_FUNCTION_PARAMETERS)
+
+#define PHP_INTL_VERSION PHP_VERSION
 
 #endif  /* PHP_INTL_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

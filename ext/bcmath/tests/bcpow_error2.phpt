@@ -1,15 +1,21 @@
 --TEST--
 bcpow() does not support exponents >= 2**63
---SKIPIF--
-<?php
-if (!extension_loaded('bcmath')) die('skip bcmath extension is not available');
-?>
+--EXTENSIONS--
+bcmath
 --FILE--
 <?php
-var_dump(bcpow('0', '9223372036854775808', 2));
+try {
+    var_dump(bcpow('0', '9223372036854775808', 2));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+    var_dump(bcpow('0', '-9223372036854775808', 2));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
-===DONE===
---EXPECTF--
-Warning: bcpow(): exponent too large in %s on line %d
-string(4) "1.00"
-===DONE===
+--EXPECT--
+ValueError: bcpow(): Argument #2 ($exponent) is too large
+ValueError: bcpow(): Argument #2 ($exponent) is too large

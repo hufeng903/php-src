@@ -1,5 +1,7 @@
 --TEST--
 Incorrect optimization of $i = $i++
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

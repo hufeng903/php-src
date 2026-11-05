@@ -1,10 +1,14 @@
 --TEST--
-Testing func_get_args()
+Testing func_get_args() throws error when called from the global scope
 --FILE--
 <?php
 
-func_get_args();
+try {
+    func_get_args();
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 ?>
---EXPECTF--
-Warning: func_get_args():  Called from the global scope - no function context in %s on line 3
+--EXPECT--
+Error: func_get_args() cannot be called from the global scope

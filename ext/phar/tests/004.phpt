@@ -1,14 +1,14 @@
 --TEST--
 Phar::mapPhar no __HALT_COMPILER();
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip");?>
+--EXTENSIONS--
+phar
 --FILE--
 <?php
 try {
 Phar::mapPhar('hio');
 } catch (Exception $e) {
-echo $e->getMessage();
+echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 ?>
 --EXPECT--
-__HALT_COMPILER(); must be declared in a phar
+PharException: __HALT_COMPILER(); must be declared in a phar

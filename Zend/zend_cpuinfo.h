@@ -2,17 +2,16 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 2018-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Xinchen Hui <xinchen.h@zend.com>                            |
+   | Authors: Xinchen Hui <laruence@php.net>                              |
    +----------------------------------------------------------------------+
 */
 
@@ -22,7 +21,7 @@
 #include "zend.h"
 
 #define ZEND_CPU_EBX_MASK     (1<<30)
-#define ZEND_CPU_EDX_MASK     (1<<31)
+#define ZEND_CPU_EDX_MASK     (1U<<31)
 
 typedef enum _zend_cpu_feature {
 	/* ECX */
@@ -61,6 +60,12 @@ typedef enum _zend_cpu_feature {
 
 	/* EBX */
 	ZEND_CPU_FEATURE_AVX2			= (1<<5 | ZEND_CPU_EBX_MASK),
+	ZEND_CPU_FEATURE_AVX512F		= (1<<16 | ZEND_CPU_EBX_MASK),
+	ZEND_CPU_FEATURE_AVX512DQ		= (1<<17 | ZEND_CPU_EBX_MASK),
+	ZEND_CPU_FEATURE_AVX512CD		= (1<<28 | ZEND_CPU_EBX_MASK),
+	ZEND_CPU_FEATURE_SHA			= (1<<29 | ZEND_CPU_EBX_MASK),
+	/* intentionally don't support		= (1<<30 | ZEND_CPU_EBX_MASK) */
+	/* intentionally don't support		= (1<<31 | ZEND_CPU_EBX_MASK) */
 
 	/* EDX */
 	ZEND_CPU_FEATURE_FPU			= (1<<0 | ZEND_CPU_EDX_MASK),
@@ -97,101 +102,207 @@ typedef enum _zend_cpu_feature {
 	/*intentionally don't support   = (1<<31 | ZEND_CPU_EDX_MASK)*/
 } zend_cpu_feature;
 
-void zend_cpu_startup();
+void zend_cpu_startup(void);
 ZEND_API int zend_cpu_supports(zend_cpu_feature feature);
 
-#if PHP_HAVE_BUILTIN_CPU_SUPPORTS
+#ifndef __has_attribute
+# define __has_attribute(x) 0
+#endif
+
+/* Address sanitizer is incompatible with ifunc resolvers, so exclude the
+ * CPU support helpers from asan.
+ * See also https://github.com/google/sanitizers/issues/342. */
+#if __has_attribute(no_sanitize_address)
+# define ZEND_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#else
+# define ZEND_NO_SANITIZE_ADDRESS
+#endif
+
+#ifdef PHP_HAVE_BUILTIN_CPU_SUPPORTS
 /* NOTE: you should use following inline function in
  * resolver functions (ifunc), as it could be called
- * before all PLT symbols are resloved. in other words,
- * resolver functions should not depends any external
+ * before all PLT symbols are resolved. in other words,
+ * resolver functions should not depend on any external
  * functions */
-static zend_always_inline int zend_cpu_supports_sse2() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_sse2(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("sse2");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_sse3() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_sse3(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("sse3");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_ssse3() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_ssse3(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("ssse3");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_sse41() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_sse41(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("sse4.1");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_sse42() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_sse42(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("sse4.2");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_avx() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_avx(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("avx");
+#endif
 }
 
-static zend_always_inline int zend_cpu_supports_avx2() {
-#if PHP_HAVE_BUILTIN_CPU_INIT
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_avx2(void) {
+#ifdef __aarch64__
+	return 0;
+#else
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
 	__builtin_cpu_init();
 #endif
 	return __builtin_cpu_supports("avx2");
+#endif
 }
+
+#ifdef PHP_HAVE_AVX512_SUPPORTS
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_avx512(void) {
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
+	__builtin_cpu_init();
+#endif
+	return __builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512dq")
+		&& __builtin_cpu_supports("avx512cd") && __builtin_cpu_supports("avx512bw")
+		&& __builtin_cpu_supports("avx512vl");
+}
+#endif
+
+#ifdef PHP_HAVE_AVX512_VBMI_SUPPORTS
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_avx512_vbmi(void) {
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
+	__builtin_cpu_init();
+#endif
+	return zend_cpu_supports_avx512() && __builtin_cpu_supports("avx512vbmi");
+}
+#endif
+
 #else
 
-static zend_always_inline int zend_cpu_supports_sse2() {
+static inline int zend_cpu_supports_sse2(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_SSE2);
 }
 
-static zend_always_inline int zend_cpu_supports_sse3() {
+static inline int zend_cpu_supports_sse3(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_SSE3);
 }
 
-static zend_always_inline int zend_cpu_supports_ssse3() {
+static inline int zend_cpu_supports_ssse3(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_SSSE3);
 }
 
-static zend_always_inline int zend_cpu_supports_sse41() {
+static inline int zend_cpu_supports_sse41(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_SSE41);
 }
 
-static zend_always_inline int zend_cpu_supports_sse42() {
+static inline int zend_cpu_supports_sse42(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_SSE42);
 }
 
-static zend_always_inline int zend_cpu_supports_avx() {
+static inline int zend_cpu_supports_avx(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_AVX);
 }
 
-static zend_always_inline int zend_cpu_supports_avx2() {
+static inline int zend_cpu_supports_avx2(void) {
 	return zend_cpu_supports(ZEND_CPU_FEATURE_AVX2);
 }
 
+static inline int zend_cpu_supports_avx512(void) {
+	/* TODO: avx512_bw/avx512_vl use bit 30/31 which are reserved for mask */
+	return 0;
+}
+
+static zend_always_inline int zend_cpu_supports_avx512_vbmi(void) {
+	/* TODO: avx512_vbmi use ECX of cpuid 7 */
+	return 0;
+}
+#endif
+
+/* __builtin_cpu_supports has pclmul from gcc9 and clang 19 */
+#if defined(PHP_HAVE_BUILTIN_CPU_SUPPORTS) && (defined(__x86_64__) || defined(__i386__)) && \
+	( \
+		(!defined(__GNUC__) || (defined(__clang__) && __clang_major__ >= 19) || (ZEND_GCC_VERSION >= 9000)) \
+	)
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_pclmul(void) {
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
+	__builtin_cpu_init();
+#endif
+	return __builtin_cpu_supports("pclmul");
+}
+#else
+static inline int zend_cpu_supports_pclmul(void) {
+	return zend_cpu_supports(ZEND_CPU_FEATURE_PCLMULQDQ);
+}
+#endif
+
+/* __builtin_cpu_supports has cldemote from gcc11 and clang 19 */
+#if defined(PHP_HAVE_BUILTIN_CPU_SUPPORTS) && (defined(__x86_64__) || defined(__i386__)) && \
+	( \
+		(defined(__clang__) && (__clang_major__ >= 19)) || \
+		(!defined(__clang__) && defined(__GNUC__) && (ZEND_GCC_VERSION >= 11000)) \
+	)
+#define HAVE_ZEND_CPU_SUPPORTS_CLDEMOTE 1
+ZEND_NO_SANITIZE_ADDRESS
+static inline int zend_cpu_supports_cldemote(void) {
+#ifdef PHP_HAVE_BUILTIN_CPU_INIT
+	__builtin_cpu_init();
+#endif
+	return __builtin_cpu_supports("cldemote");
+}
 #endif
 
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- */

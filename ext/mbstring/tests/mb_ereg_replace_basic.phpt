@@ -1,25 +1,21 @@
 --TEST--
-Test mb_ereg_replace() function : basic 
+Test mb_ereg_replace() function : basic
+--EXTENSIONS--
+mbstring
+--INI--
+internal_encoding=UTF-8
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip');
 function_exists('mb_ereg_replace') or die("skip mb_ereg_replace() is not available in this build");
 ?>
 --FILE--
 <?php
-/* Prototype  : string mb_ereg_replace(string $pattern, string $replacement, 
- * string $string [, string o$ption])
- * Description: Replace regular expression for multibyte string 
- * Source code: ext/mbstring/php_mbregex.c
- */
-
 /*
  * Test Basic Functionality of mb_ereg_replace()
  */
 
 echo "*** Testing mb_ereg_replace() : basic functionality ***\n";
 
-mb_internal_encoding('UTF-8');
 mb_regex_encoding('UTF-8');
 
 $string_ascii = 'abc def';
@@ -45,18 +41,28 @@ var_dump(bin2hex($result_4));
 
 echo "Done";
 ?>
---EXPECT--
+--EXPECTF--
 *** Testing mb_ereg_replace() : basic functionality ***
 
+Deprecated: Function mb_regex_encoding() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
+
 -- ASCII string 1 --
+
+Deprecated: Function mb_ereg_replace() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(16) "6162632020313233"
 
 -- ASCII string 2 --
+
+Deprecated: Function mb_ereg_replace() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(14) "61626320646566"
 
 -- Multibyte string 1 --
+
+Deprecated: Function mb_ereg_replace() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(72) "e697a5e69cace8aa9e5f5f5f5f5f31323334efbc95efbc96efbc97efbc98efbc99e38082"
 
 -- Multibyte string 2 --
+
+Deprecated: Function mb_ereg_replace() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 string(106) "e697a5e69cace8aa9ee38386e382ade382b9e38388e381a7e38199e380823031323334efbc95efbc96efbc97efbc98efbc99e38082"
 Done

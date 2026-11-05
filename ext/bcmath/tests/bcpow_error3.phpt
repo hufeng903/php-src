@@ -1,12 +1,23 @@
 --TEST--
-bcpow() incorrect argument count
---SKIPIF--
-<?php if(!extension_loaded("bcmath")) print "skip"; ?>
---INI--
-bcmath.scale=0
+bcpow() requires well-formed values
+--EXTENSIONS--
+bcmath
 --FILE--
 <?php
-echo bcpow();
+
+try {
+    bcpow('a', '1');
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+    bcpow('1', 'a');
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
 ?>
---EXPECTF--
-Warning: bcpow() expects at least 2 parameters, 0 given in %s on line %d
+--EXPECT--
+ValueError: bcpow(): Argument #1 ($num) is not well-formed
+ValueError: bcpow(): Argument #2 ($exponent) is not well-formed

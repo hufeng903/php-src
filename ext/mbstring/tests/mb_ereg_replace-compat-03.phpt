@@ -1,8 +1,9 @@
 --TEST--
 mb_ereg_replace() compat test 3
+--EXTENSIONS--
+mbstring
 --SKIPIF--
 <?php
-extension_loaded('mbstring') or die('skip');
 function_exists('mb_ereg_replace') or die("skip mb_ereg_replace() is not available in this build");
 ?>
 --FILE--
@@ -11,5 +12,6 @@ function_exists('mb_ereg_replace') or die("skip mb_ereg_replace() is not availab
   $a="\\'test";
   echo mb_ereg_replace("\\\\'","'",$a);
 ?>
---EXPECT--
+--EXPECTF--
+Deprecated: Function mb_ereg_replace() is deprecated since 8.6, because the underlying library is no longer maintained in %s on line %d
 'test

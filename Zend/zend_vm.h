@@ -2,24 +2,26 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Dmitry Stogov <dmitry@zend.com>                             |
+   | Authors: Dmitry Stogov <dmitry@php.net>                              |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef ZEND_VM_H
 #define ZEND_VM_H
+
+#include "zend_portability.h"
+
+typedef struct _zend_op zend_op;
+typedef struct _zend_execute_data zend_execute_data;
 
 BEGIN_EXTERN_C()
 
@@ -29,24 +31,20 @@ ZEND_API void ZEND_FASTCALL zend_serialize_opcode_handler(zend_op *op);
 ZEND_API void ZEND_FASTCALL zend_deserialize_opcode_handler(zend_op *op);
 ZEND_API const void* ZEND_FASTCALL zend_get_opcode_handler_func(const zend_op *op);
 ZEND_API const zend_op *zend_get_halt_op(void);
+ZEND_API const zend_op *zend_get_interrupt_op(void);
 ZEND_API int ZEND_FASTCALL zend_vm_call_opcode_handler(zend_execute_data *ex);
 ZEND_API int zend_vm_kind(void);
+ZEND_API bool zend_gcc_global_regs(void);
 
 void zend_vm_init(void);
 void zend_vm_dtor(void);
+
+#if ZEND_VM_KIND == ZEND_VM_KIND_TAILCALL
+const struct _zend_op *ZEND_FASTCALL zend_vm_handle_interrupt(struct _zend_execute_data *execute_data, const struct _zend_op *opline);
+#endif
 
 END_EXTERN_C()
 
 #define ZEND_VM_SET_OPCODE_HANDLER(opline) zend_vm_set_opcode_handler(opline)
 
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

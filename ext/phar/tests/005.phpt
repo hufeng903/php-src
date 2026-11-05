@@ -1,14 +1,14 @@
 --TEST--
 Phar::mapPhar truncated manifest (none)
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip");?>
+--EXTENSIONS--
+phar
 --FILE--
 <?php
 try {
 Phar::mapPhar('hio');
 } catch (Exception $e) {
-echo $e->getMessage();
+echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 __HALT_COMPILER(); ?>()
 --EXPECTF--
-internal corruption of phar "%s" (truncated manifest at manifest length)
+PharException: internal corruption of phar "%s" (truncated manifest at manifest length)

@@ -1,12 +1,12 @@
 --TEST--
 Phar object: getContent()
---SKIPIF--
-<?php if (!extension_loaded("phar")) die("skip"); ?>
+--EXTENSIONS--
+phar
 --INI--
 phar.readonly=0
 --FILE--
 <?php
-$fname = dirname(__FILE__) . '/' . basename(__FILE__, '.php') . '.phar.php';
+$fname = __DIR__ . '/' . basename(__FILE__, '.php') . '.phar.php';
 
 $phar = new Phar($fname);
 $phar['a/b'] = 'file contents
@@ -16,23 +16,21 @@ echo $phar['a/b']->getContent() . "\n";
 try {
 echo $phar['a']->getContent(), "\n";
 } catch (Exception $e) {
-echo $e->getMessage(), "\n";
+echo $e::class, ': ', $e->getMessage(), "\n";
 }
 try {
 echo $phar['hi']->getContent(), "\n";
 } catch (Exception $e) {
-echo $e->getMessage(), "\n";
+echo $e::class, ': ', $e->getMessage(), "\n";
 }
 ?>
-===DONE===
 --CLEAN--
 <?php
-unlink(dirname(__FILE__) . '/' . basename(__FILE__, '.clean.php') . '.phar.php');
+unlink(__DIR__ . '/' . basename(__FILE__, '.clean.php') . '.phar.php');
 __halt_compiler();
 ?>
 --EXPECTF--
 file contents
 this works
-Phar error: Cannot retrieve contents, "a" in phar "%sphar_oo_getcontents.phar.php" is a directory
-Phar error: Cannot retrieve contents, "hi" in phar "%sphar_oo_getcontents.phar.php" is a directory
-===DONE===
+BadMethodCallException: phar error: Cannot retrieve contents, "a" in phar "%sphar_oo_getcontents.phar.php" is a directory
+BadMethodCallException: phar error: Cannot retrieve contents, "hi" in phar "%sphar_oo_getcontents.phar.php" is a directory

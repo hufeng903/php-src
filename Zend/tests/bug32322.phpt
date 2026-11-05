@@ -8,8 +8,8 @@ class test
 {
     private static $instance = null;
     private $myname = '';
-    
-    private function __construct( $value = '' ) 
+
+    private function __construct( $value = '' )
     {
         echo "New class $value created \n";
         $this -> myname = $value;
@@ -38,16 +38,16 @@ class test
         }
         return $instance2;
     }
-    public function __destruct() 
+    public function __destruct()
     {
         if ( defined('SCRIPT_END') )
         {
             echo "Class " . $this -> myname . " destroyed at script end\n";
         } else {
-            echo "Class " . $this -> myname . " destroyed beforce script end\n";
+            echo "Class " . $this -> myname . " destroyed before script end\n";
         }
     }
-}    
+}
 echo "Try static instance inside class :\n";
 $getCopyofSingleton    = test::getInstance();
 $getCopyofSingleton    = null;

@@ -1,12 +1,11 @@
 --TEST--
 Bug #54494: mb_substr() mishandles UTF-32LE and UCS-2LE
---SKIPIF--
-<?php extension_loaded('mbstring') or die('skip mbstring not available'); ?>
+--EXTENSIONS--
+mbstring
+--INI--
+internal_encoding=UTF-8
 --FILE--
 <?php
-
-//declare(encoding = 'UTF-8');
-mb_internal_encoding('UTF-8');
 
 header('Content-Type: text/plain; charset=UTF-32LE');
 
@@ -42,6 +41,7 @@ for ($i=0; $i < $length; $i++) {
   echo $t[1];
 }
 echo "\n";
+?>
 --EXPECT--
 UTF-32LE:
 Length: 12
@@ -49,4 +49,3 @@ Length: 12
 UCS-2LE:
 Length: 12
 6800e4006c006c00f60020007700f60072006c0064000a00
-

@@ -3,12 +3,16 @@ DOMDocumentType::name with invalid state.
 --CREDITS--
 Eric Lee Stewart <ericleestewart@gmail.com>
 # TestFest Atlanta 2009-05-25
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 $doctype = new DOMDocumentType();
-$name = $doctype->name;
+try {
+    $doctype->name;
+} catch (Throwable $exception) {
+    echo $exception::class, ': ', $exception->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Warning: main(): Invalid State Error in %s on line %d
+--EXPECT--
+DOMException: Invalid State Error

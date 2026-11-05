@@ -2,25 +2,24 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Andi Gutmans <andi@zend.com>                                |
-   |          Zeev Suraski <zeev@zend.com>                                |
+   | Authors: Andi Gutmans <andi@php.net>                                 |
+   |          Zeev Suraski <zeev@php.net>                                 |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef ZEND_GLOBALS_MACROS_H
 #define ZEND_GLOBALS_MACROS_H
+
+#include "zend_portability.h"
 
 typedef struct _zend_compiler_globals zend_compiler_globals;
 typedef struct _zend_executor_globals zend_executor_globals;
@@ -31,7 +30,7 @@ BEGIN_EXTERN_C()
 
 /* Compiler */
 #ifdef ZTS
-# define CG(v) ZEND_TSRMG(compiler_globals_id, zend_compiler_globals *, v)
+# define CG(v) ZEND_TSRMG_DIRECT(compiler_globals_id, zend_compiler_globals *, cg, v)
 #else
 # define CG(v) (compiler_globals.v)
 extern ZEND_API struct _zend_compiler_globals compiler_globals;
@@ -41,7 +40,7 @@ ZEND_API int zendparse(void);
 
 /* Executor */
 #ifdef ZTS
-# define EG(v) ZEND_TSRMG(executor_globals_id, zend_executor_globals *, v)
+# define EG(v) ZEND_TSRMG_DIRECT(executor_globals_id, zend_executor_globals *, eg, v)
 #else
 # define EG(v) (executor_globals.v)
 extern ZEND_API zend_executor_globals executor_globals;
@@ -49,18 +48,28 @@ extern ZEND_API zend_executor_globals executor_globals;
 
 /* Language Scanner */
 #ifdef ZTS
-# define LANG_SCNG(v) ZEND_TSRMG(language_scanner_globals_id, zend_php_scanner_globals *, v)
 extern ZEND_API ts_rsrc_id language_scanner_globals_id;
+# ifdef ZEND_TLS_DIRECT
+#  ifdef ZEND_WIN32
+extern TSRM_TLS zend_php_scanner_globals language_scanner_globals;
+#  else
+extern ZEND_TLS_API TSRM_TLS TSRM_TLS_MODEL_ATTR zend_php_scanner_globals language_scanner_globals;
+#  endif
+#  define LANG_SCNG(v) (language_scanner_globals.v)
+# else
+#  define LANG_SCNG(v) TSRMG(language_scanner_globals_id, zend_php_scanner_globals *, v)
+# endif
 #else
-# define LANG_SCNG(v) (language_scanner_globals.v)
 extern ZEND_API zend_php_scanner_globals language_scanner_globals;
+# define LANG_SCNG(v) (language_scanner_globals.v)
 #endif
 
 
 /* INI Scanner */
 #ifdef ZTS
-# define INI_SCNG(v) ZEND_TSRMG(ini_scanner_globals_id, zend_ini_scanner_globals *, v)
+# define INI_SCNG(v) ZEND_TSRMG_FAST(ini_scanner_globals_offset, zend_ini_scanner_globals *, v)
 extern ZEND_API ts_rsrc_id ini_scanner_globals_id;
+extern ZEND_API size_t ini_scanner_globals_offset;
 #else
 # define INI_SCNG(v) (ini_scanner_globals.v)
 extern ZEND_API zend_ini_scanner_globals ini_scanner_globals;
@@ -69,13 +78,3 @@ extern ZEND_API zend_ini_scanner_globals ini_scanner_globals;
 END_EXTERN_C()
 
 #endif /* ZEND_GLOBALS_MACROS_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

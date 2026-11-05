@@ -1,16 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Marcus Boerger <helly@php.net>                              |
    | based on ext/db/db.c by:                                             |
@@ -31,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
@@ -39,14 +35,25 @@
 
 #define FLATFILE_BLOCK_SIZE 1024
 
+/* Parse the length prefix in `buf` into `num` and grow `buf` to hold it.
+ * atoi() narrows a malformed (e.g. negative) length to a huge size_t whose
+ * `+ FLATFILE_BLOCK_SIZE` would overflow erealloc(); the macro yields true in
+ * that case so the caller stops reading and the read stays within `buf_size`. */
+#define FLATFILE_GROW_BUF(num, buf, buf_size) ( \
+	(num) = atoi(buf), \
+	(num) >= (buf_size) && ( \
+		(num) > SIZE_MAX - FLATFILE_BLOCK_SIZE \
+		|| ((buf) = erealloc((buf), (buf_size) = (num) + FLATFILE_BLOCK_SIZE), 0) \
+	) \
+)
+
 /*
  * ret = -1 means that database was opened for read-only
  * ret = 0  success
  * ret = 1  key already exists - nothing done
  */
 
-/* {{{ flatfile_store
- */
+/* {{{ flatfile_store */
 int flatfile_store(flatfile *dba, datum key_datum, datum value_datum, int mode) {
 	if (mode == FLATFILE_INSERT) {
 		if (flatfile_findkey(dba, key_datum)) {
@@ -81,8 +88,7 @@ int flatfile_store(flatfile *dba, datum key_datum, datum value_datum, int mode) 
 }
 /* }}} */
 
-/* {{{ flatfile_fetch
- */
+/* {{{ flatfile_fetch */
 datum flatfile_fetch(flatfile *dba, datum key_datum) {
 	datum value_datum = {NULL, 0};
 	char buf[16];
@@ -101,8 +107,7 @@ datum flatfile_fetch(flatfile *dba, datum key_datum) {
 }
 /* }}} */
 
-/* {{{ flatfile_delete
- */
+/* {{{ flatfile_delete */
 int flatfile_delete(flatfile *dba, datum key_datum) {
 	char *key = key_datum.dptr;
 	size_t size = key_datum.dsize;
@@ -117,10 +122,8 @@ int flatfile_delete(flatfile *dba, datum key_datum) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		pos = php_stream_tell(dba->fp);
 
@@ -140,10 +143,8 @@ int flatfile_delete(flatfile *dba, datum key_datum) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		/* read in the value */
 		num = php_stream_read(dba->fp, buf, num);
@@ -153,8 +154,7 @@ int flatfile_delete(flatfile *dba, datum key_datum) {
 }
 /* }}} */
 
-/* {{{ flatfile_findkey
- */
+/* {{{ flatfile_findkey */
 int flatfile_findkey(flatfile *dba, datum key_datum) {
 	size_t buf_size = FLATFILE_BLOCK_SIZE;
 	char *buf = emalloc(buf_size);
@@ -168,10 +168,8 @@ int flatfile_findkey(flatfile *dba, datum key_datum) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 
@@ -184,10 +182,8 @@ int flatfile_findkey(flatfile *dba, datum key_datum) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 	}
@@ -196,8 +192,7 @@ int flatfile_findkey(flatfile *dba, datum key_datum) {
 }
 /* }}} */
 
-/* {{{ flatfile_firstkey
- */
+/* {{{ flatfile_firstkey */
 datum flatfile_firstkey(flatfile *dba) {
 	datum res;
 	size_t num;
@@ -209,10 +204,8 @@ datum flatfile_firstkey(flatfile *dba) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 
@@ -225,10 +218,8 @@ datum flatfile_firstkey(flatfile *dba) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 	}
@@ -239,8 +230,7 @@ datum flatfile_firstkey(flatfile *dba) {
 }
 /* }}} */
 
-/* {{{ flatfile_nextkey
- */
+/* {{{ flatfile_nextkey */
 datum flatfile_nextkey(flatfile *dba) {
 	datum res;
 	size_t num;
@@ -252,20 +242,16 @@ datum flatfile_nextkey(flatfile *dba) {
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 
 		if (!php_stream_gets(dba->fp, buf, 15)) {
 			break;
 		}
-		num = atoi(buf);
-		if (num >= buf_size) {
-			buf_size = num + FLATFILE_BLOCK_SIZE;
-			buf = erealloc(buf, buf_size);
+		if (FLATFILE_GROW_BUF(num, buf, buf_size)) {
+			break;
 		}
 		num = php_stream_read(dba->fp, buf, num);
 
@@ -284,17 +270,8 @@ datum flatfile_nextkey(flatfile *dba) {
 /* }}} */
 
 /* {{{ flatfile_version */
-char *flatfile_version()
+const char *flatfile_version(void)
 {
 	return "1.0, $Id$";
 }
 /* }}} */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

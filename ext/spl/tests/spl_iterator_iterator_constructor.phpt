@@ -1,5 +1,5 @@
 --TEST--
-SPL: IteratorInterator constructor checks 
+SPL: IteratorInterator constructor checks
 --CREDITS--
 Sean Burlington www.practicalweb.co.uk
 TestFest London May 2009
@@ -16,11 +16,9 @@ try {
     $test = new IteratorIterator($arrayIterator, 1, 1, 1);
     $test = new IteratorIterator($arrayIterator, 1, 1, 1, 1);
 } catch (TypeError $e){
-  echo $e->getMessage() . "\n";
+  echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 ?>
-===DONE===
 --EXPECT--
-IteratorIterator::__construct() expects at most 2 parameters, 3 given
-===DONE===
+ArgumentCountError: IteratorIterator::__construct() expects at most 2 arguments, 3 given

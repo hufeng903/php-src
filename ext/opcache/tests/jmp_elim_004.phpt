@@ -3,6 +3,8 @@ Incorrect empty basic block elimination
 --INI--
 opcache.enable_cli=1
 opcache.optimization_level=-1
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

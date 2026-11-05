@@ -1,17 +1,17 @@
 --TEST--
 SPL: RecursiveIteratorIterator - Exception thrown in nextelement which should be handled in next()
 --FILE--
-<?php 
+<?php
 
-$arr = array(1,2);
-$arrOb = new ArrayObject($arr);
-
-$recArrIt = new RecursiveArrayIterator($arrOb->getIterator());
+$recArrIt = new RecursiveArrayIterator([
+    [1, 2],
+    ['a', 'b'],
+]);
 
 class MyRecursiveIteratorIterator extends RecursiveIteratorIterator {
-    
-    function nextelement() {
-    	throw new Exception;
+
+    function nextelement(): void {
+        throw new Exception;
     }
 }
 

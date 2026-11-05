@@ -1,13 +1,7 @@
 --TEST--
-Test interface_exists() function : autoloaded interface 
+Test interface_exists() function : autoloaded interface
 --FILE--
 <?php
-/* Prototype  : bool interface_exists(string classname [, bool autoload])
- * Description: Checks if the class exists 
- * Source code: Zend/zend_builtin_functions.c
- * Alias to functions: 
- */
-
 echo "*** Testing interface_exists() : autoloaded interface ***\n";
 
 spl_autoload_register(function ($class_name) {

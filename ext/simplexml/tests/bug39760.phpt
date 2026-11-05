@@ -1,7 +1,7 @@
 --TEST--
 Bug #39760 (cloning fails on nested SimpleXML-Object)
---SKIPIF--
-<?php if (!extension_loaded("simplexml")) print "skip simplexml extension is not loaded"; ?>
+--EXTENSIONS--
+simplexml
 --FILE--
 <?php
 
@@ -24,7 +24,7 @@ var_dump($test3);
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 object(SimpleXMLElement)#%d (1) {
   [0]=>
   string(5) "text1"

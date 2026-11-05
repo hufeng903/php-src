@@ -2,35 +2,31 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Andi Gutmans <andi@zend.com>                                |
-   |          Zeev Suraski <zeev@zend.com>                                |
+   | Authors: Andi Gutmans <andi@php.net>                                 |
+   |          Zeev Suraski <zeev@php.net>                                 |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "zend.h"
 #include "zend_stack.h"
 
 #define ZEND_STACK_ELEMENT(stack, n) ((void *)((char *) (stack)->elements + (stack)->size * (n)))
 
-ZEND_API int zend_stack_init(zend_stack *stack, int size)
+ZEND_API void zend_stack_init(zend_stack *stack, int size)
 {
 	stack->size = size;
 	stack->top = 0;
 	stack->max = 0;
 	stack->elements = NULL;
-	return SUCCESS;
 }
 
 ZEND_API int zend_stack_push(zend_stack *stack, const void *element)
@@ -55,10 +51,9 @@ ZEND_API void *zend_stack_top(const zend_stack *stack)
 }
 
 
-ZEND_API int zend_stack_del_top(zend_stack *stack)
+ZEND_API void zend_stack_del_top(zend_stack *stack)
 {
 	--stack->top;
-	return SUCCESS;
 }
 
 
@@ -73,20 +68,18 @@ ZEND_API int zend_stack_int_top(const zend_stack *stack)
 }
 
 
-ZEND_API int zend_stack_is_empty(const zend_stack *stack)
+ZEND_API bool zend_stack_is_empty(const zend_stack *stack)
 {
 	return stack->top == 0;
 }
 
 
-ZEND_API int zend_stack_destroy(zend_stack *stack)
+ZEND_API void zend_stack_destroy(zend_stack *stack)
 {
 	if (stack->elements) {
 		efree(stack->elements);
 		stack->elements = NULL;
 	}
-
-	return SUCCESS;
 }
 
 
@@ -125,7 +118,7 @@ ZEND_API void zend_stack_apply(zend_stack *stack, int type, int (*apply_function
 }
 
 
-ZEND_API void zend_stack_apply_with_argument(zend_stack *stack, int type, int (*apply_function)(void *element, void *arg), void *arg)
+ZEND_API void zend_stack_apply_with_argument(zend_stack *stack, zend_stack_apply_direction type, int (*apply_function)(void *element, void *arg), void *arg)
 {
 	int i;
 
@@ -147,7 +140,7 @@ ZEND_API void zend_stack_apply_with_argument(zend_stack *stack, int type, int (*
 	}
 }
 
-ZEND_API void zend_stack_clean(zend_stack *stack, void (*func)(void *), zend_bool free_elements)
+ZEND_API void zend_stack_clean(zend_stack *stack, void (*func)(void *), bool free_elements)
 {
 	int i;
 
@@ -164,13 +157,3 @@ ZEND_API void zend_stack_clean(zend_stack *stack, void (*func)(void *), zend_boo
 		stack->top = stack->max = 0;
 	}
 }
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

@@ -9,21 +9,19 @@ if (substr(PHP_OS, 0, 3) == 'WIN') {
 }
 if (!file_exists("/dev/null")) {
     die('skip /dev/null not available');
-}    
+}
 ?>
 --FILE--
 <?php
-/*
-Prototype: string filetype ( string $filename );
-Description: Returns the type of the file. Possible values are fifo, char,
-             dir, block, link, file, and unknown. 
-*/
-
+$devnull = "/dev/null";
+// On Solaris, /dev/null is symlink
+if (is_link($devnull)) {
+    $devnull = readlink($devnull);
+    if ($devnull[0] != '/') $devnull = dirname("/dev/null") . '/' . $devnull;
+}
 echo "-- Checking for char --\n";
-print( filetype("/dev/null") )."\n";
+print(filetype($devnull)) . "\n";
 ?>
-===DONE===
 --EXPECT--
 -- Checking for char --
 char
-===DONE===

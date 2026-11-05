@@ -1,28 +1,27 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Jim Winstead <jimw@php.net>                                  |
    |         Xinchen Hui <laruence@php.net>                               |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef BASE64_H
 #define BASE64_H
 
 /*
+ * NEON and AVX512 implementation are based on https://github.com/WojciechMula/base64simd
+ * which is copyrighted to:
+ * Copyright (c) 2015-2018, Wojciech Mula
+ * All rights reserved.
+ *
  * SSSE3 and AVX2 implementation are based on https://github.com/aklomp/base64
  * which is copyrighted to:
  *
@@ -56,18 +55,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-PHP_FUNCTION(base64_decode);
-PHP_FUNCTION(base64_encode);
-
-#if (ZEND_INTRIN_AVX2_FUNC_PTR || ZEND_INTRIN_SSSE3_FUNC_PTR) && !ZEND_INTRIN_AVX2_NATIVE
+#if (defined(ZEND_INTRIN_AVX2_FUNC_PTR) || defined(ZEND_INTRIN_SSSE3_FUNC_PTR) || defined(ZEND_INTRIN_AVX512_FUNC_PTR) || defined(ZEND_INTRIN_AVX512_VBMI_FUNC_PTR)) && !defined(ZEND_INTRIN_AVX2_NATIVE)
 PHP_MINIT_FUNCTION(base64_intrin);
-PHPAPI extern zend_string *(*php_base64_encode)(const unsigned char *, size_t);
-PHPAPI extern zend_string *(*php_base64_decode_ex)(const unsigned char *, size_t, zend_bool);
-#else
-PHPAPI extern zend_string *php_base64_encode(const unsigned char *, size_t);
-PHPAPI extern zend_string *php_base64_decode_ex(const unsigned char *, size_t, zend_bool);
 #endif
 
+/* php_base64_encode_ex flags */
+#define PHP_BASE64_NO_PADDING 1
+
+PHPAPI extern zend_string *php_base64_encode_ex(const unsigned char *, size_t, zend_long flags);
+PHPAPI extern zend_string *php_base64_decode_ex(const unsigned char *, size_t, bool);
+
+static inline zend_string *php_base64_encode(const unsigned char *str, size_t len) {
+	return php_base64_encode_ex(str, len, 0);
+}
 static inline zend_string *php_base64_encode_str(const zend_string *str) {
 	return php_base64_encode((const unsigned char*)(ZSTR_VAL(str)), ZSTR_LEN(str));
 }
@@ -80,10 +80,3 @@ static inline zend_string *php_base64_decode_str(const zend_string *str) {
 }
 
 #endif /* BASE64_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- */

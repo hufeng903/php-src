@@ -1,14 +1,12 @@
 --TEST--
 Bug #68760 (Callback throws exception behaviour. Segfault in 5.6)
---SKIPIF--
-<?php
-if (!extension_loaded('sqlite3')) die('skip');
-?>
+--EXTENSIONS--
+sqlite3
 --FILE--
 <?php
 function oopsFunction($a, $b) {
-	echo "callback".PHP_EOL;
-	throw new \Exception("oops");
+    echo "callback".PHP_EOL;
+    throw new \Exception("oops");
 }
 
 $db = new SQLite3(":memory:");
@@ -26,10 +24,9 @@ try {
     $db->close();
 }
 catch(\Exception $e) {
-    echo "Exception: ".$e->getMessage();
+    echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 ?>
 --EXPECT--
 callback
 Exception: oops
-

@@ -1,11 +1,10 @@
 --TEST--
 Test the File Modification Time as described in http://tools.ietf.org/html/rfc3659#section-3.1
 --CREDITS--
-Nathaniel McHugh 
---SKIPIF--
-<?php
-require 'skipif.inc';
-?>
+Nathaniel McHugh
+--EXTENSIONS--
+ftp
+pcntl
 --FILE--
 <?php
 

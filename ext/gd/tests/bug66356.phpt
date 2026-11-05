@@ -1,18 +1,20 @@
 --TEST--
 Bug #66356 (Heap Overflow Vulnerability in imagecrop())
---SKIPIF--
-<?php
-	if(!extension_loaded('gd')){ die('skip gd extension not available'); }
-?>
+--EXTENSIONS--
+gd
 --FILE--
 <?php
 $img = imagecreatetruecolor(10, 10);
 
 // POC #1
-var_dump(imagecrop($img, array("x" => "a", "y" => 0, "width" => 10, "height" => 10)));
+var_dump(imagecrop($img, array("x" => 0, "y" => 0, "width" => 10, "height" => 10)));
 
-$arr = array("x" => "a", "y" => "12b", "width" => 10, "height" => 10);
-var_dump(imagecrop($img, $arr));
+$arr = array("x" => 2147483647, "y" => 2147483647, "width" => 10, "height" => 10);
+try {
+	imagecrop($img, $arr);
+} catch (\ValueError $e) {
+	echo $e::class, ': ', $e->getMessage(), PHP_EOL;
+}
 print_r($arr);
 
 // POC #2
@@ -28,22 +30,25 @@ var_dump(imagecrop($img, array("x" => 0x7fffff00, "y" => 0, "width" => 10, "heig
 var_dump(imagecrop($img, array("x" => 0, "y" => 0, "width" => 65535, "height" => 65535)));
 ?>
 --EXPECTF--
-resource(%d) of type (gd)
-resource(%d) of type (gd)
+object(GdImage)#2 (0) {
+}
+ValueError: imagecrop(): Argument #2 ($rectangle) overflow with "x" and "width" keys
 Array
 (
-    [x] => a
-    [y] => 12b
+    [x] => 2147483647
+    [y] => 2147483647
     [width] => 10
     [height] => 10
 )
 
-Warning: imagecrop(): one parameter to a memory allocation multiplication is negative or zero, failing operation gracefully
- in %sbug66356.php on line %d
+Warning: imagecrop(): %cne parameter to a memory allocation multiplication is negative or zero, failing operation gracefully
+ in %s on line %d
 bool(false)
-resource(%d) of type (gd)
-resource(%d) of type (gd)
+object(GdImage)#3 (0) {
+}
+object(GdImage)#3 (0) {
+}
 
-Warning: imagecrop(): product of memory allocation multiplication would exceed INT_MAX, failing operation gracefully
- in %sbug66356.php on line %d
+Warning: imagecrop(): %croduct of memory allocation multiplication would exceed INT_MAX, failing operation gracefully
+ in %s on line %d
 bool(false)

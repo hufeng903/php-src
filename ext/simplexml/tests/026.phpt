@@ -1,9 +1,9 @@
 --TEST--
 SimpleXML: getName()
---SKIPIF--
-<?php if (!extension_loaded("simplexml")) print "skip"; ?>
+--EXTENSIONS--
+simplexml
 --FILE--
-<?php 
+<?php
 $xml =<<<EOF
 <people>
   <person>Jane</person>
@@ -31,10 +31,8 @@ $people = simplexml_load_string($xml);
 traverse_xml($people);
 
 ?>
-===DONE===
 --EXPECT--
 <people>
   <person>Jane
   </person>
 </people>
-===DONE===

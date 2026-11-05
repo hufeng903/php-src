@@ -1,23 +1,18 @@
 --TEST--
-Bug #66043 (Segfault calling bind_param() on mysqli)
+Bug #66043 (Segfault calling bind_param() on mysqli) - Calling mysql_stmt::bind_result() without storing it's result value in a variable is causing a segfault.
+--EXTENSIONS--
+mysqli
 --SKIPIF--
 <?php
-require_once('skipif.inc');
-require_once("connect.inc");
-if ($IS_MYSQLND) {
-    die("skip libmysql only test");
-}
-require_once('skipifconnectfailure.inc');
+require_once 'skipifconnectfailure.inc';
 ?>
 --FILE--
 <?php
 require 'connect.inc';
-if (!$db = my_mysqli_connect($host, $user, $passwd, $db, $port, $socket)) {
-	printf("[001] Connect failed, [%d] %s\n", mysqli_connect_errno(), mysqli_connect_error());
-}
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$db = my_mysqli_connect($host, $user, $passwd, $db, $port, $socket);
 
-$stmt = $db->stmt_init();
-$stmt->prepare("SELECT User FROM user WHERE password=\"\"");
+$stmt = $db->prepare("SELECT 'Test'");
 $stmt->execute();
 $stmt->bind_result($testArg);
 echo "Okey";

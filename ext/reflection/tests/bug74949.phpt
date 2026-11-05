@@ -12,13 +12,13 @@ unset($f);
 echo $r, "\n";
 
 try  {
-	echo $r->getPrototype();
+    echo $r->getPrototype();
 } catch (Exception $e) {
-	echo $e->getMessage(), "\n";	
+    echo $e->getMessage(), "\n";
 }
 ?>
 --EXPECT--
 Method [ <internal> public method __invoke ] {
 }
 
-Method Closure::__invoke does not have a prototype
+Method Closure::__invoke() does not have a prototype

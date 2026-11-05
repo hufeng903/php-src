@@ -1,14 +1,12 @@
 --TEST--
 Bug #73113 (Segfault with throwing JsonSerializable)
 Also test that the custom exception is not wrapped by ext/json
---SKIPIF--
-<?php if (!extension_loaded("json")) print "skip"; ?>
 --FILE--
 <?php
 
 class JsonSerializableObject implements \JsonSerializable
 {
-    public function jsonSerialize()
+    public function jsonSerialize(): mixed
     {
         throw new \Exception('This error is expected');
     }
@@ -16,9 +14,10 @@ class JsonSerializableObject implements \JsonSerializable
 
 $obj = new JsonSerializableObject();
 try {
-	echo json_encode($obj);
-} catch (\Exception $e) {
-	echo $e->getMessage();
+    echo json_encode($obj);
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
+?>
 --EXPECT--
-This error is expected
+Exception: This error is expected

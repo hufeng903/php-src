@@ -4,7 +4,6 @@ phpcredits()
 <?php
 
 var_dump(phpcredits());
-var_dump(phpcredits(array()));
 
 echo "--\n";
 var_dump(phpcredits(0));
@@ -16,10 +15,10 @@ var_dump(phpcredits(CREDITS_GROUP));
 --EXPECTF--
 PHP Credits
 
-PHP Group
+%wPHP Group%w
 %a
 
-Language Design & Concept
+%wLanguage Design & Concept%w
 %a
 
 %wPHP Authors%w
@@ -34,21 +33,18 @@ Language Design & Concept
 %wPHP Documentation%w
 %a
 
-PHP Quality Assurance Team
+%wPHP Quality Assurance Team%w
 %a
 
 %wWebsites and Infrastructure team%w
 %a
 bool(true)
-
-Warning: phpcredits() expects parameter 1 to be int, array given in %sphpcredits.php on line 4
-NULL
 --
 PHP Credits
 bool(true)
 --
 PHP Credits
 
-PHP Group
+%wPHP Group%w
 %a
 bool(true)

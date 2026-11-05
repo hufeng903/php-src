@@ -1,7 +1,9 @@
 --TEST--
 redefining SID should not cause warnings
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.use_cookies=0
 session.use_strict_mode=0
@@ -12,10 +14,10 @@ session.save_handler=files
 <?php
 error_reporting(E_ALL);
 
-session_id("abtest");
+session_id("test013");
 session_start();
 session_destroy();
-session_id("abtest2");
+session_id("test013-2");
 session_start();
 session_destroy();
 

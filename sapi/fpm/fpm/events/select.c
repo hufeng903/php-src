@@ -1,29 +1,23 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Jerome Loyet <jerome@loyet.net>                             |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "../fpm_config.h"
 #include "../fpm_events.h"
 #include "../fpm.h"
 #include "../zlog.h"
 
-#if HAVE_SELECT
+#ifdef HAVE_SELECT
 
 /* According to POSIX.1-2001 */
 #include <sys/select.h>
@@ -57,17 +51,16 @@ static fd_set fds;
 /*
  * return the module configuration
  */
-struct fpm_event_module_s *fpm_event_select_module() /* {{{ */
+struct fpm_event_module_s *fpm_event_select_module(void)
 {
-#if HAVE_SELECT
+#ifdef HAVE_SELECT
 	return &select_module;
 #else
 	return NULL;
 #endif /* HAVE_SELECT */
 }
-/* }}} */
 
-#if HAVE_SELECT
+#ifdef HAVE_SELECT
 
 /*
  * Init the module
@@ -97,7 +90,7 @@ static int fpm_event_select_wait(struct fpm_event_queue_s *queue, unsigned long 
 	t.tv_sec = timeout / 1000;
 	t.tv_usec = (timeout % 1000) * 1000;
 
-	/* wait for inconming event or timeout */
+	/* wait for incoming event or timeout */
 	ret = select(FD_SETSIZE, &current_fds, NULL, NULL, &t);
 	if (ret == -1) {
 

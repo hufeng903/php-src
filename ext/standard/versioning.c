@@ -1,22 +1,16 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Stig Sæther Bakken <ssb@php.net>                             |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -26,33 +20,31 @@
 #include "php.h"
 #include "php_versioning.h"
 
-#define sign(n) ((n)<0?-1:((n)>0?1:0))
-
 /* {{{ php_canonicalize_version() */
 
 PHPAPI char *
 php_canonicalize_version(const char *version)
 {
-    size_t len = strlen(version);
-    char *buf = safe_emalloc(len, 2, 1), *q, lp, lq;
-    const char *p;
+	size_t len = strlen(version);
+	char *buf = safe_emalloc(len * 2, sizeof(char), 1), *q, lp, lq;
+	const char *p;
 
-    if (len == 0) {
-        *buf = '\0';
-        return buf;
-    }
+	if (len == 0) {
+		*buf = '\0';
+		return buf;
+	}
 
-    p = version;
-    q = buf;
-    *q++ = lp = *p++;
+	p = version;
+	q = buf;
+	*q++ = lp = *p++;
 
-    while (*p) {
+	while (*p) {
 /*  s/[-_+]/./g;
  *  s/([^\d\.])([^\D\.])/$1.$2/g;
  *  s/([^\D\.])([^\d\.])/$1.$2/g;
  */
-#define isdig(x) (isdigit(x)&&(x)!='.')
-#define isndig(x) (!isdigit(x)&&(x)!='.')
+#define isdig(x) (isdigit((unsigned char)(x))&&(x)!='.')
+#define isndig(x) (!isdigit((unsigned char)(x))&&(x)!='.')
 #define isspecialver(x) ((x)=='-'||(x)=='_'||(x)=='+')
 
 		lq = *(q - 1);
@@ -65,7 +57,7 @@ php_canonicalize_version(const char *version)
 				*q++ = '.';
 			}
 			*q++ = *p;
-		} else if (!isalnum(*p)) {
+		} else if (!isalnum((unsigned char)*p)) {
 			if (lq != '.') {
 				*q++ = '.';
 			}
@@ -73,9 +65,17 @@ php_canonicalize_version(const char *version)
 			*q++ = *p;
 		}
 		lp = *p++;
-    }
-    *q++ = '\0';
-    return buf;
+	}
+
+	/* Check if the last component is empty (i.e. the last character is a dot)
+	 * and remove it if it is. */
+	if (*(q - 1) == '.') {
+		*(q - 1) = '\0';
+	} else {
+		*q = '\0';
+	}
+
+	return buf;
 }
 
 /* }}} */
@@ -83,41 +83,41 @@ php_canonicalize_version(const char *version)
 
 typedef struct {
 	const char *name;
+	uint8_t name_len;
 	int order;
 } special_forms_t;
 
-static int
-compare_special_version_forms(char *form1, char *form2)
+static int compare_special_version_forms(char *form1, char *form2)
 {
 	int found1 = -1, found2 = -1;
 	special_forms_t special_forms[11] = {
-		{"dev", 0},
-		{"alpha", 1},
-		{"a", 1},
-		{"beta", 2},
-		{"b", 2},
-		{"RC", 3},
-		{"rc", 3},
-		{"#", 4},
-		{"pl", 5},
-		{"p", 5},
-		{NULL, 0},
+		{ZEND_STRL("dev"), 0},
+		{ZEND_STRL("alpha"), 1},
+		{ZEND_STRL("a"), 1},
+		{ZEND_STRL("beta"), 2},
+		{ZEND_STRL("b"), 2},
+		{ZEND_STRL("RC"), 3},
+		{ZEND_STRL("rc"), 3},
+		{ZEND_STRL("#"), 4},
+		{ZEND_STRL("pl"), 5},
+		{ZEND_STRL("p"), 5},
+		{NULL, 0, 0},
 	};
 	special_forms_t *pp;
 
 	for (pp = special_forms; pp && pp->name; pp++) {
-		if (strncmp(form1, pp->name, strlen(pp->name)) == 0) {
+		if (strncmp(form1, pp->name, pp->name_len) == 0) {
 			found1 = pp->order;
 			break;
 		}
 	}
 	for (pp = special_forms; pp && pp->name; pp++) {
-		if (strncmp(form2, pp->name, strlen(pp->name)) == 0) {
+		if (strncmp(form2, pp->name, pp->name_len) == 0) {
 			found2 = pp->order;
 			break;
 		}
 	}
-	return sign(found1 - found2);
+	return ZEND_NORMALIZE_BOOL(found1 - found2);
 }
 
 /* }}} */
@@ -158,17 +158,17 @@ php_version_compare(const char *orig_ver1, const char *orig_ver2)
 		if ((n2 = strchr(p2, '.')) != NULL) {
 			*n2 = '\0';
 		}
-		if (isdigit(*p1) && isdigit(*p2)) {
+		if (isdigit((unsigned char)*p1) && isdigit((unsigned char)*p2)) {
 			/* compare element numerically */
 			l1 = strtol(p1, NULL, 10);
 			l2 = strtol(p2, NULL, 10);
-			compare = sign(l1 - l2);
-		} else if (!isdigit(*p1) && !isdigit(*p2)) {
+			compare = ZEND_NORMALIZE_BOOL(l1 - l2);
+		} else if (!isdigit((unsigned char)*p1) && !isdigit((unsigned char)*p2)) {
 			/* compare element names */
 			compare = compare_special_version_forms(p1, p2);
 		} else {
 			/* mix of names and numbers */
-			if (isdigit(*p1)) {
+			if (isdigit((unsigned char)*p1)) {
 				compare = compare_special_version_forms("#N#", p2);
 			} else {
 				compare = compare_special_version_forms(p1, "#N#");
@@ -186,13 +186,13 @@ php_version_compare(const char *orig_ver1, const char *orig_ver2)
 	}
 	if (compare == 0) {
 		if (n1 != NULL) {
-			if (isdigit(*p1)) {
+			if (isdigit((unsigned char)*p1)) {
 				compare = 1;
 			} else {
 				compare = php_version_compare(p1, "#N#");
 			}
 		} else if (n2 != NULL) {
-			if (isdigit(*p2)) {
+			if (isdigit((unsigned char)*p2)) {
 				compare = -1;
 			} else {
 				compare = php_version_compare("#N#", p2);
@@ -205,53 +205,46 @@ php_version_compare(const char *orig_ver1, const char *orig_ver2)
 }
 
 /* }}} */
-/* {{{ proto int version_compare(string ver1, string ver2 [, string oper])
-  Compares two "PHP-standardized" version number strings */
+/* {{{ Compares two "PHP-standardized" version number strings */
 
 PHP_FUNCTION(version_compare)
 {
-	char *v1, *v2, *op = NULL;
-	size_t v1_len, v2_len, op_len = 0;
+	char *v1, *v2;
+	zend_string *op = NULL;
+	size_t v1_len, v2_len;
 	int compare;
 
 	ZEND_PARSE_PARAMETERS_START(2, 3)
-		Z_PARAM_STRING(v1, v1_len)
-		Z_PARAM_STRING(v2, v2_len)
+		Z_PARAM_PATH(v1, v1_len)
+		Z_PARAM_PATH(v2, v2_len)
 		Z_PARAM_OPTIONAL
-		Z_PARAM_STRING(op, op_len)
+		Z_PARAM_STR_OR_NULL(op)
 	ZEND_PARSE_PARAMETERS_END();
 
 	compare = php_version_compare(v1, v2);
 	if (!op) {
 		RETURN_LONG(compare);
 	}
-	if (!strncmp(op, "<", op_len) || !strncmp(op, "lt", op_len)) {
+	if (zend_string_equals_literal(op, "<") || zend_string_equals_literal(op, "lt")) {
 		RETURN_BOOL(compare == -1);
 	}
-	if (!strncmp(op, "<=", op_len) || !strncmp(op, "le", op_len)) {
+	if (zend_string_equals_literal(op, "<=") || zend_string_equals_literal(op, "le")) {
 		RETURN_BOOL(compare != 1);
 	}
-	if (!strncmp(op, ">", op_len) || !strncmp(op, "gt", op_len)) {
+	if (zend_string_equals_literal(op, ">") || zend_string_equals_literal(op, "gt")) {
 		RETURN_BOOL(compare == 1);
 	}
-	if (!strncmp(op, ">=", op_len) || !strncmp(op, "ge", op_len)) {
+	if (zend_string_equals_literal(op, ">=") || zend_string_equals_literal(op, "ge")) {
 		RETURN_BOOL(compare != -1);
 	}
-	if (!strncmp(op, "==", op_len) || !strncmp(op, "=", op_len) || !strncmp(op, "eq", op_len)) {
+	if (zend_string_equals_literal(op, "==") || zend_string_equals_literal(op, "=") || zend_string_equals_literal(op, "eq")) {
 		RETURN_BOOL(compare == 0);
 	}
-	if (!strncmp(op, "!=", op_len) || !strncmp(op, "<>", op_len) || !strncmp(op, "ne", op_len)) {
+	if (zend_string_equals_literal(op, "!=") || zend_string_equals_literal(op, "<>") || zend_string_equals_literal(op, "ne")) {
 		RETURN_BOOL(compare != 0);
 	}
-	RETURN_NULL();
+
+	zend_argument_value_error(3, "must be a valid comparison operator");
 }
 
 /* }}} */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- */

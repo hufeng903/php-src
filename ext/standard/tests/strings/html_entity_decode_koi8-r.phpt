@@ -138,13 +138,14 @@ foreach ($arr as $u => $v) {
     $res = html_entity_decode($ent, ENT_QUOTES, 'KOI8-R');
     $d = unpack("H*", $res);
     echo sprintf("%s: %s => %s\n", $v[1], $ent, $d[1]);
-    
+
     $ent = sprintf("&#x%X;", $v[0]);
     $res = html_entity_decode($ent, ENT_QUOTES, 'KOI8-R');
     if ($res[0] != "&" || $res[1] != "#")
         $res = unpack("H*", $res)[1];
     echo sprintf("%s => %s\n\n", $ent, $res);
 }
+?>
 --EXPECT--
 BOX DRAWINGS LIGHT HORIZONTAL: &#x2500; => 80
 &#x80; => &#x80;
@@ -529,5 +530,3 @@ CYRILLIC CAPITAL LETTER CHE: &#x427; => fe
 
 CYRILLIC CAPITAL LETTER HARD SIGN: &#x42A; => ff
 &#xFF; => &#xFF;
-
-

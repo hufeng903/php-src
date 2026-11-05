@@ -1,5 +1,7 @@
 --TEST--
 Incorrect negative range inference
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

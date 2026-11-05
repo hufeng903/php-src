@@ -1,14 +1,9 @@
 --TEST--
 Test ctype_cntrl() function : usage variations - Different strings
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+ctype
 --FILE--
 <?php
-/* Prototype  : bool ctype_cntrl(mixed $c)
- * Description: Checks for control character(s) 
- * Source code: ext/ctype/ctype.c
- */
-
 /*
  * Pass strings containing different character types to ctype_cntrl() to test
  * which are considered valid control character only strings
@@ -40,7 +35,7 @@ $values = array(
        'abc123\n',
 /*20*/ 'abc 123',
        '',
-       ' ', 
+       ' ',
        base64_decode("w4DDoMOHw6fDiMOo"), // non-ascii characters
        "\n",
 /*25*/ "\r",
@@ -62,7 +57,6 @@ foreach($values as $value) {
 
 setlocale(LC_CTYPE, $orig);
 ?>
-===DONE===
 --EXPECT--
 *** Testing ctype_cntrl() : usage variations ***
 
@@ -155,4 +149,3 @@ bool(false)
 
 -- Iteration 30 --
 bool(true)
-===DONE===

@@ -1,5 +1,7 @@
 --TEST--
 Incorrect constant propagation on BOOL in pass 1
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 function test($foo) {

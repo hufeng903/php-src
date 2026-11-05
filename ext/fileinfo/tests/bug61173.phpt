@@ -1,9 +1,7 @@
 --TEST--
 Bug #61173: Unable to detect error from finfo constructor
---SKIPIF--
-<?php
-if (!class_exists('finfo'))
-	die('skip no fileinfo extension');
+--EXTENSIONS--
+fileinfo
 --FILE--
 <?php
 
@@ -11,7 +9,8 @@ try {
     $finfo = new finfo(1, '', false);
     var_dump($finfo);
 } catch (TypeError $e) {
-    echo $e->getMessage(), "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
+?>
 --EXPECT--
-finfo::finfo() expects at most 2 parameters, 3 given
+ArgumentCountError: finfo::__construct() expects at most 2 arguments, 3 given

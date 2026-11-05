@@ -35,10 +35,8 @@
 #ifndef _H_CDF_
 #define _H_CDF_
 
-#ifdef PHP_WIN32
+#ifdef WIN32
 #include <winsock2.h>
-#define asctime_r php_asctime_r
-#define ctime_r php_ctime_r
 #endif
 #ifdef __DJGPP__
 #define timespec timeval
@@ -48,6 +46,7 @@
 typedef int32_t cdf_secid_t;
 
 #define CDF_LOOP_LIMIT					10000
+#define CDF_ELEMENT_LIMIT				100000
 
 #define CDF_SECID_NULL					0
 #define CDF_SECID_FREE					-1
@@ -76,9 +75,9 @@ typedef struct {
 	cdf_secid_t	h_master_sat[436/4];
 } cdf_header_t;
 
-#define CDF_SEC_SIZE(h) ((size_t)(1 << (h)->h_sec_size_p2))
+#define CDF_SEC_SIZE(h) CAST(size_t, 1 << (h)->h_sec_size_p2)
 #define CDF_SEC_POS(h, secid) (CDF_SEC_SIZE(h) + (secid) * CDF_SEC_SIZE(h))
-#define CDF_SHORT_SEC_SIZE(h)	((size_t)(1 << (h)->h_short_sec_size_p2))
+#define CDF_SHORT_SEC_SIZE(h)	CAST(size_t, 1 << (h)->h_short_sec_size_p2)
 #define CDF_SHORT_SEC_POS(h, secid) ((secid) * CDF_SHORT_SEC_SIZE(h))
 
 typedef int32_t cdf_dirid_t;
@@ -317,6 +316,7 @@ int cdf_read_user_stream(const cdf_info_t *, const cdf_header_t *,
     const cdf_dir_t *, const char *, cdf_stream_t *);
 int cdf_find_stream(const cdf_dir_t *, const char *, int);
 int cdf_zero_stream(cdf_stream_t *);
+int cdf_namecmp(const char *, const uint16_t *, size_t);
 int cdf_read_doc_summary_info(const cdf_info_t *, const cdf_header_t *,
     const cdf_sat_t *, const cdf_sat_t *, const cdf_stream_t *,
     const cdf_dir_t *, cdf_stream_t *);

@@ -1,5 +1,7 @@
 --TEST--
 Bug #73654: Segmentation fault in zend_call_function
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 echo xyz();

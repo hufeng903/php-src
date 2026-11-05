@@ -58,7 +58,7 @@ Foo::byebye();
 Foo::farewell();
 
 echo "\nDone\n";
-
+?>
 --EXPECT--
 TraitA::catch
 TraitA::list

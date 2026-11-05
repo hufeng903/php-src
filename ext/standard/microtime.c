@@ -1,22 +1,16 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Paul Panotzki - Bunyip Information Systems                   |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #include "php.h"
 
@@ -40,7 +34,6 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "microtime.h"
 #include "ext/date/php_date.h"
 
 #define NUL  '\0'
@@ -50,7 +43,7 @@
 #ifdef HAVE_GETTIMEOFDAY
 static void _php_gettimeofday(INTERNAL_FUNCTION_PARAMETERS, int mode)
 {
-	zend_bool get_as_float = 0;
+	bool get_as_float = 0;
 	struct timeval tp = {0};
 
 	ZEND_PARSE_PARAMETERS_START(0, 1)
@@ -59,7 +52,7 @@ static void _php_gettimeofday(INTERNAL_FUNCTION_PARAMETERS, int mode)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (gettimeofday(&tp, NULL)) {
-		RETURN_FALSE;
+		ZEND_ASSERT(0 && "gettimeofday() can't fail");
 	}
 
 	if (get_as_float) {
@@ -84,16 +77,14 @@ static void _php_gettimeofday(INTERNAL_FUNCTION_PARAMETERS, int mode)
 	}
 }
 
-/* {{{ proto mixed microtime([bool get_as_float])
-   Returns either a string or a float containing the current time in seconds and microseconds */
+/* {{{ Returns either a string or a float containing the current time in seconds and microseconds */
 PHP_FUNCTION(microtime)
 {
 	_php_gettimeofday(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0);
 }
 /* }}} */
 
-/* {{{ proto array gettimeofday([bool get_as_float])
-   Returns the current time as array */
+/* {{{ Returns the current time as array */
 PHP_FUNCTION(gettimeofday)
 {
 	_php_gettimeofday(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
@@ -102,8 +93,7 @@ PHP_FUNCTION(gettimeofday)
 /* }}} */
 
 #ifdef HAVE_GETRUSAGE
-/* {{{ proto array getrusage([int who])
-   Returns an array of usage statistics */
+/* {{{ Returns an array of usage statistics */
 PHP_FUNCTION(getrusage)
 {
 	struct rusage usg;
@@ -133,7 +123,7 @@ PHP_FUNCTION(getrusage)
 #ifdef PHP_WIN32 /* Windows only implements a limited amount of fields from the rusage struct */
 	PHP_RUSAGE_PARA(ru_majflt);
 	PHP_RUSAGE_PARA(ru_maxrss);
-#elif !defined(_OSD_POSIX)
+#elif !defined(_OSD_POSIX) && !defined(__HAIKU__)
 	PHP_RUSAGE_PARA(ru_oublock);
 	PHP_RUSAGE_PARA(ru_inblock);
 	PHP_RUSAGE_PARA(ru_msgsnd);
@@ -158,12 +148,3 @@ PHP_FUNCTION(getrusage)
 #endif /* HAVE_GETRUSAGE */
 
 /* }}} */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

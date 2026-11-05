@@ -1,26 +1,20 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Marcus Boerger <helly@php.net>                               |
    |         Johannes Schlueter <johannes@php.net>                        |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
 #include "php.h"
@@ -29,30 +23,19 @@
 #define rl_completion_matches completion_matches
 #endif
 
-#include "php_globals.h"
-#include "php_variables.h"
 #include "zend_hash.h"
-#include "zend_modules.h"
 
 #include "SAPI.h"
-
-#if HAVE_SETLOCALE
-#include <locale.h>
-#endif
 #include "zend.h"
-#include "zend_extensions.h"
 #include "php_ini.h"
-#include "php_globals.h"
-#include "php_main.h"
-#include "fopen_wrappers.h"
-#include "ext/standard/php_standard.h"
+#include "ext/standard/info.h"
 #include "zend_smart_str.h"
 
 #ifdef __riscos__
 #include <unixlib/local.h>
 #endif
 
-#if HAVE_LIBEDIT
+#ifdef HAVE_LIBEDIT
 #include <editline/readline.h>
 #else
 #include <readline/readline.h>
@@ -61,7 +44,6 @@
 
 #include "zend_compile.h"
 #include "zend_execute.h"
-#include "zend_highlight.h"
 #include "zend_exceptions.h"
 
 #include "sapi/cli/cli.h"
@@ -77,7 +59,7 @@
 
 #define DEFAULT_PROMPT "\\b \\> "
 
-ZEND_DECLARE_MODULE_GLOBALS(cli_readline);
+ZEND_DECLARE_MODULE_GLOBALS(cli_readline)
 
 static char php_last_char = '\0';
 static FILE *pager_pipe = NULL;
@@ -142,8 +124,9 @@ static zend_string *cli_get_prompt(char *block, char prompt) /* {{{ */
 {
 	smart_str retval = {0};
 	char *prompt_spec = CLIR_G(prompt) ? CLIR_G(prompt) : DEFAULT_PROMPT;
+	bool unicode_warned = false;
 
-	do {
+	while (*prompt_spec) {
 		if (*prompt_spec == '\\') {
 			switch (prompt_spec[1]) {
 			case '\\':
@@ -200,23 +183,32 @@ static zend_string *cli_get_prompt(char *block, char prompt) /* {{{ */
 				prompt_spec = prompt_end;
 			}
 		} else {
-			smart_str_appendc(&retval, *prompt_spec);
+			if (!(*prompt_spec & 0x80)) {
+				smart_str_appendc(&retval, *prompt_spec);
+			} else {
+				if (!unicode_warned) {
+					zend_error(E_WARNING,
+						"prompt contains unsupported unicode characters");
+					unicode_warned = true;
+				}
+				smart_str_appendc(&retval, '?');
+			}
 		}
-	} while (++prompt_spec && *prompt_spec);
-	smart_str_0(&retval);
-	return retval.s;
+		++prompt_spec;
+	}
+	return smart_str_extract(&retval);
 }
 /* }}} */
 
-static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ */
+static int cli_is_valid_code(char *code, size_t len, zend_string **prompt) /* {{{ */
 {
 	int valid_end = 1, last_valid_end;
 	int brackets_count = 0;
 	int brace_count = 0;
-	int i;
+	size_t i;
 	php_code_type code_type = body;
-	char *heredoc_tag;
-	int heredoc_len;
+	char *heredoc_tag = NULL;
+	size_t heredoc_len;
 
 	for (i = 0; i < len; ++i) {
 		switch(code_type) {
@@ -257,6 +249,10 @@ static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ *
 						code_type = dstring;
 						break;
 					case '#':
+						if (code[i+1] == '[') {
+							valid_end = 0;
+							break;
+						}
 						code_type = comment_line;
 						break;
 					case '/':
@@ -287,6 +283,7 @@ static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ *
 						if (i + 2 < len && code[i+1] == '<' && code[i+2] == '<') {
 							i += 2;
 							code_type = heredoc_start;
+							heredoc_tag = NULL;
 							heredoc_len = 0;
 						}
 						break;
@@ -335,13 +332,19 @@ static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ *
 					case ' ':
 					case '\t':
 					case '\'':
+					case '"':
 						break;
 					case '\r':
 					case '\n':
-						code_type = heredoc;
+						if (heredoc_tag) {
+							code_type = heredoc;
+						} else {
+							/* Malformed heredoc without label */
+							code_type = body;
+						}
 						break;
 					default:
-						if (!heredoc_len) {
+						if (!heredoc_tag) {
 							heredoc_tag = code+i;
 						}
 						heredoc_len++;
@@ -349,11 +352,15 @@ static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ *
 				}
 				break;
 			case heredoc:
-				if (code[i - (heredoc_len + 1)] == '\n' && !strncmp(code + i - heredoc_len, heredoc_tag, heredoc_len) && code[i] == '\n') {
+				ZEND_ASSERT(heredoc_tag);
+				if (!strncmp(code + i - heredoc_len + 1, heredoc_tag, heredoc_len)) {
+					unsigned char c = code[i + 1];
+					char *p = code + i - heredoc_len;
+
+					if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c >= 0x80) break;
+					while (*p == ' ' || *p == '\t') p--;
+					if (*p != '\n') break;
 					code_type = body;
-				} else if (code[i - (heredoc_len + 2)] == '\n' && !strncmp(code + i - heredoc_len - 1, heredoc_tag, heredoc_len) && code[i-1] == ';' && code[i] == '\n') {
-					code_type = body;
-					valid_end = 1;
 				}
 				break;
 			case outside:
@@ -403,7 +410,15 @@ static int cli_is_valid_code(char *code, int len, zend_string **prompt) /* {{{ *
 }
 /* }}} */
 
-static char *cli_completion_generator_ht(const char *text, int textlen, int *state, HashTable *ht, void **pData) /* {{{ */
+typedef enum {
+	CLI_COMPLETION_VARIABLE,
+	CLI_COMPLETION_INI,
+	CLI_COMPLETION_FUNCTION,
+	CLI_COMPLETION_CONSTANT,
+	CLI_COMPLETION_CLASS,
+} cli_completion_type;
+
+static char *cli_completion_generator_ht(const char *text, size_t textlen, int *state, HashTable *ht, cli_completion_type type) /* {{{ */
 {
 	zend_string *name;
 	zend_ulong number;
@@ -412,86 +427,53 @@ static char *cli_completion_generator_ht(const char *text, int textlen, int *sta
 		zend_hash_internal_pointer_reset(ht);
 		(*state)++;
 	}
-	while(zend_hash_has_more_elements(ht) == SUCCESS) {
+	while (zend_hash_has_more_elements(ht) == SUCCESS) {
 		zend_hash_get_current_key(ht, &name, &number);
 		if (!textlen || !strncmp(ZSTR_VAL(name), text, textlen)) {
-			if (pData) {
-				*pData = zend_hash_get_current_data_ptr(ht);
+			char prefix = '\0';
+			char append_character = '\0';
+
+			switch (type) {
+				case CLI_COMPLETION_VARIABLE:
+					prefix = '$';
+					break;
+				case CLI_COMPLETION_INI:
+					prefix = '#';
+					append_character = '=';
+					break;
+				case CLI_COMPLETION_FUNCTION: {
+					zend_function *func = zend_hash_get_current_data_ptr(ht);
+					name = func->common.function_name;
+					append_character = '(';
+					break;
+				}
+				case CLI_COMPLETION_CLASS: {
+					zend_class_entry *ce = zend_hash_get_current_data_ptr(ht);
+					name = ce->name;
+					break;
+				}
+				case CLI_COMPLETION_CONSTANT:
+					break;
 			}
+
 			zend_hash_move_forward(ht);
-			return ZSTR_VAL(name);
+			/* The line editing library takes ownership of the candidate. */
+			size_t prefix_len = prefix ? 1 : 0;
+			char *retval = malloc(prefix_len + ZSTR_LEN(name) + 1);
+			if (!retval) {
+				return NULL;
+			}
+			if (prefix) {
+				retval[0] = prefix;
+			}
+			memcpy(retval + prefix_len, ZSTR_VAL(name), ZSTR_LEN(name) + 1);
+			rl_completion_append_character = append_character;
+			return retval;
 		}
-		if (zend_hash_move_forward(ht) == FAILURE) {
-			break;
-		}
+		zend_hash_move_forward(ht);
 	}
 	(*state)++;
 	return NULL;
-} /* }}} */
-
-static char *cli_completion_generator_var(const char *text, int textlen, int *state) /* {{{ */
-{
-	char *retval, *tmp;
-	zend_array *symbol_table = &EG(symbol_table);
-
-	tmp = retval = cli_completion_generator_ht(text + 1, textlen - 1, state, symbol_table, NULL);
-	if (retval) {
-		retval = malloc(strlen(tmp) + 2);
-		retval[0] = '$';
-		strcpy(&retval[1], tmp);
-		rl_completion_append_character = '\0';
-	}
-	return retval;
-} /* }}} */
-
-static char *cli_completion_generator_ini(const char *text, int textlen, int *state) /* {{{ */
-{
-	char *retval, *tmp;
-
-	tmp = retval = cli_completion_generator_ht(text + 1, textlen - 1, state, EG(ini_directives), NULL);
-	if (retval) {
-		retval = malloc(strlen(tmp) + 2);
-		retval[0] = '#';
-		strcpy(&retval[1], tmp);
-		rl_completion_append_character = '=';
-	}
-	return retval;
-} /* }}} */
-
-static char *cli_completion_generator_func(const char *text, int textlen, int *state, HashTable *ht) /* {{{ */
-{
-	zend_function *func;
-	char *retval = cli_completion_generator_ht(text, textlen, state, ht, (void**)&func);
-	if (retval) {
-		rl_completion_append_character = '(';
-		retval = strdup(ZSTR_VAL(func->common.function_name));
-	}
-
-	return retval;
-} /* }}} */
-
-static char *cli_completion_generator_class(const char *text, int textlen, int *state) /* {{{ */
-{
-	zend_class_entry *ce;
-	char *retval = cli_completion_generator_ht(text, textlen, state, EG(class_table), (void**)&ce);
-	if (retval) {
-		rl_completion_append_character = '\0';
-		retval = strdup(ZSTR_VAL(ce->name));
-	}
-
-	return retval;
-} /* }}} */
-
-static char *cli_completion_generator_define(const char *text, int textlen, int *state, HashTable *ht) /* {{{ */
-{
-	zend_class_entry **pce;
-	char *retval = cli_completion_generator_ht(text, textlen, state, ht, (void**)&pce);
-	if (retval) {
-		rl_completion_append_character = '\0';
-		retval = strdup(retval);
-	}
-
-	return retval;
 } /* }}} */
 
 static int cli_completion_state;
@@ -508,30 +490,32 @@ TODO:
 - future: respect scope ("php > function foo() { $[tab]" should only expand to local variables...)
 */
 	char *retval = NULL;
-	int textlen = strlen(text);
+	size_t textlen = strlen(text);
 
 	if (!index) {
 		cli_completion_state = 0;
 	}
 	if (text[0] == '$') {
-		retval = cli_completion_generator_var(text, textlen, &cli_completion_state);
-	} else if (text[0] == '#') {
-		retval = cli_completion_generator_ini(text, textlen, &cli_completion_state);
+		retval = cli_completion_generator_ht(text + 1, textlen - 1, &cli_completion_state, &EG(symbol_table), CLI_COMPLETION_VARIABLE);
+	} else if (text[0] == '#' && text[1] != '[') {
+		retval = cli_completion_generator_ht(text + 1, textlen - 1, &cli_completion_state, EG(ini_directives), CLI_COMPLETION_INI);
 	} else {
-		char *lc_text, *class_name_end;
-		int class_name_len;
-		zend_string *class_name;
+		char *lc_text;
+		const char *class_name_end;
+		const char *constant_text = text;
+		zend_string *class_name = NULL;
 		zend_class_entry *ce = NULL;
 
 		class_name_end = strstr(text, "::");
 		if (class_name_end) {
-			class_name_len = class_name_end - text;
+			size_t class_name_len = class_name_end - text;
 			class_name = zend_string_alloc(class_name_len, 0);
 			zend_str_tolower_copy(ZSTR_VAL(class_name), text, class_name_len);
 			if ((ce = zend_lookup_class(class_name)) == NULL) {
-				zend_string_release(class_name);
+				zend_string_release_ex(class_name, 0);
 				return NULL;
 			}
+			constant_text = class_name_end + 2;
 			lc_text = zend_str_tolower_dup(class_name_end + 2, textlen - 2 - class_name_len);
 			textlen -= (class_name_len + 2);
 		} else {
@@ -541,29 +525,31 @@ TODO:
 		switch (cli_completion_state) {
 			case 0:
 			case 1:
-				retval = cli_completion_generator_func(lc_text, textlen, &cli_completion_state, ce ? &ce->function_table : EG(function_table));
+				retval = cli_completion_generator_ht(lc_text, textlen, &cli_completion_state, ce ? &ce->function_table : EG(function_table), CLI_COMPLETION_FUNCTION);
 				if (retval) {
 					break;
 				}
+				ZEND_FALLTHROUGH;
 			case 2:
 			case 3:
-				retval = cli_completion_generator_define(text, textlen, &cli_completion_state, ce ? &ce->constants_table : EG(zend_constants));
+				retval = cli_completion_generator_ht(constant_text, textlen, &cli_completion_state, ce ? &ce->constants_table : EG(zend_constants), CLI_COMPLETION_CONSTANT);
 				if (retval || ce) {
 					break;
 				}
+				ZEND_FALLTHROUGH;
 			case 4:
 			case 5:
-				retval = cli_completion_generator_class(lc_text, textlen, &cli_completion_state);
+				retval = cli_completion_generator_ht(lc_text, textlen, &cli_completion_state, EG(class_table), CLI_COMPLETION_CLASS);
 				break;
 			default:
 				break;
 		}
 		efree(lc_text);
-		if (class_name_end) {
-			zend_string_release(class_name);
+		if (class_name) {
+			zend_string_release_ex(class_name, 0);
 		}
 		if (ce && retval) {
-			int len = class_name_len + 2 + strlen(retval) + 1;
+			size_t len = ZSTR_LEN(ce->name) + 2 + strlen(retval) + 1;
 			char *tmp = malloc(len);
 
 			snprintf(tmp, len, "%s::%s", ZSTR_VAL(ce->name), retval);
@@ -591,25 +577,31 @@ static int readline_shell_run(void) /* {{{ */
 	int history_lines_to_write = 0;
 
 	if (PG(auto_prepend_file) && PG(auto_prepend_file)[0]) {
-		zend_file_handle *prepend_file_p;
 		zend_file_handle prepend_file;
 
-		memset(&prepend_file, 0, sizeof(prepend_file));
-		prepend_file.filename = PG(auto_prepend_file);
-		prepend_file.opened_path = NULL;
-		prepend_file.free_filename = 0;
-		prepend_file.type = ZEND_HANDLE_FILENAME;
-		prepend_file_p = &prepend_file;
-
-		zend_execute_scripts(ZEND_REQUIRE, NULL, 1, prepend_file_p);
+		zend_stream_init_filename(&prepend_file, PG(auto_prepend_file));
+		zend_execute_script(ZEND_REQUIRE, NULL, &prepend_file);
+		zend_destroy_file_handle(&prepend_file);
 	}
 
 #ifndef PHP_WIN32
-	history_file = tilde_expand("~/.php_history");
+	const char *histfile_env_name = "PHP_HISTFILE";
+	if (getenv(histfile_env_name)) {
+		spprintf(&history_file, MAXPATHLEN, "%s", getenv(histfile_env_name));
+	} else {
+		spprintf(&history_file, MAXPATHLEN, "%s/.php_history", getenv("HOME"));
+	}
 #else
 	spprintf(&history_file, MAX_PATH, "%s/.php_history", getenv("USERPROFILE"));
 #endif
-	rl_attempted_completion_function = cli_code_completion;
+	/* Install the default completion function for 'php -a'.
+	 *
+	 * But if readline_completion_function() was called by PHP code prior to the shell starting
+	 * (e.g. with 'php -d auto_prepend_file=prepend.php -a'),
+	 * then use that instead of PHP's default. */
+	if (rl_attempted_completion_function != php_readline_completion_cb) {
+		rl_attempted_completion_function = cli_code_completion;
+	}
 #ifndef PHP_WIN32
 	rl_special_prefixes = "$";
 #endif
@@ -629,7 +621,7 @@ static int readline_shell_run(void) /* {{{ */
 
 		len = strlen(line);
 
-		if (line[0] == '#') {
+		if (line[0] == '#' && line[1] != '[') {
 			char *param = strstr(&line[1], "=");
 			if (param) {
 				zend_string *cmd;
@@ -637,12 +629,13 @@ static int readline_shell_run(void) /* {{{ */
 				cmd = zend_string_init(&line[1], param - &line[1] - 1, 0);
 
 				zend_alter_ini_entry_chars_ex(cmd, param, strlen(param), PHP_INI_USER, PHP_INI_STAGE_RUNTIME, 0);
-				zend_string_release(cmd);
+				zend_string_release_ex(cmd, 0);
 				add_history(line);
 
-				zend_string_release(prompt);
+				zend_string_release_ex(prompt, 0);
 				/* TODO: This might be wrong! */
 				prompt = cli_get_prompt("php", '>');
+				free(line);
 				continue;
 			}
 		}
@@ -662,14 +655,14 @@ static int readline_shell_run(void) /* {{{ */
 		}
 
 		free(line);
-		zend_string_release(prompt);
+		zend_string_release_ex(prompt, 0);
 
 		if (!cli_is_valid_code(code, pos, &prompt)) {
 			continue;
 		}
 
 		if (history_lines_to_write) {
-#if HAVE_LIBEDIT
+#ifdef HAVE_LIBEDIT
 			write_history(history_file);
 #else
 			append_history(history_lines_to_write, history_file);
@@ -692,19 +685,15 @@ static int readline_shell_run(void) /* {{{ */
 		}
 
 		if (pager_pipe) {
-			fclose(pager_pipe);
+			pclose(pager_pipe);
 			pager_pipe = NULL;
 		}
 
 		php_last_char = '\0';
 	}
-#ifdef PHP_WIN32
 	efree(history_file);
-#else
-	free(history_file);
-#endif
 	efree(code);
-	zend_string_release(prompt);
+	zend_string_release_ex(prompt, 0);
 	return EG(exit_status);
 }
 /* }}} */
@@ -716,7 +705,7 @@ typedef cli_shell_callbacks_t *(__cdecl *get_cli_shell_callbacks)(void);
 		get_cli_shell_callbacks get_callbacks; \
 		HMODULE hMod = GetModuleHandle("php.exe"); \
 		(cb) = NULL; \
-		if (strlen(sapi_module.name) >= 3 && 0 == strncmp("cli", sapi_module.name, 3)) { \
+		if (0 == strncmp("cli", sapi_module.name, 3)) { \
 			get_callbacks = (get_cli_shell_callbacks)GetProcAddress(hMod, "php_cli_get_shell_callbacks"); \
 			if (get_callbacks) { \
 				(cb) = get_callbacks(); \
@@ -734,7 +723,7 @@ this extension sharedto offer compatibility.
 #define GET_SHELL_CB(cb) \
 	do { \
 		(cb) = NULL; \
-		cli_shell_callbacks_t *(*get_callbacks)(); \
+		cli_shell_callbacks_t *(*get_callbacks)(void); \
 		get_callbacks = dlsym(RTLD_DEFAULT, "php_cli_get_shell_callbacks"); \
 		if (get_callbacks) { \
 			(cb) = get_callbacks(); \
@@ -751,12 +740,6 @@ PHP_MINIT_FUNCTION(cli_readline)
 
 	ZEND_INIT_MODULE_GLOBALS(cli_readline, cli_readline_init_globals, NULL);
 	REGISTER_INI_ENTRIES();
-
-#if HAVE_LIBEDIT
-	REGISTER_STRING_CONSTANT("READLINE_LIB", "libedit", CONST_CS|CONST_PERSISTENT);
-#else
-	REGISTER_STRING_CONSTANT("READLINE_LIB", "readline", CONST_CS|CONST_PERSISTENT);
-#endif
 
 	GET_SHELL_CB(cb);
 	if (cb) {
@@ -787,7 +770,7 @@ PHP_MSHUTDOWN_FUNCTION(cli_readline)
 PHP_MINFO_FUNCTION(cli_readline)
 {
 	php_info_print_table_start();
-	php_info_print_table_header(2, "Readline Support", "enabled");
+	php_info_print_table_row(2, "Readline Support", "enabled");
 #ifdef PHP_WIN32
 	php_info_print_table_row(2, "Readline library", "WinEditLine");
 #else
@@ -797,12 +780,3 @@ PHP_MINFO_FUNCTION(cli_readline)
 
 	DISPLAY_INI_ENTRIES();
 }
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

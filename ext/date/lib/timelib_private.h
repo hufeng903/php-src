@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Derick Rethans
+ * Copyright (c) 2015-2019 Derick Rethans
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,39 +39,28 @@
 # endif
 #endif
 
-#ifdef HAVE_STRING_H
-# include <string.h>
-#endif
-
-#ifdef HAVE_STRINGS_H
-# include <strings.h>
-#endif
+#include <string.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
 
-#if defined(HAVE_STDINT_H)
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
-#if HAVE_UNISTD_H
+#if defined(HAVE_UNISTD_H)
 # include <unistd.h>
 #endif
 
-#if HAVE_IO_H
+#if defined(HAVE_IO_H)
 # include <io.h>
 #endif
 
-#if HAVE_DIRENT_H
+#if defined(HAVE_DIRENT_H)
 # include <dirent.h>
 #endif
 
 #include <stdio.h>
-
-#if HAVE_LIMITS_H
 #include <limits.h>
-#endif
 
 #define TIMELIB_SECOND   1
 #define TIMELIB_MINUTE   2
@@ -90,13 +79,25 @@
 #define TIMELIB_SPECIAL_FIRST_DAY_OF_MONTH        0x01
 #define TIMELIB_SPECIAL_LAST_DAY_OF_MONTH         0x02
 
+#define TIMELIB_TIME_PART_DONT_KEEP               0x00
+#define TIMELIB_TIME_PART_KEEP                    0x01
+
+#define MINS_PER_HOUR     60
 #define SECS_PER_ERA   TIMELIB_LL_CONST(12622780800)
 #define SECS_PER_DAY   86400
+#define SECS_PER_HOUR   3600
+#define USECS_PER_HOUR TIMELIB_LL_CONST(3600000000)
+#define NSECS_PER_SEC  1000000000
+#define MAX_DURATION_SECONDS UINT64_C(9223372035)
+
+#define DAYS_PER_WEEK      7
 #define DAYS_PER_YEAR    365
 #define DAYS_PER_LYEAR   366
+#define MONTHS_PER_YEAR   12
 /* 400*365 days + 97 leap days */
-#define DAYS_PER_LYEAR_PERIOD 146097
-#define YEARS_PER_LYEAR_PERIOD 400
+#define DAYS_PER_ERA  146097
+#define YEARS_PER_ERA    400
+#define HINNANT_EPOCH_SHIFT 719468 /* 0000-03-01 instead of 1970-01-01 */
 
 #define TIMELIB_TZINFO_PHP       0x01
 #define TIMELIB_TZINFO_ZONEINFO  0x02
@@ -111,6 +112,30 @@
 		m = NULL;   \
 	}
 
+#if defined (__GNUC__)
+# define TIMELIB_GNUC_CHECK_VERSION(major, minor) \
+      ((__GNUC__ > (major)) ||                   \
+      ((__GNUC__ == (major)) && (__GNUC_MINOR__ >= (minor))))
+#else
+# define TIMELIB_GNUC_CHECK_VERSION(major, minor) 0
+#endif
+
+#if TIMELIB_GNUC_CHECK_VERSION(7, 0)
+# define TIMELIB_BREAK_INTENTIONALLY_MISSING __attribute__ ((fallthrough));
+#else
+# define TIMELIB_BREAK_INTENTIONALLY_MISSING
+#endif
+
+#if defined(__has_builtin)
+# if __has_builtin(__builtin_saddll_overflow)
+#  define TIMELIB_HAVE_BUILTIN_SADDLL_OVERFLOW 1
+# endif
+#endif
+
+#ifndef TIMELIB_HAVE_BUILTIN_SADDLL_OVERFLOW
+# define TIMELIB_HAVE_BUILTIN_SADDLL_OVERFLOW 0
+#endif
+
 struct _ttinfo
 {
 	int32_t      offset;
@@ -123,7 +148,7 @@ struct _ttinfo
 
 struct _tlinfo
 {
-	int32_t  trans;
+	int64_t  trans;
 	int32_t  offset;
 };
 
@@ -136,14 +161,28 @@ struct _tlinfo
 #define LONG_MIN (- LONG_MAX - 1)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* From unixtime2tm.c */
+void timelib_date_from_epoch_days(timelib_sll epoch_days, timelib_sll *y, timelib_sll *m, timelib_sll *d);
 int timelib_apply_localtime(timelib_time *t, unsigned int localtime);
 
+/* From parse_posix.c */
+timelib_sll timelib_ts_at_start_of_year(timelib_sll year);
+ttinfo* timelib_fetch_posix_timezone_offset(timelib_tzinfo *tz, timelib_sll ts, timelib_sll *transition_time);
+
 /* From parse_tz.c */
-void timelib_time_tz_abbr_update(timelib_time* tm, char* tz_abbr);
+void timelib_time_tz_abbr_update(timelib_time* tm, const char* tz_abbr);
+ttinfo* timelib_fetch_timezone_offset(timelib_tzinfo *tz, timelib_sll ts, timelib_sll *transition_time);
 
 /* From timelib.c */
 int timelib_strcasecmp(const char *s1, const char *s2);
 int timelib_strncasecmp(const char *s1, const char *s2, size_t n);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

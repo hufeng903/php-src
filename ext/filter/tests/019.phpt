@@ -1,7 +1,7 @@
 --TEST--
 filter_var() & FILTER_VALIDATE_IP and weird data
---SKIPIF--
-<?php if (!extension_loaded("filter")) die("skip"); ?>
+--EXTENSIONS--
+filter
 --FILE--
 <?php
 
@@ -13,7 +13,7 @@ var_dump(filter_var("1.1.1.1", FILTER_VALIDATE_IP));
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECT--
 bool(false)
 bool(false)
 bool(false)

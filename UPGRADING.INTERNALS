@@ -1,148 +1,114 @@
-PHP 7.3 INTERNALS UPGRADE NOTES
+PHP 8.7 INTERNALS UPGRADE NOTES
 
 1. Internal API changes
-  a. array_init() and array_init_size()
-  b. Run-time constant operand addressing
-  c. Array/Object recursion protection
-  d. HASH_FLAG_PERSISTENT
-  e. AST and IS_CONSTANT
-  f. GC_REFCOUNT()
-  g. zend_get_parameters()
-  h. zend_register_persistent_resource()
-  i. RAND_RANGE()
-  j. cast_object() with _IS_NUMBER
-  k. zend_fcall_info_cache.initialized
-  l. php_hrtime_current()
-  m. zend_cpu_supports()
-  n. IS_TYPE_COPYABLE
-  o. IS_UNUSED
-  p. VM instruction operands (FETCH_CLASS, FETCH_CONSTANT, CATCH)
 
 2. Build system changes
-  a. Unix build system changes
-  b. Windows build system changes
-
 
 3. Module changes
+
+4. OpCode changes
+
+5. SAPI changes
 
 ========================
 1. Internal API changes
 ========================
 
-  a. array_init() and array_init_size() are not functions anymore.
-     They don't return any values.
-
-  b. In 64-bit builds PHP-7.2 and below used relative run-time constant operand
-     addressing. E.g. opline->op1.constant kept an offset from start of literals
-     table - op_array->literals. To speedup access op_array->literals was cached
-     in execute_data->literals. So the resulting address calculated as
-     EX(literals) + opline->op1.constant.
-
-     Now at run-time literals allocated close to opcodes, and addressed
-     relatively from current opline. This eliminates load of EX(literals) on
-     each constant access as well as EX(literals) initialization on each call.
-
-     As result some related macros were removed (ZEND_EX_USE_LITERALS,
-     EX_LOAD_LITERALS, EX_LITERALS, RT_CONSTANT_EX, EX_CONSTANT) or changed
-     (RT_CONSTANT, ZEND_PASS_TWO_UPDATE_CONSTANT, ZEND_PASS_TWO_UNDO_CONSTANT).
-     This change way affect only some "system" extensions. EX_LITERALS,
-     RT_CONSTANT_EX, EX_CONSTANT should be substituted by RT_CONSTANT than now
-     use "opline" (instead of "op_array") as first argument.
-
-  c. Protection from recursion during processing circular data structures was
-     refactored. HashTable.nApplyCount and IS_OBJ_APPLY_COUNT are replaced by
-     single flag GC_PROTECTED. Corresponding macros Z_OBJ_APPLY_COUNT,
-     Z_OBJ_INC_APPLY_COUNT, Z_OBJ_DEC_APPLY_COUNT, ZEND_HASH_GET_APPLY_COUNT,
-     ZEND_HASH_INC_APPLY_COUNT, ZEND_HASH_DEC_APPLY_COUNT are replaced with
-     GC_IS_RECURSIVE, GC_PROTECT_RECURSION, GC_UNPROTECT_RECURSION,
-     Z_IS_RECURSIVE, Z_PROTECT_RECURSION, Z_UNPROTECT_RECURSION.
-
-     HASH_FLAG_APPLY_PROTECTION flag and ZEND_HASH_APPLY_PROTECTION() macro
-     are removed. All mutable arrays should use recursion protection.
-     Corresponding checks should be replaced by Z_REFCOUNTED() or
-     !(GC_GLAGS(p) & GC_IMMUTABLE).
-
-  d. HASH_FLAG_PERSISTENT renamed into IS_ARRAY_PERSISTENT and moved into
-     GC_FLAGS (to be consistent with IS_STR_PERSISTENT).
-
-  e. zend_ast_ref structure is changed to use only one allocation.
-     zend_ast_copy() now returns zend_ast_ref (instead of zend_asr).
-     zend_ast_destroy_and_free() is removed. ZVAL_NEW_AST() is replaced
-     by ZVAL_AST().
-
-     IS_CONSTANT type and Z_CONST_FLAGS() are removed. Now constants are always
-     represented using IS_CONSTANT_AST (ZEND_AST_CONSTANT kind). AST node
-     attributes are used instead of constant flags. IS_TYPE_CONSTANT flag is
-     removed, but Z_CONSTANT() macro is kept for compatibility.
-
-  f. GC_REFCOUNT() is turned into inline function and can't be modified direcly.
-     All reference-counting operations should be done through corresponding
-     macros GC_SET_REFCOUNT(), GC_ADDREF() and GC_DELREF().
-
-     GC_REFCOUNT(p)++ should be changed into GC_ADDREF(p),
-     GC_REFCOUNT(p)-- into GC_DELREF(p),
-     GC_REFCOUNT(p) = 1 into GC_SET_REFCOUNT(p, 1).
-
-  g. The zend_get_parameters() and zend_get_parameters_ex() functions were
-     removed. Instead zend_parse_parameters() should be used.
-
-  h. New functions zend_register_persistent_resource() or
-     zend_register_persistent_resource_ex() should beused to register
-     persistent resources, instead of manual insertion into EG(persistent_list).
-
-  i. The RANGE_RANGE() macro has been removed. php_mt_rand_range() should be
-     used instead.
-
-  j. The cast_object() object handler now also accepts the _IS_NUMBER type. The
-     handler should return either an integer or float value in this case,
-     whichever is more appropriate.
-
-  k. zend_fcall_info_cache.initialized is removed. zend_fcall_info_cache is
-     initialized if zend_fcall_info_cache.function_handler is set.
-
-  l. php_hrtime_current() delivers the number of nanoseconds since an uncertain
-     point in the past.
-
-  m. zend_cpu_supports() determines if a feature is supported by current cpu.
-     Also serial inline zend_cpu_supports_xxx() are added, which is designed for
-     ifunc resolver function, as resolver function should not depend on any
-     external function.
-
-  n. IS_TYPE_COPYABLE flag is removed. IS_STRING zvals didn't need to be
-     duplication by zval_copy_ctor(), ZVAL_DUP() and SEPARATE_ZVAL*() macros.
-     Interned strings didn't set IS_TYPE_COPYALE, so they aren't affected at
-     all. Now instead of checking for IS_TYPE_COPYABLE, engine checks for
-     IS_ARRAY type (it may be IS_TYPE_REFCOUNTED or not). All the related
-     macros: Z_COPYABLE..., Z_IMMUTABLE... are kept for compatibility.
-
-  o. IS_UNUSED became zero and can't be used as a bitmask (there were no such
-     usages in PHP sources).
-
-  p. Operands of few VM instructions were changed
-    - FETCH_CLASS     op1<fetch-flags>, op2<name>, result<var>
-    - FETCH_CONSTANT  op1<fetch-flags>, op2<name>, result<tmp>
-    - CATCH           ext<last-flag>, op1<name>, op2<jump_addr>, result<cv>
+- Removed the ZEND_LOG_XOR() macro.
+- Removed the ZEND_TRUTH() macro.
+- Removed zend_execute_scripts(). Manually call zend_execute_script() in a loop
+  instead.
+- Removed ZEND_STATIC_ASSERT(). Use C11 static_assert() directly instead.
+- Removed zend_atomic.h and the zend_atomic_* types and functions.
+  Use the standard C11 atomic_* types and functions instead.
+- The sapi_terminate_process() function was removed.
+- The sapi_force_http_10() function was removed.
+- The sapi_get_fd() function was removed.
+- The sapi_get_target_uid() and sapi_get_target_gid() functions were removed.
+- Removed HAVE_NORETURN and HAVE_NORETURN_ALIAS. ZEND_NORETURN is guaranteed to
+  work.
+- Redefined ZEND_NORETURN to make use of the [[noreturn]] attribute for C++
+  and C23, which means that ZEND_NORETURN needs to come first in the modifier
+  list. Consider using noreturn (C11) / [[noreturn]] (C23) directly if
+  header interoperability is not required.
+- The signature of zend_is_callable() has been changed to
+  zend_is_callable(const zval *callable, zend_fcall_info_cache *fcc, char **error)
+  from zend_is_callable(const zval *callable, uint32_t check_flags, zend_string **callable_name).
+  This new signature covers the most common parameters used with zend_is_callable_ex().
+- Removed zend_hrtime_posix_clock_id. zend_hrtime() always uses CLOCK_MONOTONIC
+  on POSIX platforms.
+- Function pointer signature for interface_gets_implemented has been made void.
+  Implementations are expected to use zend_error_noreturn upon failure.
+- Added a new zend_object_copy() function which increases the refcount of
+  a zend_object* and returns it. Allowing more descriptive code rather than
+  doing an assignment followed by GC_ADDREF().
+- Added zend_call_method_if_exists_ex() which accepts named parameters and
+  retrieving the callability failure error message.
+- The INIT_CLASS_ENTRY_INIT_METHODS() macro, which was previously used as
+  part of handling disabled classes, was removed following the removal of
+  the `disable_classes` INI setting in PHP 8.5.
+- Using zend_array_destroy() on HashTables with a custom pDestructor is not
+  allowed anymore. User-facing HashTables must have pDestructor = ZVAL_PTR_DTOR
+  or NULL, and must be freed with zend_array_destroy(). Other HashTables can be
+  freed with zend_hash_destroy() + pefree().
+- The ZTS symbols compiler_globals_offset and executor_globals_offset have been
+  removed: CG()/EG() now reach the globals through a __thread struct.
 
 ========================
 2. Build system changes
 ========================
 
-  a. Unix build system changes
+- Windows build system changes:
+  . C sources are now compiled as C17 and require C11 atomics. MSVC builds require
+    Visual Studio 2026 or later and enable /experimental:c11atomics.
+  . C++-only extension compiler flags can be added to CXXFLAGS_<EXTENSION>.
 
-  b. Windows build system changes
-    - ZEND_WIN32_FORCE_INLINE doesn't affect C++ anymore. zend_always_inline is
-      still usable in C++, but anything else inlining related is up to
-      compiler.
-    - ZEND_WIN32_KEEP_INLINE was removed, it was only needed for C++
-      convenience and is now default behavior with C++.
-    - New configure option --enable-native-intrinsics accepts a list of the
-      intrinsic optimizations to enable. It affects both the code generation
-      and the explicit optimizations guarded by preprocessor macros.
-    - The configure option --with-codegen-arch accepts only ia32 as a value.
-      Use it, to produce builds suitable for older processors without SSE2 or
-      even SSE support.
+- Unix build system changes:
+  . Autoconf minimum required version upgraded to 2.71.
 
 ========================
 3. Module changes
 ========================
 
+- Date:
+  . Added php_date_time_duration_create() to create Time\Duration objects
+    without going through the userland API.
+
+- MySQLi:
+  . Removed the reverse API. The mysqlnd_reverse_api.h header, the
+    MYSQLND_REVERSE_API struct and the functions zval_to_mysqlnd(),
+    mysqlnd_reverse_api_register_api() and mysqlnd_reverse_api_get_api_list()
+    no longer exist.
+
+- Mysqlnd:
+  . In ZTS builds the values of MYSQLND_STATS are atomic_uint_least64_t and
+    the LOCK_access member was removed. The MYSQLND_INC_STATISTIC*() and
+    MYSQLND_DEC_STATISTIC() macros update them with relaxed atomic additions.
+  . The MYSQLND_STATS_LOCK() and MYSQLND_STATS_UNLOCK() macros were removed.
+    MYSQLND_STATS_UPDATE_VALUE() is now an expression instead of a block.
+
+- Standard:
+  . php_explode() now takes a HashTable* instead of a zval* to store the
+    resulting parts. It already expected the zval* to be IS_ARRAY.
+
+========================
+4. OpCode changes
+========================
+
+========================
+5. SAPI changes
+========================
+
+- The size of the SAPI structure has changed.
+  . The terminate_process method has been removed.
+  . The force_http_10 method has been removed.
+  . The get_fd method has been removed.
+  . The get_target_uid and get_target_gid methods have been removed.
+
+- Per-thread TSRM resources are now released best-effort at normal thread exit,
+  because native TLS resource destructors can only run on their owning thread and
+  tsrm_shutdown() cannot release them afterwards. Prefer explicitly calling ts_free_thread().
+
+- tsrm_shutdown() and the bundled library-unload hooks automatically disarm
+  thread-exit cleanup. Embedders must stop and join all PHP worker threads
+  before calling tsrm_shutdown() or unloading PHP.

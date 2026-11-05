@@ -1,7 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Derick Rethans
+ * Copyright (c) 2015-2026 Derick Rethans
+ * Copyright (c) 2018,2021 MongoDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,78 +30,17 @@
 # include "timelib_config.h"
 #endif
 
+#define TIMELIB_VERSION 202602
+#define TIMELIB_EXTENDED_VERSION 20260201
+#define TIMELIB_ASCII_VERSION "2026.02"
+
 #include <stdlib.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <inttypes.h>
 
-# ifndef HAVE_INT32_T
-#  if SIZEOF_INT == 4
-typedef int int32_t;
-#  elif SIZEOF_LONG == 4
-typedef long int int32_t;
-#  endif
-# endif
-
-# ifndef HAVE_UINT32_T
-#  if SIZEOF_INT == 4
-typedef unsigned int uint32_t;
-#  elif SIZEOF_LONG == 4
-typedef unsigned long int uint32_t;
-#  endif
-# endif
-
 #ifdef _WIN32
-# if _MSC_VER >= 1600
 # include <stdint.h>
-# endif
-# ifndef SIZEOF_INT
-#  define SIZEOF_INT 4
-# endif
-# ifndef SIZEOF_LONG
-#  define SIZEOF_LONG 4
-# endif
-# ifndef int32_t
-typedef __int32           int32_t;
-# endif
-# ifndef uint32_t
-typedef unsigned __int32  uint32_t;
-# endif
-# ifndef int64_t
-typedef __int64           int64_t;
-# endif
-# ifndef uint64_t
-typedef unsigned __int64  uint64_t;
-# endif
-# ifndef PRId32
-#  define PRId32       "I32d"
-# endif
-# ifndef PRIu32
-#  define PRIu32       "I32u"
-# endif
-# ifndef PRId64
-#  define PRId64       "I64d"
-# endif
-# ifndef PRIu64
-#  define PRIu64       "I64u"
-# endif
-# ifndef INT32_MAX
-#define INT32_MAX    _I32_MAX
-# endif
-# ifndef INT32_MIN
-#define INT32_MIN    ((int32_t)_I32_MIN)
-# endif
-# ifndef UINT32_MAX
-#define UINT32_MAX   _UI32_MAX
-# endif
-# ifndef INT64_MIN
-#define INT64_MIN    ((int64_t)_I64_MIN)
-# endif
-# ifndef INT64_MAX
-#define INT64_MAX    _I64_MAX
-# endif
-# ifndef UINT64_MAX
-#define UINT64_MAX   _UI64_MAX
-# endif
 #endif
 
 #if (defined(__x86_64__) || defined(__LP64__) || defined(_LP64) || defined(_WIN64)) && !defined(TIMELIB_FORCE_LONG32)
@@ -142,6 +82,44 @@ typedef struct _tlocinfo
 	char *comments;
 } tlocinfo;
 
+#define TIMELIB_POSIX_TRANS_TYPE_JULIAN_NO_FEB29   1
+#define TIMELIB_POSIX_TRANS_TYPE_JULIAN_FEB29      2
+#define TIMELIB_POSIX_TRANS_TYPE_MWD               3
+
+typedef struct _timelib_posix_trans_info
+{
+	int type; // 1=Jn, 2=n, 3=Mm.w.d
+	union {
+		int days;
+		struct {
+			int month;
+			int week;
+			int dow;
+		} mwd;
+	};
+	int hour;
+} timelib_posix_trans_info;
+
+typedef struct _timelib_posix_str
+{
+	char        *std;
+	timelib_sll  std_offset;
+	char        *dst;
+	timelib_sll  dst_offset;
+
+	timelib_posix_trans_info *dst_begin;
+	timelib_posix_trans_info *dst_end;
+
+	int type_index_std_type;  // index into tz->type
+	int type_index_dst_type;  // index into tz->type
+} timelib_posix_str;
+
+typedef struct _timelib_posix_transitions {
+	size_t      count;
+	timelib_sll times[6];
+	timelib_sll types[6];
+} timelib_posix_transitions;
+
 typedef struct _timelib_tzinfo
 {
 	char    *name;
@@ -152,7 +130,7 @@ typedef struct _timelib_tzinfo
 		uint32_t timecnt;
 		uint32_t typecnt;
 		uint32_t charcnt;
-	} bit32;
+	} _bit32;
 	struct {
 		uint64_t ttisgmtcnt;
 		uint64_t ttisstdcnt;
@@ -162,7 +140,7 @@ typedef struct _timelib_tzinfo
 		uint64_t charcnt;
 	} bit64;
 
-	int32_t *trans;
+	int64_t *trans;
 	unsigned char *trans_idx;
 
 	ttinfo  *type;
@@ -171,6 +149,9 @@ typedef struct _timelib_tzinfo
 	tlinfo  *leap_times;
 	unsigned char bc;
 	tlocinfo location;
+
+	char              *posix_string;
+	timelib_posix_str *posix_info;
 } timelib_tzinfo;
 
 typedef struct _timelib_rel_time {
@@ -229,6 +210,12 @@ typedef struct _timelib_abbr_info {
 	int          dst;
 } timelib_abbr_info;
 
+typedef struct _timelib_duration {
+	uint64_t     seconds;
+	uint32_t     nanoseconds;
+	bool         negative;
+} timelib_duration;
+
 #define TIMELIB_WARN_MASK                      0x1ff
 #define TIMELIB_ERR_MASK                       0x2ff
 
@@ -264,7 +251,19 @@ typedef struct _timelib_abbr_info {
 #define TIMELIB_ERR_WRONG_FORMAT_SEP           0x219
 #define TIMELIB_ERR_TRAILING_DATA              0x21a
 #define TIMELIB_ERR_DATA_MISSING               0x21b
+#define TIMELIB_ERR_NO_THREE_DIGIT_MILLISECOND 0x21c
+#define TIMELIB_ERR_NO_FOUR_DIGIT_YEAR_ISO     0x21d
+#define TIMELIB_ERR_NO_TWO_DIGIT_WEEK          0x21e
+#define TIMELIB_ERR_INVALID_WEEK               0x21f
+#define TIMELIB_ERR_NO_DAY_OF_WEEK             0x220
+#define TIMELIB_ERR_INVALID_DAY_OF_WEEK        0x221
+#define TIMELIB_ERR_INVALID_SPECIFIER          0x222
+#define TIMELIB_ERR_INVALID_TZ_OFFSET          0x223
+#define TIMELIB_ERR_FORMAT_LITERAL_MISMATCH    0x224
+#define TIMELIB_ERR_MIX_ISO_WITH_NATURAL       0x225
+#define TIMELIB_ERR_NUMBER_OUT_OF_RANGE        0x226
 
+#define TIMELIB_ZONETYPE_NONE   0
 #define TIMELIB_ZONETYPE_OFFSET 1
 #define TIMELIB_ZONETYPE_ABBR   2
 #define TIMELIB_ZONETYPE_ID     3
@@ -284,10 +283,10 @@ typedef struct _timelib_error_container {
 } timelib_error_container;
 
 typedef struct _timelib_tz_lookup_table {
-	char       *name;
+	const char *name;
 	int         type;
 	float       gmtoffset;
-	char       *full_tz_name;
+	const char *full_tz_name;
 } timelib_tz_lookup_table;
 
 typedef struct _timelib_tzdb_index_entry {
@@ -296,7 +295,7 @@ typedef struct _timelib_tzdb_index_entry {
 } timelib_tzdb_index_entry;
 
 typedef struct _timelib_tzdb {
-	char                           *version;
+	const char                     *version;
 	int                             index_size;
 	const timelib_tzdb_index_entry *index;
 	const unsigned char            *data;
@@ -308,20 +307,25 @@ typedef struct _timelib_tzdb {
 # define timelib_calloc  calloc
 # define timelib_strdup  strdup
 # define timelib_free    free
+# if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+#  define TIMELIB_USE_BUILTIN_STRNDUP 1
+# else
+#  define TIMELIB_USE_BUILTIN_STRNDUP 0
+#  define timelib_strndup strndup
+# endif
+#else
+# define TIMELIB_USE_BUILTIN_STRNDUP 0
 #endif
-
-#define TIMELIB_VERSION 201706
-#define TIMELIB_EXTENDED_VERSION 20170600
-#define TIMELIB_ASCII_VERSION "2017.06"
 
 #define TIMELIB_NONE             0x00
 #define TIMELIB_OVERRIDE_TIME    0x01
 #define TIMELIB_NO_CLONE         0x02
 
-#define TIMELIB_UNSET   -99999
+#define TIMELIB_UNSET   -9999999
 
 /* An entry for each of these error codes is also in the
- * timelib_error_messages array in timelib.c */
+ * timelib_error_messages array in timelib.c.
+ * Codes 0x00, 0x07, and 0x09 are warnings only. */
 #define TIMELIB_ERROR_NO_ERROR                            0x00
 #define TIMELIB_ERROR_CANNOT_ALLOCATE                     0x01
 #define TIMELIB_ERROR_CORRUPT_TRANSITIONS_DONT_INCREASE   0x02
@@ -329,13 +333,79 @@ typedef struct _timelib_tzdb {
 #define TIMELIB_ERROR_CORRUPT_NO_ABBREVIATION             0x04
 #define TIMELIB_ERROR_UNSUPPORTED_VERSION                 0x05
 #define TIMELIB_ERROR_NO_SUCH_TIMEZONE                    0x06
+#define TIMELIB_ERROR_SLIM_FILE                           0x07 /* Warns if the file is SLIM, but we can't read it */
+#define TIMELIB_ERROR_CORRUPT_POSIX_STRING                0x08
+#define TIMELIB_ERROR_EMPTY_POSIX_STRING                  0x09 /* Warns if the POSIX string is empty, but still produces results */
+#define TIMELIB_ERROR_SECONDS_OUT_OF_RANGE                0x0A /* Durations only allow 0..9223372035 */
+#define TIMELIB_ERROR_NANOSECONDS_OUT_OF_RANGE            0x0B /* Durations only allow 0..999999999 */
+#define TIMELIB_ERROR_DIVISION_BY_ZERO                    0x0C
+#define TIMELIB_ERROR_OVERFLOW                            0x0D
+#define TIMELIB_ERROR_DURATION_ONLY_PERIOD_ALLOWED        0x0E
+#define TIMELIB_ERROR_DURATION_MISSING_PERIOD             0x0F
+#define TIMELIB_ERROR_DURATION_DAYS_FOUND                 0x10
+#define TIMELIB_ERROR_ISO8601_DURATION_PARSE_FAILURE      0x11
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef enum _timelib_format_specifier_code {
+	TIMELIB_FORMAT_ALLOW_EXTRA_CHARACTERS = 0,
+	TIMELIB_FORMAT_ANY_SEPARATOR,
+	TIMELIB_FORMAT_DAY_TWO_DIGIT,
+	TIMELIB_FORMAT_DAY_TWO_DIGIT_PADDED,
+	TIMELIB_FORMAT_DAY_OF_WEEK_ISO,
+	TIMELIB_FORMAT_DAY_OF_WEEK,
+	TIMELIB_FORMAT_DAY_OF_YEAR,
+	TIMELIB_FORMAT_DAY_SUFFIX,
+	TIMELIB_FORMAT_END,
+	TIMELIB_FORMAT_EPOCH_SECONDS,
+	TIMELIB_FORMAT_ESCAPE,
+	TIMELIB_FORMAT_HOUR_TWO_DIGIT_12_MAX,
+	TIMELIB_FORMAT_HOUR_TWO_DIGIT_12_MAX_PADDED,
+	TIMELIB_FORMAT_HOUR_TWO_DIGIT_24_MAX,
+	TIMELIB_FORMAT_HOUR_TWO_DIGIT_24_MAX_PADDED,
+	TIMELIB_FORMAT_LITERAL,
+	TIMELIB_FORMAT_MERIDIAN,
+	TIMELIB_FORMAT_MICROSECOND_SIX_DIGIT,
+	TIMELIB_FORMAT_MILLISECOND_THREE_DIGIT,
+	TIMELIB_FORMAT_MINUTE_TWO_DIGIT,
+	TIMELIB_FORMAT_MONTH_TWO_DIGIT,
+	TIMELIB_FORMAT_MONTH_TWO_DIGIT_PADDED,
+	TIMELIB_FORMAT_RANDOM_CHAR,
+	TIMELIB_FORMAT_RESET_ALL,
+	TIMELIB_FORMAT_RESET_ALL_WHEN_NOT_SET,
+	TIMELIB_FORMAT_SECOND_TWO_DIGIT,
+	TIMELIB_FORMAT_SEPARATOR,
+	TIMELIB_FORMAT_SKIP_TO_SEPARATOR,
+	TIMELIB_FORMAT_TEXTUAL_DAY_3_LETTER,
+	TIMELIB_FORMAT_TEXTUAL_DAY_FULL,
+	TIMELIB_FORMAT_TEXTUAL_MONTH_3_LETTER,
+	TIMELIB_FORMAT_TEXTUAL_MONTH_FULL,
+	TIMELIB_FORMAT_TIMEZONE_OFFSET,
+	TIMELIB_FORMAT_TIMEZONE_OFFSET_MINUTES,
+	TIMELIB_FORMAT_WEEK_OF_YEAR_ISO,
+	TIMELIB_FORMAT_WEEK_OF_YEAR,
+	TIMELIB_FORMAT_WHITESPACE,
+	TIMELIB_FORMAT_YEAR_TWO_DIGIT,
+	TIMELIB_FORMAT_YEAR_FOUR_DIGIT,
+	TIMELIB_FORMAT_YEAR_EXPANDED,
+	TIMELIB_FORMAT_YEAR_ISO
+} timelib_format_specifier_code;
+
+typedef struct _timelib_format_specifier {
+	char                          specifier;
+	timelib_format_specifier_code code;
+} timelib_format_specifier;
+
+typedef struct _timelib_format_config {
+	const timelib_format_specifier *format_map;
+	/* Format speciifiers must be preceded by 'prefix_char' if not '\0'. */
+	char                            prefix_char;
+} timelib_format_config;
+
 /* Function pointers */
-typedef timelib_tzinfo* (*timelib_tz_get_wrapper)(char *tzname, const timelib_tzdb *tzdb, int *error_code);
+typedef timelib_tzinfo* (*timelib_tz_get_wrapper)(const char *tzname, const timelib_tzdb *tzdb, int *error_code);
 
 /* From dow.c */
 /* Calculates the day of the week from y, m, and d. 0=Sunday..6=Saturday */
@@ -387,13 +457,13 @@ int timelib_valid_date(timelib_sll y, timelib_sll m, timelib_sll d);
  * If the **errors points to a timelib_error_container variable, warnings
  * and errors will be recorded. You are responsible for freeing the stored
  * information with timelib_error_container_dtor(). To see whether errors have
- * occured, inspect errors->errors_count. To see whether warnings have occured,
+ * occurred, inspect errors->errors_count. To see whether warnings have occurred,
  * inspect errors->warnings_count.
  *
  * The returned timelib_time* value is dynamically allocated and should be
  * freed with timelib_time_dtor().
  */
-timelib_time *timelib_strtotime(char *s, size_t len, timelib_error_container **errors, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_get_wrapper);
+timelib_time *timelib_strtotime(const char *s, size_t len, timelib_error_container **errors, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_get_wrapper);
 
 /* Parses the date/time string in 's' with length 'len' into the constituent
  * parts of timelib_time* according to the format in 'format'.
@@ -408,13 +478,27 @@ timelib_time *timelib_strtotime(char *s, size_t len, timelib_error_container **e
  * If the **errors points to a timelib_error_container variable, warnings
  * and errors will be recorded. You are responsible for freeing the stored
  * information with timelib_error_container_dtor(). To see whether errors have
- * occured, inspect errors->errors_count. To see whether warnings have occured,
+ * occurred, inspect errors->errors_count. To see whether warnings have occurred,
  * inspect errors->warnings_count.
  *
  * The returned timelib_time* value is dynamically allocated and should be
  * freed with timelib_time_dtor().
  */
-timelib_time *timelib_parse_from_format(char *format, char *s, size_t len, timelib_error_container **errors, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_get_wrapper);
+timelib_time *timelib_parse_from_format(const char *format, const char *s, size_t len, timelib_error_container **errors, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_get_wrapper);
+
+/* Parses the date/time string in 's' with length 'len' into the constituent
+ * parts of timelib_time* according to the format in 'format' with format
+ * specifier configuration 'format_config'.
+ *
+ * 'format_map' is an array of pairs, with the first element being the format
+ * specifier as a character and the second element corresponds to the
+ * representation of the specifier from the enum list
+ * 'timelib_format_specifier_code'.
+ *
+ * Note: 'format_map' must be terminated with specifier '\0' to indicate to the
+ * parser that there are no more format specifiers in the list.
+ */
+timelib_time *timelib_parse_from_format_with_map(const char *format, const char *s, size_t len, timelib_error_container **errors, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_get_wrapper, const timelib_format_config* format_config);
 
 /* Fills the gaps in the parsed timelib_time with information from the reference date/time in 'now'
  *
@@ -451,7 +535,7 @@ void timelib_fill_holes(timelib_time *parsed, timelib_time *now, int options);
  *
  * The returned char* is not duplicated, and should not be freed.
  */
-char *timelib_timezone_id_from_abbr(const char *abbr, timelib_long gmtoffset, int isdst);
+const char *timelib_timezone_id_from_abbr(const char *abbr, timelib_long gmtoffset, int isdst);
 
 /* Returns an array of known time zone abbreviations
  *
@@ -472,7 +556,7 @@ const timelib_tz_lookup_table *timelib_timezone_abbreviations_list(void);
 /**
  * DEPRECATED, but still used by PHP.
  */
-timelib_long timelib_parse_zone(char **ptr, int *dst, timelib_time *t, int *tz_not_found, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_wrapper);
+timelib_long timelib_parse_zone(const char **ptr, int *dst, timelib_time *t, int *tz_not_found, const timelib_tzdb *tzdb, timelib_tz_get_wrapper tz_wrapper);
 
 /* From parse_iso_intervals.re */
 
@@ -483,13 +567,13 @@ timelib_long timelib_parse_zone(char **ptr, int *dst, timelib_time *t, int *tz_n
  * If the **errors points to a timelib_error_container variable, warnings
  * and errors will be recorded. You are responsible for freeing the stored
  * information with timelib_error_container_dtor(). To see whether errors have
- * occured, inspect errors->errors_count. To see whether warnings have occured,
+ * occurred, inspect errors->errors_count. To see whether warnings have occurred,
  * inspect errors->warnings_count.
  */
-void timelib_strtointerval(char *s, size_t len,
+void timelib_strtointerval(const char *s, size_t len,
                            timelib_time **begin, timelib_time **end,
-						   timelib_rel_time **period, int *recurrences,
-						   timelib_error_container **errors);
+                           timelib_rel_time **period, int *recurrences,
+                           timelib_error_container **errors);
 
 
 /* From tm2unixtime.c */
@@ -507,6 +591,12 @@ void timelib_strtointerval(char *s, size_t len,
  * calculate the right timestamp.
  */
 void timelib_update_ts(timelib_time* time, timelib_tzinfo* tzi);
+
+/**
+ * Returns the number of days from the y/m/d fields of 'time' since the Unix
+ * Epoch.
+ */
+timelib_sll timelib_epoch_days_from_time(timelib_time *time);
 
 /**
  * Takes the information from the y/m/d/h/i/s fields and makes sure their
@@ -529,6 +619,14 @@ void timelib_do_normalize(timelib_time *base);
 void timelib_do_rel_normalize(timelib_time *base, timelib_rel_time *rt);
 
 /* From unixtime2tm.c */
+
+/**
+ * Takes the unix timestamp in seconds from 'ts', and calculates y, m, and d,
+ * in the proleptic Gregorian calendar.
+ *
+ * It uses the algorithm from howardhinnant.github.io/date_algorithms.html
+ */
+void timelib_unixtime2date(timelib_sll ts, timelib_sll *y, timelib_sll *m, timelib_sll *d);
 
 /**
  * Takes the unix timestamp in seconds from 'ts' and populates the y/m/d/h/i/s
@@ -570,7 +668,7 @@ void timelib_set_timezone_from_abbr(timelib_time *t, timelib_abbr_info abbr_info
  * It fetches the right UTC offset that is currently stored in the time
  * stamp field in 't' ('sse'), and assigns that to the 'z' field and 'dst'
  * field (whether DST is in effect at the time). It also sets the current
- * abbrevation to the 'tz_addr' field, making sure that if a value was already
+ * abbreviation to the 'tz_addr' field, making sure that if a value was already
  * set it was freed.
  *
  * The time zone information in 'tz' is *not* duplicated into the 't' field so
@@ -585,24 +683,36 @@ void timelib_set_timezone(timelib_time *t, timelib_tzinfo *tz);
  * Returns whether the time zone ID 'timezone' is available in the time zone
  * database as pointed to be 'tzdb'.
  */
-int timelib_timezone_id_is_valid(char *timezone, const timelib_tzdb *tzdb);
+int timelib_timezone_id_is_valid(const char *timezone, const timelib_tzdb *tzdb);
 
 /**
  * Converts the binary stored time zone information from 'tzdb' for the time
- * zone 'timeozne' into a structure the library can use for calculations.
+ * zone 'timezone' into a structure the library can use for calculations.
  *
  * The function can be used on both timelib_builtin_db as well as a time zone
  * db as opened by timelib_zoneinfo.
+ *
+ * 'error_code' must not be a null pointer, and will always be written to. If
+ * the value is TIMELIB_ERROR_NO_ERROR then the file was parsed without
+ * problems.
+ *
  * The function will return null upon failure, and also set an error code
- * through 'error_code'. 'error_code' must not be a null pointer. The error
- * code is one of the TIMELIB_ERROR_* constants as listed above. These error
- * constants can be converted into a string by timelib_get_error_message.
+ * through 'error_code'.
+ *
+ * The error code is one of the TIMELIB_ERROR_* constants as listed above.
+ * These error constants can be converted into a string by
+ * timelib_get_error_message.
+ *
+ * If the function returns not-null, the 'error_code' might have a non-null
+ * value that can be used to detect incompatibilities. The only one that is
+ * currently detected is whether the file is a 'slim' file, in which case
+ * 'error_code' will be set to TIMELIB_ERROR_SLIM_FILE.
  *
  * This function allocates memory for the new time zone structure, which must
  * be freed after use. Although it is recommended that a cache of each used
  * time zone is kept.
  */
-timelib_tzinfo *timelib_parse_tzfile(char *timezone, const timelib_tzdb *tzdb, int *error_code);
+timelib_tzinfo *timelib_parse_tzfile(const char *timezone, const timelib_tzdb *tzdb, int *error_code);
 
 /**
  * Frees up the resources allocated by 'timelib_parse_tzfile'.
@@ -630,9 +740,22 @@ int timelib_timestamp_is_in_dst(timelib_sll ts, timelib_tzinfo *tz);
  * The returned information contains: the offset in seconds East of UTC (in
  * 'offset'), whether DST is active ('is_dst'), what the current time zone
  * abbreviation is ('abbr') and the transition time that got to this state (in
- * 'transistion_time');
+ * 'transition_time');
  */
 timelib_time_offset *timelib_get_time_zone_info(timelib_sll ts, timelib_tzinfo *tz);
+
+/**
+ * Returns offset information with time zone 'tz' for the time stamp 'ts'.
+ *
+ * The returned information contains: the offset in seconds East of UTC (in
+ * the output parameter 'offset'), whether DST is active (in the output
+ * parameter 'is_dst'), and the transition time that got to this state (in
+ * the output parameter 'transition_time'); if NULL is passed, the value is
+ * not retrieved
+ *
+ * Returns 1 if successful, 0 for failure.
+ */
+int timelib_get_time_zone_offset_info(timelib_sll ts, timelib_tzinfo *tz, int32_t* offset, timelib_sll* transition_time, unsigned int* is_dst);
 
 /**
  * Returns the UTC offset currently applicable for the information stored in 't'.
@@ -640,6 +763,16 @@ timelib_time_offset *timelib_get_time_zone_info(timelib_sll ts, timelib_tzinfo *
  * The value returned is the UTC offset in seconds East.
  */
 timelib_sll timelib_get_current_offset(timelib_time *t);
+
+/**
+ * Returns whether the timezone information in *one and *two are the same
+ *
+ * A timezone is considered the same if:
+ * - the ->zone_type values are the same for *one and *two
+ * - for TYPE_ABBR and TYPE_OFFSET, ->z + (->dst * 3600), is the same
+ * - for TYPE_ID, the zone's names are the same
+ */
+int timelib_same_timezone(timelib_time *one, timelib_time *two);
 
 /**
  * Displays debugging information about the time zone information in 'tz'.
@@ -674,7 +807,7 @@ const timelib_tzdb_index_entry *timelib_timezone_identifiers_list(const timelib_
  * Unlike 'timelib_builtin_db', the return value of this function must be freed
  * with the 'timelib_zoneinfo_dtor' function.
  */
-timelib_tzdb *timelib_zoneinfo(char *directory);
+timelib_tzdb *timelib_zoneinfo(const char *directory);
 
 /**
  * Frees up the resources as created through 'timelib_zoneinfo'.
@@ -803,6 +936,17 @@ void timelib_decimal_hour_to_hms(double h, int *hour, int *min, int *sec);
  */
 void timelib_hms_to_decimal_hour(int hour, int min, int sec, double *h);
 
+/**
+ * Converts hour/min/sec/micro sec values into a decimal hour
+ */
+void timelib_hmsf_to_decimal_hour(int hour, int min, int sec, int us, double *h);
+
+/**
+ * Converts hour/min/sec values into seconds
+ */
+timelib_sll timelib_hms_to_seconds(timelib_sll h, timelib_sll m, timelib_sll s);
+
+
 /* from astro.c */
 
 /**
@@ -864,12 +1008,22 @@ int timelib_astro_rise_set_altitude(timelib_time *time, double lon, double lat, 
 timelib_rel_time *timelib_diff(timelib_time *one, timelib_time *two);
 
 /**
+ * Calculates the difference in full days between two times
+ *
+ * The result is the number of full days between 'one' and 'two'. It does take
+ * into account 23 and 25 hour (and variants) days when the zone_type
+ * is TIMELIB_ZONETYPE_ID and have the same TZID for 'one' and 'two'.
+ */
+int timelib_diff_days(timelib_time *one, timelib_time *two);
+
+/**
  * Adds the relative time information 'interval' to the base time 't'.
  *
  * This can be a relative time as created by 'timelib_diff', but also by more
  * complex statements such as "next workday".
  */
 timelib_time *timelib_add(timelib_time *t, timelib_rel_time *interval);
+timelib_time *timelib_add_wall(timelib_time *t, timelib_rel_time *interval);
 
 /**
  * Subtracts the relative time information 'interval' to the base time 't'.
@@ -879,6 +1033,162 @@ timelib_time *timelib_add(timelib_time *t, timelib_rel_time *interval);
  * workday".
  */
 timelib_time *timelib_sub(timelib_time *t, timelib_rel_time *interval);
+timelib_time *timelib_sub_wall(timelib_time *t, timelib_rel_time *interval);
+
+/* from parse_posix.c */
+
+void timelib_posix_str_dtor(timelib_posix_str *ps);
+
+timelib_posix_str* timelib_parse_posix_str(const char *posix);
+
+/**
+ * Calculate the two yearly to/from DST
+ */
+void timelib_get_transitions_for_year(timelib_tzinfo *tz, timelib_sll year, timelib_posix_transitions *transitions);
+
+
+/* from duration.c */
+
+/* Returns a newly allocated timelib_duration struct upon success, or NULL
+ * upon failure (such as out of range for seconds/nanoseconds) with
+ * *error_code set to a value from the TIMELIB_ERROR_* set.
+ */
+timelib_duration *timelib_duration_ctor(
+	uint64_t     seconds,
+	uint32_t     nanoseconds,
+	bool         negative,
+	int         *error_code
+);
+
+/* Updates 'duration' with the values of 'seconds', 'nanoseconds', and
+ * 'negative', after checking 'seconds' and 'nanoseconds' for their range. If
+ * either of them is out of range, it returns an error code from the
+ * TIMELIB_ERROR_* set. It also only sets 'negative' to true if 'seconds' and
+ * 'nanoseconds' aren't both NULL.
+ */
+int timelib_duration_ctor_static(
+	timelib_duration *duration,
+	uint64_t          seconds,
+	uint32_t          nanoseconds,
+	bool              negative
+);
+
+/* Returns a newly allocated timelib_duration struct upon success, or NULL
+ * upon failure with *error set to a newly allocated error_message container
+ * (which you'll have to free). */
+timelib_duration *timelib_duration_create_from_iso8601string(
+	const char *string,
+	int        *error_code
+);
+
+/* Frees up memory allocated for the duration struct. You must not use it or
+ * its elements after calling this function. */
+void timelib_duration_dtor(timelib_duration *duration);
+
+/* Adds two durations together, and returns a newly allocated one, or NULL
+ * upon failure (such as out of range) with *error_code set to a value from
+ * the TIMELIB_ERROR_* set. */
+timelib_duration *timelib_duration_add(
+	const timelib_duration *original,
+	const timelib_duration *additional,
+	int                    *error_code
+);
+
+/* Adds two durations together, and updates the 'new_duration' argument with
+ * the calculated values. It returns an error code (from the TIMELIB_ERROR_*
+ * set), or TIMELIB_ERROR_NO_ERROR, if there was no error. */
+int timelib_duration_add_static(
+	timelib_duration       *new_duration,
+	const timelib_duration *original,
+	const timelib_duration *additional
+);
+
+/* Subtracts the second duration from the first one, and returns a newly
+ * allocated one, or NULL upon failure (such as out of range) with *error_code
+ * set to a value from the TIMELIB_ERROR_* set. */
+timelib_duration *timelib_duration_sub (
+	const timelib_duration *original,
+	const timelib_duration *minus,
+	int                    *error_code
+);
+
+/* Subtracts the second duration from the first one, and updates the
+ * 'new_duration' argument with the calculated values. It returns an error
+ * code (from the TIMELIB_ERROR_* set), or TIMELIB_ERROR_NO_ERROR, if there
+ * was no error. */
+int timelib_duration_sub_static(
+	timelib_duration       *new_duration,
+	const timelib_duration *original,
+	const timelib_duration *minus
+);
+
+/* Multiplies the duration with a certain integer factor. It returns a newly
+ * allocated duration, or NULL, upon failure (such as out of range) with
+ * *error_code set to a value from the TIMELIB_ERROR_* set. */
+timelib_duration *timelib_duration_mul (
+	const timelib_duration *original,
+	uint64_t                factor,
+	int                    *error_code
+);
+
+/* Multiplies the duration with a certain integer factor, and updates the
+ * 'new_duration' argument with the calculated values. It returns an error
+ * code (from the TIMELIB_ERROR_* set), or TIMELIB_ERROR_NO_ERROR, if there
+ * was no error. */
+int timelib_duration_mul_static(
+	timelib_duration       *new_duration,
+	const timelib_duration *original,
+	uint64_t                factor
+);
+
+/* Divides the duration with a certain integer divisor. It returns a newly
+ * allocated duration, or NULL upon failure (such as div-by-0) with
+ * *error_code set to a value from the TIMELIB_ERROR_* set. */
+timelib_duration *timelib_duration_div (
+	const timelib_duration *original,
+	uint64_t                divisor,
+	int                    *error_code
+);
+
+/* Divides the duration with a certain integer divisor, and updates the
+ * 'new_duration' argument with the calculated values. It returns an error
+ * code (from the TIMELIB_ERROR_* set), or TIMELIB_ERROR_NO_ERROR, if there
+ * was no error. */
+int timelib_duration_div_static(
+	timelib_duration       *new_duration,
+	const timelib_duration *original,
+	uint64_t                divisor
+);
+
+/* Switches the 'negate' flag of 'original' in a newly allocated duration, or
+ * NULL upon failure with *error_code set to a value from the TIMELIB_ERROR_*
+ * set */
+timelib_duration *timelib_duration_negate(
+	const timelib_duration *original,
+	int                    *error_code
+);
+
+/* Switches the 'negate' flag of 'original', and updates the 'new_duration'
+ * argument with the calculated value. It returns an error code (from the
+ * TIMELIB_ERROR_* set), or TIMELIB_ERROR_NO_ERROR, if there was no error. */
+int timelib_duration_negate_static(
+	timelib_duration       *new_duration,
+	const timelib_duration *original
+);
+
+/* Returns -1 if one is smaller than two, 0 if they're equal, and 1 if one is
+ * larger than two — IGNORING the negate flags */
+int timelib_duration_abs_compare(
+	const timelib_duration *one,
+	const timelib_duration *two
+);
+
+/* Returns -1 if one is smaller than two, 0 if they're equal, and 1 if one is
+ * larger than two. */
+int timelib_duration_compare(
+	const timelib_duration *one,
+	const timelib_duration *two
+);
 
 #ifdef __cplusplus
 } /* extern "C" */

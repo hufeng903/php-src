@@ -2,32 +2,27 @@
   +----------------------------------------------------------------------+
   | Zend Signal Handling                                                 |
   +----------------------------------------------------------------------+
-  | Copyright (c) 2008-2018 The PHP Group                                     |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Authors: Lucas Nealan <lucas@php.net>                                |
   |          Arnaud Le Blanc <lbarnaud@php.net>                          |
   +----------------------------------------------------------------------+
-
  */
-
-/* $Id$ */
 
 #ifndef ZEND_SIGNAL_H
 #define ZEND_SIGNAL_H
 
 #ifdef ZEND_SIGNALS
 
-# ifdef HAVE_SIGNAL_H
-#  include <signal.h>
-# endif
+#include <signal.h>
+
+#include "zend_portability.h"
 
 #ifndef NSIG
 #define NSIG 65
@@ -60,15 +55,17 @@ typedef struct _zend_signal_globals_t {
 	int blocked;            /* 1==TRUE, 0==FALSE */
 	int running;            /* in signal handler execution */
 	int active;             /* internal signal handling is enabled */
-	zend_bool check;        /* check for replaced handlers on shutdown */
+	bool check;        /* check for replaced handlers on shutdown */
+	bool reset;        /* reset signal handlers on each request */
 	zend_signal_entry_t handlers[NSIG];
 	zend_signal_queue_t pstorage[ZEND_SIGNAL_QUEUE_SIZE], *phead, *ptail, *pavail; /* pending queue */
 } zend_signal_globals_t;
 
 # ifdef ZTS
-#  define SIGG(v) ZEND_TSRMG(zend_signal_globals_id, zend_signal_globals_t *, v)
+#  define SIGG(v) ZEND_TSRMG_FAST(zend_signal_globals_offset, zend_signal_globals_t *, v)
 BEGIN_EXTERN_C()
 ZEND_API extern int zend_signal_globals_id;
+ZEND_API extern size_t zend_signal_globals_offset;
 END_EXTERN_C()
 # else
 #  define SIGG(v) (zend_signal_globals.v)
@@ -89,12 +86,12 @@ ZEND_API void zend_signal_handler_unblock(void);
 void zend_signal_activate(void);
 void zend_signal_deactivate(void);
 BEGIN_EXTERN_C()
-void zend_signal_startup(void);
+ZEND_API void zend_signal_startup(void);
 END_EXTERN_C()
 void zend_signal_init(void);
 
-ZEND_API int zend_signal(int signo, void (*handler)(int));
-ZEND_API int zend_sigaction(int signo, const struct sigaction *act, struct sigaction *oldact);
+ZEND_API void zend_signal(int signo, void (*handler)(int));
+ZEND_API void zend_sigaction(int signo, const struct sigaction *act, struct sigaction *oldact);
 
 #else /* ZEND_SIGNALS */
 
@@ -112,13 +109,3 @@ ZEND_API int zend_sigaction(int signo, const struct sigaction *act, struct sigac
 #endif /* ZEND_SIGNALS */
 
 #endif /* ZEND_SIGNAL_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

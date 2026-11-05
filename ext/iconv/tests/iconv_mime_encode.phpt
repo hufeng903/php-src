@@ -1,34 +1,47 @@
 --TEST--
 iconv_mime_encode()
---SKIPIF--
-<?php extension_loaded('iconv') or die('skip iconv extension is not available'); ?>
+--EXTENSIONS--
+iconv
 --INI--
 iconv.internal_charset=iso-8859-1
+--SKIPIF--
+<?php
+// ISO-2022-JP is a stateful encoding, so the right answer is not
+// unique. In particular, musl (type "unknown") is known to have an
+// inefficient encoding for it that does not agree with the expected
+// output below.
+if (ICONV_IMPL == "unknown") {
+    die("skip byte-comparison of stateful encoding with unknown iconv");
+}
+if (PHP_OS_FAMILY === 'Solaris') {
+    die("skip Solaris native iconv does not support MIME encoding");
+}
+?>
 --FILE--
 <?php
-function my_error_handler($errno, $errmsg, $filename, $linenum, $vars)
+function my_error_handler($errno, $errmsg, $filename, $linenum)
 {
-	echo "$errno: $errmsg\n";
+    echo "$errno: $errmsg\n";
 }
 set_error_handler('my_error_handler');
 $preference = array(
-	"scheme" => "B",
-	"output-charset" => "ISO-2022-JP",
-	"input-charset" => "EUC-JP",
-	"line-break-chars" => "\n"
+    "scheme" => "B",
+    "output-charset" => "ISO-2022-JP",
+    "input-charset" => "EUC-JP",
+    "line-break-chars" => "\n"
 );
 for ($line_len= 0; $line_len < 80; ++$line_len) {
-	print "-------- line length=$line_len\n";
-	$preference["line-length"] = $line_len;
-	$result = iconv_mime_encode("From", "サンプル文字列サンプル文字列日本語テキスト", $preference);
-	var_dump($result);
-	if ($result !== false) {
+    print "-------- line length=$line_len\n";
+    $preference["line-length"] = $line_len;
+    $result = iconv_mime_encode("From", "サンプル文字列サンプル文字列日本語テキスト", $preference);
+    var_dump($result);
+    if ($result !== false) {
                 $max = max(array_map("strlen", explode("\n", $result)));
-		print "-------- ";
-		var_dump(($max <= $line_len));
-	} else {
-		print "-------- \n";
-	}
+        print "-------- ";
+        var_dump(($max <= $line_len));
+    } else {
+        print "-------- \n";
+    }
 }
 ?>
 --EXPECTF--

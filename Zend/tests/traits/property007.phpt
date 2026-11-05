@@ -4,7 +4,7 @@ Introducing new private variables of the same name in a subclass is ok, and does
 <?php
 
 class Base {
-  protected $hello;    
+  protected $hello;
 }
 
 trait THello1 {
@@ -12,7 +12,7 @@ trait THello1 {
 }
 
 // Protected and public are handle more strict with a warning then what is
-// expected from normal inheritance since they can have easier coliding semantics
+// expected from normal inheritance since they can have easier colliding semantics
 echo "PRE-CLASS-GUARD\n";
 class SameNameInSubClassProducesNotice extends Base {
     use THello1;
@@ -27,7 +27,7 @@ class Notice extends Base {
 }
 echo "POST-CLASS-GUARD2\n";
 ?>
---EXPECT--	
+--EXPECT--
 PRE-CLASS-GUARD
 POST-CLASS-GUARD
 POST-CLASS-GUARD2

@@ -12,8 +12,12 @@ $s4 = str_repeat("f", 2);
 $s &= 22;
 var_dump($s);
 
-$s1 &= 11;
-var_dump($s1);
+try {
+    $s1 &= 11;
+    var_dump($s1);
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 $s2 &= 33;
 var_dump($s2);
@@ -26,13 +30,11 @@ var_dump($s4);
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 int(18)
+TypeError: Unsupported operand types: string & int
 
 Warning: A non-numeric value encountered in %s on line %d
-int(0)
-
-Notice: A non well formed numeric value encountered in %s on line %d
 int(33)
 string(1) " "
 string(2) "  "

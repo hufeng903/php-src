@@ -2,8 +2,8 @@
 user defined error handler + set_error_handling(EH_THROW)
 --SKIPIF--
 <?php
-	if(substr(PHP_OS, 0, 3) == "WIN") die("skip Not for Windows");
-	if (!extension_loaded("spl") || is_dir('/this/path/does/not/exist')) die("skip");
+if (substr(PHP_OS, 0, 3) == "WIN") die("skip Not for Windows");
+if (is_dir('/this/path/does/not/exist')) die("skip directory /this/path/does/not/exist already exists");
 ?>
 --FILE--
 <?php
@@ -17,13 +17,13 @@ try {
         $iter = new DirectoryIterator($dir);
         print get_class($iter) . "\n";
         print "after\n";
-} catch (Exception $e) {
-        print "in catch: ".$e->getMessage()."\n";
+} catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
 }
 ?>
 ==DONE==
 <?php exit(0); ?>
 --EXPECT--
 before
-in catch: DirectoryIterator::__construct(/this/path/does/not/exist): failed to open dir: No such file or directory
+UnexpectedValueException: DirectoryIterator::__construct(): Failed to open directory: No such file or directory
 ==DONE==

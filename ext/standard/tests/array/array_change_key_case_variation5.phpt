@@ -2,11 +2,6 @@
 Test array_change_key_case() function : usage variations - position of internal pointer
 --FILE--
 <?php
-/* Prototype  : array array_change_key_case(array $input [, int $case])
- * Description: Returns an array with all string keys lowercased [or uppercased] 
- * Source code: ext/standard/array.c
- */
-
 /*
  * Check the position of the internal array pointer after calling the function
  */
@@ -25,7 +20,6 @@ echo key($input) . " => " . current ($input) . "\n";
 
 echo "Done";
 ?>
-
 --EXPECT--
 *** Testing array_change_key_case() : usage variations ***
 

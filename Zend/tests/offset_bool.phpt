@@ -24,14 +24,31 @@ var_dump($bool[$arr]);
 
 echo "Done\n";
 ?>
---EXPECT--	
+--EXPECTF--
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
+
+Warning: Trying to access array offset on true in %s on line %d
 NULL
 Done

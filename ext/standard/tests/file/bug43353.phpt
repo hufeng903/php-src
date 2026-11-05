@@ -1,12 +1,9 @@
 --TEST--
 Bug #43353 wrong detection of 'data' wrapper
---SKIPIF--
-<?php
-if(substr(PHP_OS, 0, 3) == "WIN")
-  die("skip on Windows");
-?>
 --INI--
 allow_url_fopen=1
+zend.exception_string_param_max_len=1000000
+error_include_args=On
 --FILE--
 <?php
 
@@ -21,5 +18,5 @@ bool(false)
 bool(false)
 string(3) "foo"
 
-Warning: file_get_contents(datafoo:text/plain,foo): failed to open stream: No such file or directory in %s
+Warning: file_get_contents('datafoo:text/plain,foo'): Failed to open stream: No such file or directory in %s
 bool(false)

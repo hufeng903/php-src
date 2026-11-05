@@ -1,28 +1,23 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Author: Wez Furlong <wez@thebrainroom.com>                           |
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
 #ifdef PHP_WIN32
 #include "config.w32.h"
 #include <Ws2tcpip.h>
 #endif
 
-#if HAVE_SYS_SOCKET_H
+#ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
 
@@ -34,8 +29,8 @@ typedef php_stream *(php_stream_transport_factory_func)(const char *proto, size_
 typedef php_stream_transport_factory_func *php_stream_transport_factory;
 
 BEGIN_EXTERN_C()
-PHPAPI int php_stream_xport_register(const char *protocol, php_stream_transport_factory factory);
-PHPAPI int php_stream_xport_unregister(const char *protocol);
+PHPAPI void php_stream_xport_register(const char *protocol, php_stream_transport_factory factory);
+PHPAPI zend_result php_stream_xport_unregister(const char *protocol);
 
 #define STREAM_XPORT_CLIENT			0
 #define STREAM_XPORT_SERVER			1
@@ -172,28 +167,36 @@ typedef enum {
 	STREAM_CRYPTO_METHOD_TLSv1_0_CLIENT = (1 << 3 | 1),
 	STREAM_CRYPTO_METHOD_TLSv1_1_CLIENT = (1 << 4 | 1),
 	STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT = (1 << 5 | 1),
+	STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT = (1 << 6 | 1),
 	/* TLS equates to TLS_ANY as of PHP 7.2 */
-	STREAM_CRYPTO_METHOD_TLS_CLIENT = ((1 << 3) | (1 << 4) | (1 << 5) | 1),
-	STREAM_CRYPTO_METHOD_TLS_ANY_CLIENT = ((1 << 3) | (1 << 4) | (1 << 5) | 1),
-	STREAM_CRYPTO_METHOD_ANY_CLIENT = ((1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | 1),
+	STREAM_CRYPTO_METHOD_TLS_CLIENT = ((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | 1),
+	STREAM_CRYPTO_METHOD_TLS_ANY_CLIENT = ((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | 1),
+	STREAM_CRYPTO_METHOD_ANY_CLIENT = ((1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | 1),
 	STREAM_CRYPTO_METHOD_SSLv2_SERVER = (1 << 1),
 	STREAM_CRYPTO_METHOD_SSLv3_SERVER = (1 << 2),
 	/* v23 no longer negotiates SSL2 or SSL3 */
-	STREAM_CRYPTO_METHOD_SSLv23_SERVER = ((1 << 3) | (1 << 4) | (1 << 5)),
+	STREAM_CRYPTO_METHOD_SSLv23_SERVER = ((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6)),
 	STREAM_CRYPTO_METHOD_TLSv1_0_SERVER = (1 << 3),
 	STREAM_CRYPTO_METHOD_TLSv1_1_SERVER = (1 << 4),
 	STREAM_CRYPTO_METHOD_TLSv1_2_SERVER = (1 << 5),
+	STREAM_CRYPTO_METHOD_TLSv1_3_SERVER = (1 << 6),
 	/* TLS equates to TLS_ANY as of PHP 7.2 */
-	STREAM_CRYPTO_METHOD_TLS_SERVER = ((1 << 3) | (1 << 4) | (1 << 5)),
-	STREAM_CRYPTO_METHOD_TLS_ANY_SERVER = ((1 << 3) | (1 << 4) | (1 << 5)),
-	STREAM_CRYPTO_METHOD_ANY_SERVER = ((1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5))
+	STREAM_CRYPTO_METHOD_TLS_SERVER = ((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6)),
+	STREAM_CRYPTO_METHOD_TLS_ANY_SERVER = ((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6)),
+	STREAM_CRYPTO_METHOD_ANY_SERVER = ((1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6))
 } php_stream_xport_crypt_method_t;
+
+/* Flags for crypto status */
+#define STREAM_CRYPTO_STATUS_NONE       0
+#define STREAM_CRYPTO_STATUS_WANT_READ  1
+#define STREAM_CRYPTO_STATUS_WANT_WRITE 2
 
 /* These functions provide crypto support on the underlying transport */
 
 BEGIN_EXTERN_C()
 PHPAPI int php_stream_xport_crypto_setup(php_stream *stream, php_stream_xport_crypt_method_t crypto_method, php_stream *session_stream);
 PHPAPI int php_stream_xport_crypto_enable(php_stream *stream, int activate);
+PHPAPI int php_stream_xport_crypto_get_status(php_stream *stream);
 END_EXTERN_C()
 
 typedef struct _php_stream_xport_crypto_param {
@@ -207,7 +210,8 @@ typedef struct _php_stream_xport_crypto_param {
 	} outputs;
 	enum {
 		STREAM_XPORT_CRYPTO_OP_SETUP,
-		STREAM_XPORT_CRYPTO_OP_ENABLE
+		STREAM_XPORT_CRYPTO_OP_ENABLE,
+		STREAM_XPORT_CRYPTO_OP_GET_STATUS
 	} op;
 } php_stream_xport_crypto_param;
 
@@ -215,12 +219,3 @@ BEGIN_EXTERN_C()
 PHPAPI HashTable *php_stream_xport_get_hash(void);
 PHPAPI php_stream_transport_factory_func php_stream_generic_socket_factory;
 END_EXTERN_C()
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

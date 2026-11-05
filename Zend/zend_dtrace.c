@@ -2,21 +2,18 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2009 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: David Soria Parra <david.soriaparra@sun.com>                |
    +----------------------------------------------------------------------+
 */
-
-/* $Id: $ */
 
 #include "zend.h"
 #include "zend_API.h"
@@ -46,9 +43,9 @@ static inline const char *dtrace_get_executed_filename(void)
 ZEND_API zend_op_array *dtrace_compile_file(zend_file_handle *file_handle, int type)
 {
 	zend_op_array *res;
-	DTRACE_COMPILE_FILE_ENTRY(ZSTR_VAL(file_handle->opened_path), (char *)file_handle->filename);
+	DTRACE_COMPILE_FILE_ENTRY(ZSTR_VAL(file_handle->opened_path), ZSTR_VAL(file_handle->filename));
 	res = compile_file(file_handle, type);
-	DTRACE_COMPILE_FILE_RETURN(ZSTR_VAL(file_handle->opened_path), (char *)file_handle->filename);
+	DTRACE_COMPILE_FILE_RETURN(ZSTR_VAL(file_handle->opened_path), ZSTR_VAL(file_handle->filename));
 
 	return res;
 }
@@ -111,16 +108,13 @@ ZEND_API void dtrace_execute_internal(zend_execute_data *execute_data, zval *ret
 	}
 }
 
+void dtrace_error_notify_cb(int type, zend_string *error_filename, uint32_t error_lineno, zend_string *message)
+{
+	if (DTRACE_ERROR_ENABLED()) {
+		DTRACE_ERROR(ZSTR_VAL(message), ZSTR_VAL(error_filename), error_lineno);
+	}
+}
+
 /* }}} */
 
 #endif /* HAVE_DTRACE */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

@@ -1,25 +1,16 @@
 --TEST--
 Test mb_strripos() function : basic functionality
---SKIPIF--
-<?php
-extension_loaded('mbstring') or die('skip');
-function_exists('mb_strripos') or die("skip mb_strripos() is not available in this build");
-?>
+--EXTENSIONS--
+mbstring
+--INI--
+internal_encoding=UTF-8
 --FILE--
 <?php
-/* Prototype  : int mb_strripos(string haystack, string needle [, int offset [, string encoding]])
- * Description: Finds position of last occurrence of a string within another, case insensitive 
- * Source code: ext/mbstring/mbstring.c
- * Alias to functions: 
- */
-
 /*
  * Test basic functionality of mb_strripos with ASCII and multibyte characters
  */
 
 echo "*** Testing mb_strripos() : basic functionality***\n";
-
-mb_internal_encoding('UTF-8');
 
 //ascii strings
 $ascii_haystacks = array(
@@ -56,7 +47,7 @@ $greek_needles = array(
 echo "\n -- ASCII Strings --\n";
 foreach ($ascii_needles as $needle) {
    foreach ($ascii_haystacks as $haystack) {
-      var_dump(mb_strripos($haystack, $needle));      
+      var_dump(mb_strripos($haystack, $needle));
       var_dump(mb_strripos($haystack, $needle, 14));
    }
 }
@@ -65,7 +56,7 @@ echo "\n -- Greek Strings --\n";
 foreach ($greek_needles as $needle) {
    foreach ($greek_haystacks as $haystack) {
       var_dump(mb_strripos($haystack, $needle));
-      var_dump(mb_strripos($haystack, $needle, 12));         
+      var_dump(mb_strripos($haystack, $needle, 12));
    }
 }
 

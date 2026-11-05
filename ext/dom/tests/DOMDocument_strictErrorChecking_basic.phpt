@@ -1,15 +1,15 @@
 --TEST--
-DomDocument::$strictErrorChecking - basic test 
+DomDocument::$strictErrorChecking - basic test
 --CREDITS--
 Vincent Tsao <notes4vincent@gmail.com>
 # TestFest 2009 NYPHP
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 
 $doc = new DOMDocument;
-$doc->load(dirname(__FILE__)."/book.xml");
+$doc->load(__DIR__."/book.xml");
 
 var_dump($doc->strictErrorChecking);
 

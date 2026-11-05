@@ -5,7 +5,7 @@ Bug #60768 Output buffer not discarded
 
 global $storage;
 
-ob_start(function($buffer) use (&$storage) { $storage .= $buffer; }, 20);
+ob_start(function($buffer) use (&$storage) { $storage .= $buffer; return ''; }, 20);
 
 echo str_repeat("0", 20); // fill in the buffer
 
@@ -22,4 +22,3 @@ DONE
 --EXPECT--
 Output size: 120, expected 120
 DONE
-

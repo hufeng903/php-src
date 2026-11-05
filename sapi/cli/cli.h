@@ -1,22 +1,16 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Author: Johannes Schlueter <johannes@php.net>                        |
   +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #ifndef CLI_H
 #define CLI_H
@@ -30,7 +24,7 @@
 #endif
 
 
-extern PHP_CLI_API size_t sapi_cli_single_write(const char *str, size_t str_length);
+extern PHP_CLI_API ssize_t sapi_cli_single_write(const char *str, size_t str_length);
 
 typedef struct  {
 	size_t (*cli_shell_write)(const char *str, size_t str_length);
@@ -38,15 +32,30 @@ typedef struct  {
 	int (*cli_shell_run)(void);
 } cli_shell_callbacks_t;
 
-extern PHP_CLI_API cli_shell_callbacks_t *php_cli_get_shell_callbacks();
+extern PHP_CLI_API cli_shell_callbacks_t *php_cli_get_shell_callbacks(void);
+
+typedef enum php_cli_mode {
+	PHP_CLI_MODE_STANDARD = 1,
+	PHP_CLI_MODE_HIGHLIGHT = 2,
+	PHP_CLI_MODE_LINT = 4,
+	PHP_CLI_MODE_STRIP = 5,
+	PHP_CLI_MODE_CLI_DIRECT = 6,
+	PHP_CLI_MODE_PROCESS_STDIN = 7,
+	PHP_CLI_MODE_REFLECTION_FUNCTION = 8,
+	PHP_CLI_MODE_REFLECTION_CLASS = 9,
+	PHP_CLI_MODE_REFLECTION_EXTENSION = 10,
+	PHP_CLI_MODE_REFLECTION_EXT_INFO = 11,
+	PHP_CLI_MODE_REFLECTION_ZEND_EXTENSION = 12,
+	PHP_CLI_MODE_SHOW_INI_CONFIG = 13,
+	PHP_CLI_MODE_SHOW_INI_DIFF = 14,
+} php_cli_mode;
+
+typedef struct php_cli_server_context {
+	php_cli_mode mode;
+} php_cli_server_context;
+
+/* this performs full cli-SAPI boot, loads modules, sets up TSRM and co. */
+/* On Windows, custom argv must use PHP's internal encoding (UTF-8 by default). */
+extern PHP_CLI_API int do_php_cli(int argc, char *argv[]);
 
 #endif /* CLI_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

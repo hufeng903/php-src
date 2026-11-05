@@ -2,24 +2,19 @@
 Test strrpos() function : usage variations - single quoted strings for 'haystack' & 'needle' arguments
 --FILE--
 <?php
-/* Prototype  : int strrpos ( string $haystack, string $needle [, int $offset] );
- * Description: Find position of last occurrence of 'needle' in 'haystack'.
- * Source code: ext/standard/string.c
-*/
-
 /* Test strrpos() function by passing single quoted strings to 'haystack' & 'needle' arguments */
 
 echo "*** Testing strrpos() function: with single quoted strings ***\n";
 $haystack = 'Hello,\t\n\0\n  $&!#%()*<=>?@hello123456he \x234 \101 ';
 $needle = array(
   //regular strings
-  'l',  
+  'l',
   'L',
   'HELLO',
   'hEllo',
 
   //escape characters
-  '\t',  
+  '\t',
   '\T',
   '     ',
   '\n',
@@ -28,39 +23,37 @@ $needle = array(
 ',  //new line
 
   //nulls
-  '\0',  
-  NULL,
-  null,
+  '\0',
 
   //boolean false
-  FALSE,  
+  FALSE,
   false,
 
   //empty string
   '',
 
   //special chars
-  ' ',  
+  ' ',
   '$',
   ' $',
   '&',
   '!#',
   '()',
-  '<=>',  
+  '<=>',
   '>',
   '=>',
   '?',
   '@',
   '@hEllo',
 
-  '12345', //decimal numeric string  
+  '12345', //decimal numeric string
   '\x23',  //hexadecimal numeric string
   '#',  //hexadecimal numeric string
   '\101',  //octal numeric string
   'A',
   '456HEE',  //numerics + chars
   42, //needle as int(ASCII value of '*')
-  $haystack  //haystack as needle  
+  $haystack  //haystack as needle
 );
 
 /* loop through to get the position of the needle in haystack string */
@@ -109,78 +102,72 @@ bool(false)
 int(10)
 int(10)
 -- Iteration 12 --
-bool(false)
-bool(false)
+int(54)
+int(54)
 -- Iteration 13 --
-bool(false)
-bool(false)
+int(54)
+int(54)
 -- Iteration 14 --
-bool(false)
-bool(false)
+int(54)
+int(54)
 -- Iteration 15 --
-bool(false)
-bool(false)
+int(53)
+int(53)
 -- Iteration 16 --
-bool(false)
-bool(false)
--- Iteration 17 --
-int(53)
-int(53)
--- Iteration 18 --
 int(16)
-bool(false)
--- Iteration 19 --
+int(16)
+-- Iteration 17 --
 int(15)
 bool(false)
--- Iteration 20 --
+-- Iteration 18 --
 int(17)
-bool(false)
--- Iteration 21 --
+int(17)
+-- Iteration 19 --
 int(18)
-bool(false)
+int(18)
+-- Iteration 20 --
+int(21)
+int(21)
+-- Iteration 21 --
+int(24)
+int(24)
 -- Iteration 22 --
-int(21)
-int(21)
+int(26)
+int(26)
 -- Iteration 23 --
-int(24)
-int(24)
+int(25)
+int(25)
 -- Iteration 24 --
-int(26)
-int(26)
+int(27)
+int(27)
 -- Iteration 25 --
-int(25)
-int(25)
+int(28)
+int(28)
 -- Iteration 26 --
-int(27)
-int(27)
+bool(false)
+bool(false)
 -- Iteration 27 --
-int(28)
-int(28)
+int(34)
+int(34)
 -- Iteration 28 --
-bool(false)
-bool(false)
+int(43)
+int(43)
 -- Iteration 29 --
-int(34)
-int(34)
--- Iteration 30 --
-int(43)
-int(43)
--- Iteration 31 --
 int(19)
 bool(false)
+-- Iteration 30 --
+int(49)
+int(49)
+-- Iteration 31 --
+bool(false)
+bool(false)
 -- Iteration 32 --
-int(49)
-int(49)
+bool(false)
+bool(false)
 -- Iteration 33 --
 bool(false)
 bool(false)
 -- Iteration 34 --
-bool(false)
-bool(false)
--- Iteration 35 --
-int(23)
-bool(false)
--- Iteration 36 --
 int(0)
 bool(false)
 *** Done ***

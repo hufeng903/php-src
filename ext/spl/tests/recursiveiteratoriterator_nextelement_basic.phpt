@@ -14,7 +14,7 @@ foreach ($iterator as $element) {
 }
 
 class NextElementRecursiveIteratorIterator extends RecursiveIteratorIterator {
-  public function nextElement() {
+  public function nextElement(): void {
     echo "::nextElement() was invoked\n";
   }
 }
@@ -36,4 +36,3 @@ int(2)
 int(3)
 ::nextElement() was invoked
 int(4)
-

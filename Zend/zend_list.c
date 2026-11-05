@@ -2,22 +2,19 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Andi Gutmans <andi@zend.com>                                |
-   |          Zeev Suraski <zeev@zend.com>                                |
+   | Authors: Andi Gutmans <andi@php.net>                                 |
+   |          Zeev Suraski <zeev@php.net>                                 |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 /* resource lists */
 
@@ -33,18 +30,19 @@ static HashTable list_destructors;
 
 ZEND_API zval* ZEND_FASTCALL zend_list_insert(void *ptr, int type)
 {
-	int index;
 	zval zv;
 
-	index = zend_hash_next_free_element(&EG(regular_list));
+	zend_long index = zend_hash_next_free_element(&EG(regular_list));
 	if (index == 0) {
 		index = 1;
+	} else if (index == ZEND_LONG_MAX) {
+		zend_error_noreturn(E_ERROR, "Resource ID space overflow");
 	}
 	ZVAL_NEW_RES(&zv, index, ptr, type);
 	return zend_hash_index_add_new(&EG(regular_list), index, &zv);
 }
 
-ZEND_API int ZEND_FASTCALL zend_list_delete(zend_resource *res)
+ZEND_API zend_result ZEND_FASTCALL zend_list_delete(zend_resource *res)
 {
 	if (GC_DELREF(res) <= 0) {
 		return zend_hash_index_del(&EG(regular_list), res->handle);
@@ -53,13 +51,10 @@ ZEND_API int ZEND_FASTCALL zend_list_delete(zend_resource *res)
 	}
 }
 
-ZEND_API int ZEND_FASTCALL zend_list_free(zend_resource *res)
+ZEND_API void ZEND_FASTCALL zend_list_free(zend_resource *res)
 {
-	if (GC_REFCOUNT(res) <= 0) {
-		return zend_hash_index_del(&EG(regular_list), res->handle);
-	} else {
-		return SUCCESS;
-	}
+	ZEND_ASSERT(GC_REFCOUNT(res) == 0);
+	zend_hash_index_del(&EG(regular_list), res->handle);
 }
 
 static void zend_resource_dtor(zend_resource *res)
@@ -71,24 +66,21 @@ static void zend_resource_dtor(zend_resource *res)
 	res->ptr = NULL;
 
 	ld = zend_hash_index_find_ptr(&list_destructors, r.type);
-	if (ld) {
-		if (ld->list_dtor_ex) {
-			ld->list_dtor_ex(&r);
-		}
-	} else {
-		zend_error(E_WARNING, "Unknown list entry type (%d)", r.type);
+	ZEND_ASSERT(ld && "Unknown list entry type");
+
+	if (ld->list_dtor_ex) {
+		ld->list_dtor_ex(&r);
 	}
 }
 
 
-ZEND_API int ZEND_FASTCALL zend_list_close(zend_resource *res)
+ZEND_API void ZEND_FASTCALL zend_list_close(zend_resource *res)
 {
 	if (GC_REFCOUNT(res) <= 0) {
-		return zend_list_free(res);
+		zend_list_free(res);
 	} else if (res->type >= 0) {
 		zend_resource_dtor(res);
 	}
-	return SUCCESS;
 }
 
 ZEND_API zend_resource* zend_register_resource(void *rsrc_pointer, int rsrc_type)
@@ -115,7 +107,7 @@ ZEND_API void *zend_fetch_resource2(zend_resource *res, const char *resource_typ
 	if (resource_type_name) {
 		const char *space;
 		const char *class_name = get_active_class_name(&space);
-		zend_error(E_WARNING, "%s%s%s(): supplied resource is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
+		zend_type_error("%s%s%s(): supplied resource is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
 	}
 
 	return NULL;
@@ -130,7 +122,7 @@ ZEND_API void *zend_fetch_resource(zend_resource *res, const char *resource_type
 	if (resource_type_name) {
 		const char *space;
 		const char *class_name = get_active_class_name(&space);
-		zend_error(E_WARNING, "%s%s%s(): supplied resource is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
+		zend_type_error("%s%s%s(): supplied resource is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
 	}
 
 	return NULL;
@@ -142,14 +134,14 @@ ZEND_API void *zend_fetch_resource_ex(zval *res, const char *resource_type_name,
 	if (res == NULL) {
 		if (resource_type_name) {
 			class_name = get_active_class_name(&space);
-			zend_error(E_WARNING, "%s%s%s(): no %s resource supplied", class_name, space, get_active_function_name(), resource_type_name);
+			zend_type_error("%s%s%s(): no %s resource supplied", class_name, space, get_active_function_name(), resource_type_name);
 		}
 		return NULL;
 	}
 	if (Z_TYPE_P(res) != IS_RESOURCE) {
 		if (resource_type_name) {
 			class_name = get_active_class_name(&space);
-			zend_error(E_WARNING, "%s%s%s(): supplied argument is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
+			zend_type_error("%s%s%s(): supplied argument is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
 		}
 		return NULL;
 	}
@@ -163,14 +155,14 @@ ZEND_API void *zend_fetch_resource2_ex(zval *res, const char *resource_type_name
 	if (res == NULL) {
 		if (resource_type_name) {
 			class_name = get_active_class_name(&space);
-			zend_error(E_WARNING, "%s%s%s(): no %s resource supplied", class_name, space, get_active_function_name(), resource_type_name);
+			zend_type_error("%s%s%s(): no %s resource supplied", class_name, space, get_active_function_name(), resource_type_name);
 		}
 		return NULL;
 	}
 	if (Z_TYPE_P(res) != IS_RESOURCE) {
 		if (resource_type_name) {
 			class_name = get_active_class_name(&space);
-			zend_error(E_WARNING, "%s%s%s(): supplied argument is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
+			zend_type_error("%s%s%s(): supplied argument is not a valid %s resource", class_name, space, get_active_function_name(), resource_type_name);
 		}
 		return NULL;
 	}
@@ -197,45 +189,65 @@ void plist_entry_destructor(zval *zv)
 		zend_rsrc_list_dtors_entry *ld;
 
 		ld = zend_hash_index_find_ptr(&list_destructors, res->type);
-		if (ld) {
-			if (ld->plist_dtor_ex) {
-				ld->plist_dtor_ex(res);
-			}
-		} else {
-			zend_error(E_WARNING,"Unknown list entry type (%d)", res->type);
+		ZEND_ASSERT(ld && "Unknown list entry type");
+
+		if (ld->plist_dtor_ex) {
+			ld->plist_dtor_ex(res);
 		}
 	}
 	free(res);
 }
 
-int zend_init_rsrc_list(void)
+ZEND_API void zend_init_rsrc_list(void)
 {
 	zend_hash_init(&EG(regular_list), 8, NULL, list_entry_destructor, 0);
-	return SUCCESS;
+	EG(regular_list).nNextFreeElement = 0;
 }
 
 
-int zend_init_rsrc_plist(void)
+void zend_init_rsrc_plist(void)
 {
-	zend_hash_init_ex(&EG(persistent_list), 8, NULL, plist_entry_destructor, 1, 0);
-	return SUCCESS;
-}
-
-
-static int zend_close_rsrc(zval *zv)
-{
-	zend_resource *res = Z_PTR_P(zv);
-
-	if (res->type >= 0) {
-		zend_resource_dtor(res);
-	}
-	return ZEND_HASH_APPLY_KEEP;
+	zend_hash_init(&EG(persistent_list), 8, NULL, plist_entry_destructor, 1);
 }
 
 
 void zend_close_rsrc_list(HashTable *ht)
 {
-	zend_hash_reverse_apply(ht, zend_close_rsrc);
+	uint32_t i = ht->nNumUsed;
+	uint32_t num = ht->nNumUsed;
+
+retry:
+	zend_try {
+		while (i-- > 0) {
+			/* Reload ht->arData on each iteration, as it may be reallocated. */
+			zval *p = ZEND_HASH_ELEMENT(ht, i);
+			if (Z_TYPE_P(p) != IS_UNDEF) {
+				zend_resource *res = Z_PTR_P(p);
+				if (res->type >= 0) {
+					zend_resource_dtor(res);
+
+					if (UNEXPECTED(ht->nNumUsed != num)) {
+						/* New resources were added, reloop from the start.
+						 * We need to keep the top->down order to avoid freeing resources
+						 * in use by the newly created resources. */
+						i = num = ht->nNumUsed;
+					}
+				}
+			}
+		}
+	} zend_catch {
+		if (UNEXPECTED(ht->nNumUsed != num)) {
+			/* See above */
+			i = num = ht->nNumUsed;
+		}
+
+		/* If we have bailed, we probably executed user code (e.g. user stream
+		 * API). Keep closing resources so they don't leak. User handlers must be
+		 * called now so they aren't called in zend_deactivate() on
+		 * zend_destroy_rsrc_list(&EG(regular_list)). At that point, the executor
+		 * has already shut down and the process would crash. */
+		goto retry;
+	} zend_end_try();
 }
 
 
@@ -244,17 +256,15 @@ void zend_destroy_rsrc_list(HashTable *ht)
 	zend_hash_graceful_reverse_destroy(ht);
 }
 
+/* int return due to HashTable API */
 static int clean_module_resource(zval *zv, void *arg)
 {
 	int resource_id = *(int *)arg;
-	if (Z_RES_TYPE_P(zv) == resource_id) {
-		return 1;
-	} else {
-		return 0;
-	}
+
+	return Z_RES_TYPE_P(zv) == resource_id;
 }
 
-
+/* int return due to HashTable API */
 static int zend_clean_module_rsrc_dtors_cb(zval *zv, void *arg)
 {
 	zend_rsrc_list_dtors_entry *ld = (zend_rsrc_list_dtors_entry *)Z_PTR_P(zv);
@@ -288,6 +298,7 @@ ZEND_API int zend_register_list_destructors_ex(rsrc_dtor_func_t ld, rsrc_dtor_fu
 	ZVAL_PTR(&zv, lde);
 
 	if (zend_hash_next_index_insert(&list_destructors, &zv) == NULL) {
+		free(lde);
 		return FAILURE;
 	}
 	return list_destructors.nNextFreeElement-1;
@@ -297,7 +308,7 @@ ZEND_API int zend_fetch_list_dtor_id(const char *type_name)
 {
 	zend_rsrc_list_dtors_entry *lde;
 
-	ZEND_HASH_FOREACH_PTR(&list_destructors, lde) {
+	ZEND_HASH_PACKED_FOREACH_PTR(&list_destructors, lde) {
 		if (lde->type_name && (strcmp(type_name, lde->type_name) == 0)) {
 			return lde->resource_id;
 		}
@@ -311,11 +322,10 @@ static void list_destructors_dtor(zval *zv)
 	free(Z_PTR_P(zv));
 }
 
-int zend_init_rsrc_list_dtors(void)
+void zend_init_rsrc_list_dtors(void)
 {
 	zend_hash_init(&list_destructors, 64, NULL, list_destructors_dtor, 1);
 	list_destructors.nNextFreeElement=1;	/* we don't want resource type 0 */
-	return SUCCESS;
 }
 
 
@@ -347,10 +357,6 @@ ZEND_API zend_resource* zend_register_persistent_resource_ex(zend_string *key, v
 	GC_MAKE_PERSISTENT_LOCAL(key);
 
 	zv = zend_hash_update(&EG(persistent_list), key, &tmp);
-	if (UNEXPECTED(zv == NULL)) {
-		free(Z_RES(tmp));
-		return NULL;
-	}
 
 	return Z_RES_P(zv);
 }
@@ -360,16 +366,6 @@ ZEND_API zend_resource* zend_register_persistent_resource(const char *key, size_
 	zend_string *str = zend_string_init(key, key_len, 1);
 	zend_resource *ret  = zend_register_persistent_resource_ex(str, rsrc_pointer, rsrc_type);
 
-	zend_string_release(str);
+	zend_string_release_ex(str, 1);
 	return ret;
 }
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

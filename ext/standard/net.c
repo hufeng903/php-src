@@ -1,16 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Sara Golemon <pollita@php.net>                              |
    +----------------------------------------------------------------------+
@@ -19,20 +15,28 @@
 #include "php.h"
 #include "php_network.h"
 
-#if HAVE_ARPA_INET_H
+#ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
 #endif
 
-#if HAVE_NET_IF_H
+#ifdef HAVE_NET_IF_H
 # include <net/if.h>
 #endif
 
-#if HAVE_GETIFADDRS
+#ifdef HAVE_GETIFADDRS
 # include <ifaddrs.h>
+#elif defined(__PASE__)
+/* IBM i implements getifaddrs, but under its own name */
+#include <as400_protos.h>
+#define getifaddrs Qp2getifaddrs
+#define freeifaddrs Qp2freeifaddrs
+#define ifaddrs ifaddrs_pase
 #endif
 
 #ifdef PHP_WIN32
+# ifndef __clang__
 # include <intrin.h>
+# endif
 # include <winsock2.h>
 # include <ws2ipdef.h>
 # include <Ws2tcpip.h>
@@ -46,8 +50,6 @@ PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {
 
 	if (!addr) { return NULL; }
 
-	/* Prefer inet_ntop() as it's more task-specific and doesn't have to be demangled */
-#if HAVE_INET_NTOP
 	switch (addr->sa_family) {
 #ifdef AF_INET6
 		case AF_INET6: {
@@ -70,14 +72,13 @@ PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {
 			break;
 		}
 	}
-#endif
 
 	/* Fallback on getnameinfo() */
 	switch (addr->sa_family) {
 #ifdef AF_INET6
 		case AF_INET6:
 			addrlen = sizeof(struct sockaddr_in6);
-			/* fallthrough */
+			ZEND_FALLTHROUGH;
 #endif
 		case AF_INET: {
 			zend_string *ret = zend_string_alloc(NI_MAXHOST, 0);
@@ -96,7 +97,7 @@ PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {
 	return NULL;
 }
 
-#if defined(PHP_WIN32) || HAVE_GETIFADDRS
+#if defined(PHP_WIN32) || defined(HAVE_GETIFADDRS) || defined(__PASE__)
 static void iface_append_unicast(zval *unicast, zend_long flags,
                                  struct sockaddr *addr, struct sockaddr *netmask,
                                  struct sockaddr *broadcast, struct sockaddr *ptp) {
@@ -126,10 +127,8 @@ static void iface_append_unicast(zval *unicast, zend_long flags,
 
 	add_next_index_zval(unicast, &u);
 }
-#endif
 
-/* {{{ proto array|false net_get_interfaces()
-Returns an array in the form:
+/* {{{ Returns an array in the form:
 array(
   'ifacename' => array(
     'description' => 'Awesome interface', // Win32 only
@@ -175,7 +174,9 @@ PHP_FUNCTION(net_get_interfaces) {
 	dwRetVal = GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
 
 	if (NO_ERROR != dwRetVal) {
-		/* TODO check GetLastError() */
+		char *buf = php_win32_error_to_msg(GetLastError());
+		zend_error(E_WARNING, "GetAdaptersAddresses failed: %s", buf);
+		php_win32_error_msg_free(buf);
 		FREE(pAddresses);
 		RETURN_FALSE;
 	}
@@ -184,7 +185,7 @@ PHP_FUNCTION(net_get_interfaces) {
 	for (p = pAddresses; p; p = p->Next) {
 		zval iface, unicast;
 
-		if ((IF_TYPE_ETHERNET_CSMACD != p->IfType) && (IF_TYPE_SOFTWARE_LOOPBACK != p->IfType)) {
+		if ((IF_TYPE_ETHERNET_CSMACD != p->IfType) && (IF_TYPE_IEEE80211 != p->IfType) && (IF_TYPE_SOFTWARE_LOOPBACK != p->IfType)) {
 			continue;
 		}
 
@@ -250,13 +251,15 @@ PHP_FUNCTION(net_get_interfaces) {
 		}
 		add_assoc_zval(&iface, "unicast", &unicast);
 
+		add_assoc_bool(&iface, "up", (p->OperStatus == IfOperStatusUp));
+
 		add_assoc_zval(return_value, p->AdapterName, &iface);
 	}
 
 	FREE(pAddresses);
 #undef MALLOC
 #undef FREE
-#elif HAVE_GETIFADDRS /* !PHP_WIN32 */
+#elif defined(HAVE_GETIFADDRS) || defined(__PASE__) /* !PHP_WIN32 */
 	struct ifaddrs *addrs = NULL, *p;
 
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -269,7 +272,7 @@ PHP_FUNCTION(net_get_interfaces) {
 	array_init(return_value);
 	for (p = addrs; p; p = p->ifa_next) {
 		zval *iface = zend_hash_str_find(Z_ARR_P(return_value), p->ifa_name, strlen(p->ifa_name));
-		zval *unicast;
+		zval *unicast, *status;
 
 		if (!iface) {
 			zval newif;
@@ -289,13 +292,17 @@ PHP_FUNCTION(net_get_interfaces) {
 		                     p->ifa_addr, p->ifa_netmask,
 		                     (p->ifa_flags & IFF_BROADCAST) ? p->ifa_broadaddr : NULL,
 					         (p->ifa_flags & IFF_POINTOPOINT) ? p->ifa_dstaddr : NULL);
+		status = zend_hash_str_find(Z_ARR_P(iface), "up", sizeof("up") - 1);
+		if (!status) {
+			add_assoc_bool(iface, "up", ((p->ifa_flags & IFF_UP) != 0));
+		}
 	}
 
 	freeifaddrs(addrs);
 #else
 	/* Should never happen as we never register the function */
-	php_error(E_WARNING, "No support for net_get_interfaces");
-	RETURN_FALSE;
+	ZEND_UNREACHABLE();
 #endif
 }
+#endif
 /* }}} */

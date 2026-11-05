@@ -4,9 +4,9 @@ SPL: Error: iterator_apply when an iterator method (eg rewind) throws exception
 <?php
 
 class MyArrayIterator extends ArrayIterator {
-	public function rewind() {
-		throw new Exception('Make the iterator break');
-	}
+    public function rewind(): void {
+        throw new Exception('Make the iterator break');
+    }
 }
 
 function test() {}
@@ -14,13 +14,13 @@ function test() {}
 $it = new MyArrayIterator(array(1, 21, 22));
 
 try {
-	$res = iterator_apply($it, 'test');
+    $res = iterator_apply($it, 'test');
 } catch (Exception $e) {
-	echo $e->getMessage();
+    echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 
 ?>
 
 <?php exit(0); ?>
 --EXPECT--
-Make the iterator break
+Exception: Make the iterator break

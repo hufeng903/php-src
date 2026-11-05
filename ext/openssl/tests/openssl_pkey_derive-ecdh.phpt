@@ -1,7 +1,9 @@
 --TEST--
 openssl_pkey_derive() ECDH
+--EXTENSIONS--
+openssl
 --SKIPIF--
-<?php if (!extension_loaded("openssl") || !defined("OPENSSL_KEYTYPE_EC")) print "skip"; ?>
+<?php if (!defined("OPENSSL_KEYTYPE_EC")) print "skip"; ?>
 --FILE--
 <?php
 
@@ -14,7 +16,7 @@ x3Nz35sz8u0CE6befv+Fxo5ORq373v9eDzp62Z8g
 -----END EC PRIVATE KEY-----
 ");
 
-$pub = openssl_pkey_get_public("-----BEGIN PUBLIC KEY----- 
+$pub = openssl_pkey_get_public("-----BEGIN PUBLIC KEY-----
 MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBGs5c8VCdd3VcOAUhuCzEB6uMUDob
 lG5vtncWqvHfcnsR4uHEuufl24rbraVFyVeGr/BV0AfUnnhKGnaEtSDG9h4BMw5A
 vHiBzBCZUlA1TUMSmNpedutkZul4h6gYNrzFtfjmbqSnC0732YgUIrr4yueOSL2E
@@ -25,5 +27,5 @@ N2IRPU2MF6S0S6i44MU=
 echo bin2hex(openssl_pkey_derive($pub,$priv));
 echo "\n";
 ?>
---EXPECTF--
+--EXPECT--
 01171967cc0ddc553b46c6a821502aaea44aa04e6933d897ea11222efa0556f2d5d972816676c9ccf4e2430a26e07193ad39373050f6e54e4059f17720d7dd667635

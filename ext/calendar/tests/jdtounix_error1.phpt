@@ -4,11 +4,15 @@ Test jdtounix() function : error conditions
 edgarsandi - <edgar.r.sandi@gmail.com>
 --INI--
 date.timezone=UTC
---SKIPIF--
-<?php include 'skipif.inc'; ?>
+--EXTENSIONS--
+calendar
 --FILE--
 <?php
-var_dump(jdtounix(2440579)) . PHP_EOL;
+try {
+    jdtounix(2440579);
+} catch (ValueError $ex) {
+    echo $ex::class, ': ', $ex->getMessage(), PHP_EOL;
+}
 ?>
---EXPECT--
-bool(false)
+--EXPECTF--
+ValueError: jdtounix(): Argument #1 ($julian_day) jday must be between 2440588 and %d

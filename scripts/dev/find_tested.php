@@ -1,5 +1,5 @@
+#!/usr/bin/env php
 <?php
-
 
 $usage = <<<USAGE
 
@@ -15,7 +15,6 @@ A test status of "verify" for a method means that there is at least one other me
 
 USAGE;
 
-
 /* method record fields */
 define("CLASS_NAME", "CLASS_NAME");
 define("METHOD_NAME", "METHOD_NAME");
@@ -23,7 +22,6 @@ define("EXTENSION_NAME", "EXTENSION_NAME");
 define("IS_DUPLICATE", "IS_DUPLICATE");
 define("IS_TESTED", "IS_TESTED");
 define("TESTS", "TESTS");
-
 
 // process command line args
 $num_params = $argc;
@@ -49,7 +47,6 @@ if ($num_params == 3) {
     $extension_name = false;
 }
 
-
 $method_info = populate_method_info();
 
 if ($extension_name != false) {
@@ -71,7 +68,7 @@ $extension_method_info = mark_methods_as_tested($extension_method_info, $phpt_fi
 /**
  * The loop to output the test coverage info
  * Should output: Extension, Class Name, Method/Function Name, Test Status, Test Files
- */ 
+ */
 foreach($extension_method_info as $record) {
     echo $record[EXTENSION_NAME] . ",";
     echo $record[CLASS_NAME] . ",";
@@ -84,7 +81,7 @@ foreach($extension_method_info as $record) {
  * Marks the "tested" status of methods in $method_info according
  * to whether they are tested in $phpt_files
  */
-function mark_methods_as_tested($method_info, $phpt_files) { 
+function mark_methods_as_tested($method_info, $phpt_files) {
 
     foreach($phpt_files as $phpt_file) {
         $tested_functions = extract_tests($phpt_file);
@@ -97,7 +94,7 @@ function mark_methods_as_tested($method_info, $phpt_files) {
                     // matched the method name
                     if ($current_method_record[IS_DUPLICATE] == true) {
                         // we cannot be sure which class this method corresponds to,
-                        // so mark method as needing to be verified 
+                        // so mark method as needing to be verified
                         $current_method_record[IS_TESTED] = "verify";
                     } else {
                         $current_method_record[IS_TESTED] = "yes";
@@ -114,7 +111,7 @@ function mark_methods_as_tested($method_info, $phpt_files) {
  * returns an array containing a record for each defined method.
  */
 function populate_method_info() {
-    
+
     $method_info = array();
 
     // get functions
@@ -197,32 +194,30 @@ function get_phpt_files($dir, &$phpt_file_count, &$all_phpt)
 }
 
 /**
- * Extract tests from a specified file, returns an array of tested function tokens 
- */ 
+ * Extract tests from a specified file, returns an array of tested function tokens
+ */
 function extract_tests($file) {
-	$code = file_get_contents($file);
-	
-	if (!preg_match('/--FILE--\s*(.*)\s*--(EXPECTF|EXPECTREGEX|EXPECT)?--/is', $code, $r)) {
-		//print "Unable to get code in ".$file."\n";
-		return array();
-	}
-	
-	$tokens = token_get_all($r[1]);
-	$functions = array_filter($tokens, 'filter_functions');
-	$functions = array_map( 'map_token_value',$functions);
-	$functions = array_unique($functions);
-	
-	return $functions;
+    $code = file_get_contents($file);
+
+    if (!preg_match('/--FILE--\s*(.*)\s*--(EXPECTF|EXPECTREGEX|EXPECT)?--/is', $code, $r)) {
+        //print "Unable to get code in ".$file."\n";
+        return array();
+    }
+
+    $tokens = token_get_all($r[1]);
+    $functions = array_filter($tokens, 'filter_functions');
+    $functions = array_map( 'map_token_value',$functions);
+    $functions = array_unique($functions);
+
+    return $functions;
 }
 
 function filter_functions($x) {
-	return $x[0] == 307;
+    return $x[0] == 307;
 }
 
 function map_token_value($x) {
-	return $x[1];
+    return $x[1];
 }
 
-
 ?>
-

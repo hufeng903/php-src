@@ -1,14 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Scott MacVicar <scottmac@php.net>                           |
    +----------------------------------------------------------------------+
@@ -20,10 +18,10 @@
 #include <php.h>
 
 #include "intl_common.h"
-#include "spoofchecker_create.h"
 #include "intl_error.h"
 #include "intl_data.h"
 
+#include "intl_icu_compat.h"
 #include <unicode/uspoof.h>
 
 typedef struct {
@@ -31,14 +29,13 @@ typedef struct {
 	intl_error  err;
 
 	// ICU Spoofchecker
-	USpoofChecker*      uspoof;
+	USpoofChecker*     uspoof;
+	IntlIcuSpoofCheckResult* uspoofres;
 
 	zend_object     zo;
 } Spoofchecker_object;
 
-static inline Spoofchecker_object *php_intl_spoofchecker_fetch_object(zend_object *obj) {
-	    return (Spoofchecker_object *)((char*)(obj) - XtOffsetOf(Spoofchecker_object, zo));
-}
+#define php_intl_spoofchecker_fetch_object(obj) ZEND_CONTAINER_OF(obj, Spoofchecker_object, zo)
 #define Z_INTL_SPOOFCHECKER_P(zv) php_intl_spoofchecker_fetch_object((Z_OBJ_P(zv)))
 
 #define SPOOFCHECKER_ERROR(co) (co)->err
@@ -47,17 +44,16 @@ static inline Spoofchecker_object *php_intl_spoofchecker_fetch_object(zend_objec
 #define SPOOFCHECKER_ERROR_CODE(co)   INTL_ERROR_CODE(SPOOFCHECKER_ERROR(co))
 #define SPOOFCHECKER_ERROR_CODE_P(co) &(INTL_ERROR_CODE(SPOOFCHECKER_ERROR(co)))
 
+BEGIN_EXTERN_C()
 void spoofchecker_register_Spoofchecker_class(void);
 
-void spoofchecker_object_init(Spoofchecker_object* co);
-void spoofchecker_object_destroy(Spoofchecker_object* co);
-
 extern zend_class_entry *Spoofchecker_ce_ptr;
+END_EXTERN_C()
 
 /* Auxiliary macros */
 
 #define SPOOFCHECKER_METHOD_INIT_VARS       \
-    zval*             object  = getThis();   \
+    zval*             object  = ZEND_THIS;  \
     Spoofchecker_object*  co  = NULL;   \
     intl_error_reset(NULL); \
 
@@ -65,21 +61,16 @@ extern zend_class_entry *Spoofchecker_ce_ptr;
 #define SPOOFCHECKER_METHOD_FETCH_OBJECT							\
 	SPOOFCHECKER_METHOD_FETCH_OBJECT_NO_CHECK;						\
 	if (co->uspoof == NULL)	{										\
-		intl_errors_set(&co->err, U_ILLEGAL_ARGUMENT_ERROR,			\
-				"Found unconstructed Spoofchecker", 0);	\
-		RETURN_FALSE;												\
+		zend_throw_error(NULL, "Found unconstructed Spoofchecker");	\
+		RETURN_THROWS();											\
 	}
 
 // Macro to check return value of a ucol_* function call.
 #define SPOOFCHECKER_CHECK_STATUS(co, msg)                                        \
     intl_error_set_code(NULL, SPOOFCHECKER_ERROR_CODE(co));           \
     if (U_FAILURE(SPOOFCHECKER_ERROR_CODE(co))) {                                  \
-        intl_errors_set_custom_msg(SPOOFCHECKER_ERROR_P(co), msg, 0); \
+        intl_errors_set_custom_msg(SPOOFCHECKER_ERROR_P(co), msg); \
         RETURN_FALSE;                                                           \
     }                                                                           \
-
-#if U_ICU_VERSION_MAJOR_NUM >= 58
-#define SPOOFCHECKER_DEFAULT_RESTRICTION_LEVEL USPOOF_HIGHLY_RESTRICTIVE
-#endif
 
 #endif // #ifndef SPOOFCHECKER_CLASS_H

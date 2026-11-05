@@ -1,7 +1,8 @@
 --TEST--
-Test setlocale() function : basic functionality - setting system locale to a specific   
+Test setlocale() function : basic functionality - setting system locale to a specific
 --SKIPIF--
 <?php
+if (setlocale(LC_ALL, 'invalid') === 'invalid') { die('skip setlocale() is broken /w musl'); }
 if (substr(PHP_OS, 0, 3) == 'WIN') {
     die('skip Not valid for windows');
 }
@@ -11,20 +12,8 @@ if (setlocale(LC_ALL, "en_US.utf8", "en_AU.utf8", "ko_KR.utf8", "zh_CN.utf8", "d
 ?>
 --FILE--
 <?php
-/* Prototype  : string setlocale (int $category , string $locale [,string $..] )
-              : string setlocale(int $category , array $locale);  
- * Description: Sets locale information.Returns the new current locale , 
- *              or FALSE if locale functionality is not implemented in this platform. 
- * Source code: ext/standard/string.c
-*/
-
 /* test setlocale by specifying a specific locale as input */
 
-/* Prototype  : array list_system_locales( void )
-   Description: To get the currently installed locle in this platform 
-   Arguments  : Nil
-   Returns    : set of locale as array
-*/
 function list_system_locales() {
   // start the buffering of next command to internal output buffer
   ob_start();
@@ -50,9 +39,9 @@ echo "*** Testing setlocale() : basic functionality - set to a specific locale *
 
 //set of locales to be used
 $common_locales = array(
-  "english_US"=> "en_US.utf8", 
-  "english_AU" => "en_AU.utf8", 
-  "korean_KR" => "ko_KR.utf8", 
+  "english_US"=> "en_US.utf8",
+  "english_AU" => "en_AU.utf8",
+  "korean_KR" => "ko_KR.utf8",
   "Chinese_zh" => "zh_CN.utf8",
   "germen_DE" => "de_DE.utf8",
   "spanish_es" => "es_EC.utf8",
@@ -79,18 +68,22 @@ $currency_symbol = array(
 // gather all the locales installed in the system
 $all_system_locales = list_system_locales();
 
-// set the system locale to a locale, choose the right locale by 
-// finding a common locale in commonly used locale stored in 
-// $common_locales & locales that are available in the system, stored 
-// in $all_system_locales. 
+// set the system locale to a locale, choose the right locale by
+// finding a common locale in commonly used locale stored in
+// $common_locales & locales that are available in the system, stored
+// in $all_system_locales.
 echo "Setting system locale(LC_ALL) to ";
 foreach($common_locales as $value) {
-  // check if a commonly used locale is installed in the system 
-  if(in_array($value, $all_system_locales)){
+  // check if a commonly used locale is installed in the system
+  // Solaris uses .UTF-8 canonical form, so normalize
+  $normalized = preg_replace('/\.utf8$/i', '.UTF-8', $value);
+
+  if (in_array($value, $all_system_locales) ||
+      in_array($normalized, $all_system_locales)) {
     echo "$value\n"; // print, this is found
     // set the found locale as current locale
     var_dump(setlocale(LC_ALL, $value ));
-    // stop here 
+    // stop here
     break;
   }
   else{

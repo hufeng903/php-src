@@ -4,7 +4,7 @@ Bug #43293 (Multiple segfaults in getopt())
 register_argc_argv=Off
 --FILE--
 <?php
-$argv = array(1, 2, 3); 
+$argv = array(1, 2, 3);
 var_dump(getopt("abcd"));
 var_dump($argv);
 $argv = null;
@@ -21,5 +21,5 @@ array(3) {
   [2]=>
   int(3)
 }
-bool(false)
-
+array(0) {
+}

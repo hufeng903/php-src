@@ -7,7 +7,7 @@ and semantics are as close as possible to those of the Perl 5 language.
 
                        Written by Philip Hazel
      Original API code Copyright (c) 1997-2012 University of Cambridge
-          New API code Copyright (c) 2016-2017 University of Cambridge
+          New API code Copyright (c) 2016-2022 University of Cambridge
 
 -----------------------------------------------------------------------------
 Redistribution and use in source and binary forms, with or without
@@ -65,9 +65,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define STR_QUERY_s STR_LEFT_PARENTHESIS STR_QUESTION_MARK STR_s STR_RIGHT_PARENTHESIS
 #define STR_STAR_NUL STR_LEFT_PARENTHESIS STR_ASTERISK STR_N STR_U STR_L STR_RIGHT_PARENTHESIS
 
-/* States for range and POSIX processing */
+/* States for POSIX processing */
 
-enum { RANGE_NOT_STARTED, RANGE_STARTING, RANGE_STARTED };
 enum { POSIX_START_REGEX, POSIX_ANCHORED, POSIX_NOT_BRACKET,
        POSIX_CLASS_NOT_STARTED, POSIX_CLASS_STARTING, POSIX_CLASS_STARTED };
 
@@ -276,7 +275,7 @@ while (plength > 0)
     break;
 
     case CHAR_BACKSLASH:
-    if (plength <= 0) return PCRE2_ERROR_END_BACKSLASH;
+    if (plength == 0) return PCRE2_ERROR_END_BACKSLASH;
     if (extended) nextisliteral = TRUE; else
       {
       if (*posix < 127 && strchr(posix_meta_escapes, *posix) != NULL)
@@ -541,6 +540,14 @@ Returns:   !0 => character is found in the class
 static BOOL
 convert_glob_char_in_class(int class_index, PCRE2_UCHAR c)
 {
+#if PCRE2_CODE_UNIT_WIDTH != 8
+if (c > 0xff)
+  {
+  /* ctype functions are not sane for c > 0xff */
+  return 0;
+  }
+#endif
+
 switch (class_index)
   {
   case 1: return isalnum(c);
@@ -1066,11 +1073,12 @@ BOOL utf = (options & PCRE2_CONVERT_UTF) != 0;
 uint32_t pattype = options & TYPE_OPTIONS;
 
 if (pattern == NULL || bufflenptr == NULL) return PCRE2_ERROR_NULL;
+
 if ((options & ~ALL_OPTIONS) != 0 ||        /* Undefined bit set */
     (pattype & (~pattype+1)) != pattype ||  /* More than one type set */
     pattype == 0)                           /* No type set */
   {
-  *bufflenptr = 0;  /* Error offset */
+  *bufflenptr = 0;                          /* Error offset */
   return PCRE2_ERROR_BADOPTION;
   }
 
@@ -1081,7 +1089,11 @@ if (ccontext == NULL) ccontext =
 /* Check UTF if required. */
 
 #ifndef SUPPORT_UNICODE
-if (utf) return PCRE2_ERROR_UNICODE_NOT_SUPPORTED;
+if (utf)
+  {
+  *bufflenptr = 0;  /* Error offset */
+  return PCRE2_ERROR_UNICODE_NOT_SUPPORTED;
+  }
 #else
 if (utf && (options & PCRE2_CONVERT_NO_UTF_CHECK) == 0)
   {
@@ -1126,6 +1138,7 @@ for (i = 0; i < 2; i++)
     break;
 
     default:
+    *bufflenptr = 0;  /* Error offset */
     return PCRE2_ERROR_INTERNAL;
     }
 

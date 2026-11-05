@@ -2,11 +2,6 @@
 Test array_merge_recursive() function : usage variations - binary safe checking
 --FILE--
 <?php
-/* Prototype  : array array_merge_recursive(array $arr1[, array $...])
- * Description: Recursively merges elements from passed arrays into one array
- * Source code: ext/standard/array.c
-*/
-
 /*
  * Testing the functionality of array_merge_recursive() by passing an array having binary values.
 */
@@ -18,7 +13,7 @@ $arr1 = array(b"1", b"hello" => "hello", b"world", "str1" => b"hello", "str2" =>
 
 // initialize the second argument
 $arr2 = array(b"str1" => b"binary", b"hello" => "binary", b"str2" => b"binary");
- 
+
 echo "-- With default argument --\n";
 var_dump( array_merge_recursive($arr1) );
 

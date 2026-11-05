@@ -14,5 +14,7 @@ function foo($f, $t) {
 foreach (foo(1, 5) as $x) {
     echo $x, "\n";
 }
---EXPECT--
+?>
+--EXPECTF--
+Deprecated: Returning from a finally block is deprecated in %s on line %d
 1

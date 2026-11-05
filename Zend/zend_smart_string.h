@@ -1,23 +1,17 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Sascha Schumann <sascha@schumann.cx>                         |
    |         Xinchen Hui <laruence@php.net>                               |
    +----------------------------------------------------------------------+
  */
-
-/* $Id$ */
 
 #ifndef PHP_SMART_STRING_H
 #define PHP_SMART_STRING_H
@@ -52,10 +46,13 @@
 #define smart_string_append_unsigned(str, val) \
 	smart_string_append_unsigned_ex((str), (val), 0)
 
+ZEND_API void smart_string_append_printf(smart_string *dest, const char *format, ...)
+	ZEND_ATTRIBUTE_FORMAT(printf, 2, 3);
+
 ZEND_API void ZEND_FASTCALL _smart_string_alloc_persistent(smart_string *str, size_t len);
 ZEND_API void ZEND_FASTCALL _smart_string_alloc(smart_string *str, size_t len);
 
-static zend_always_inline size_t smart_string_alloc(smart_string *str, size_t len, zend_bool persistent) {
+static zend_always_inline size_t smart_string_alloc(smart_string *str, size_t len, bool persistent) {
 	if (UNEXPECTED(!str->c) || UNEXPECTED(len >= str->a - str->len)) {
 		if (persistent) {
 			_smart_string_alloc_persistent(str, len);
@@ -66,7 +63,7 @@ static zend_always_inline size_t smart_string_alloc(smart_string *str, size_t le
 	return str->len + len;
 }
 
-static zend_always_inline void smart_string_free_ex(smart_string *str, zend_bool persistent) {
+static zend_always_inline void smart_string_free_ex(smart_string *str, bool persistent) {
 	if (str->c) {
 		pefree(str->c, persistent);
 		str->c = NULL;
@@ -80,25 +77,25 @@ static zend_always_inline void smart_string_0(smart_string *str) {
 	}
 }
 
-static zend_always_inline void smart_string_appendc_ex(smart_string *dest, char ch, zend_bool persistent) {
+static zend_always_inline void smart_string_appendc_ex(smart_string *dest, char ch, bool persistent) {
 	dest->len = smart_string_alloc(dest, 1, persistent);
 	dest->c[dest->len - 1] = ch;
 }
 
-static zend_always_inline void smart_string_appendl_ex(smart_string *dest, const char *str, size_t len, zend_bool persistent) {
+static zend_always_inline void smart_string_appendl_ex(smart_string *dest, const char *str, size_t len, bool persistent) {
 	size_t new_len = smart_string_alloc(dest, len, persistent);
 	memcpy(dest->c + dest->len, str, len);
 	dest->len = new_len;
 
 }
 
-static zend_always_inline void smart_string_append_long_ex(smart_string *dest, zend_long num, zend_bool persistent) {
+static zend_always_inline void smart_string_append_long_ex(smart_string *dest, zend_long num, bool persistent) {
 	char buf[32];
 	char *result = zend_print_long_to_buf(buf + sizeof(buf) - 1, num);
 	smart_string_appendl_ex(dest, result, buf + sizeof(buf) - 1 - result, persistent);
 }
 
-static zend_always_inline void smart_string_append_unsigned_ex(smart_string *dest, zend_ulong num, zend_bool persistent) {
+static zend_always_inline void smart_string_append_unsigned_ex(smart_string *dest, zend_ulong num, bool persistent) {
 	char buf[32];
 	char *result = zend_print_ulong_to_buf(buf + sizeof(buf) - 1, num);
 	smart_string_appendl_ex(dest, result, buf + sizeof(buf) - 1 - result, persistent);
@@ -115,13 +112,3 @@ static zend_always_inline void smart_string_reset(smart_string *str) {
 }
 
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

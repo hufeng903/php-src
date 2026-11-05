@@ -2,17 +2,21 @@
 Bug #69948 (path/domain are not sanitized for special characters in setcookie)
 --FILE--
 <?php
-var_dump(
-    setcookie('foo', 'bar', 0, 'asdf;asdf'),
-    setcookie('foo', 'bar', 0, '/', 'foobar; secure')
-);
+try {
+    var_dump(setcookie('foo', 'bar', 0, 'asdf;asdf'));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+    var_dump(setcookie('foo', 'bar', 0, '/', 'foobar; secure'));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
 ?>
 ===DONE===
 --EXPECTHEADERS--
---EXPECTF--
-Warning: Cookie paths cannot contain any of the following ',; \t\r\n\013\014' in %s on line %d
-
-Warning: Cookie domains cannot contain any of the following ',; \t\r\n\013\014' in %s on line %d
-bool(false)
-bool(false)
+--EXPECT--
+ValueError: setcookie(): "path" option cannot contain ",", ";", " ", "\t", "\r", "\n", "\013", or "\014"
+ValueError: setcookie(): "domain" option cannot contain ",", ";", " ", "\t", "\r", "\n", "\013", or "\014"
 ===DONE===

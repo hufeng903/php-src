@@ -16,30 +16,34 @@ var_dump($str[-1] = 'a');
 var_dump($str);
 
 $str = '';
-var_dump($str['foo'] = 'a');
+try {
+    var_dump($str['foo'] = 'a');
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 var_dump($str);
 
 $str = '';
 try {
     var_dump($str[] = 'a');
-} catch (Error $e) {
-    echo "Error: {$e->getMessage()}\n";
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 var_dump($str);
 
 $str = '';
 try {
     var_dump($str[0] += 1);
-} catch (Error $e) {
-    echo "Error: {$e->getMessage()}\n";
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 var_dump($str);
 
 $str = '';
 try {
     var_dump($str[0][0] = 'a');
-} catch (Error $e) {
-    echo "Error: {$e->getMessage()}\n";
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 var_dump($str);
 
@@ -50,13 +54,11 @@ string(1) "a"
 string(1) "a"
 string(6) "     a"
 
-Warning: Illegal string offset:  -1 in %s on line %d
+Warning: Illegal string offset -1 in %s on line %d
 NULL
 string(0) ""
-
-Warning: Illegal string offset 'foo' in %s on line %d
-string(1) "a"
-string(1) "a"
+TypeError: Cannot access offset of type string on string
+string(0) ""
 Error: [] operator not supported for strings
 string(0) ""
 Error: Cannot use assign-op operators with string offsets

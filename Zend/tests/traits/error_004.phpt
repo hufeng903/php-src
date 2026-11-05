@@ -3,13 +3,16 @@ Trying to use a class as trait
 --FILE--
 <?php
 
-class abc { 
+class abc {
 }
 
 class A {
-	use abc;
+    use abc;
 }
 
 ?>
 --EXPECTF--
-Fatal error: A cannot use abc - it is not a trait in %s on line %d
+Fatal error: Uncaught Error: A cannot use abc - it is not a trait in %s:%d
+Stack trace:
+#0 {main}
+  thrown in %s on line %d

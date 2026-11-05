@@ -1,32 +1,37 @@
 --TEST--
 Peer verification enabled for client streams
+--EXTENSIONS--
+openssl
 --SKIPIF--
-<?php 
-if (!extension_loaded("openssl")) die("skip openssl not loaded");
+<?php
 if (!function_exists("proc_open")) die("skip no proc_open");
+?>
 --FILE--
 <?php
+$certFile = __DIR__ . DIRECTORY_SEPARATOR . 'peer_verification.pem.tmp';
+$cacertFile = __DIR__ . DIRECTORY_SEPARATOR . 'peer_verification-ca.pem.tmp';
+
 $serverCode = <<<'CODE'
-    $serverUri = "ssl://127.0.0.1:64321";
+    $serverUri = "ssl://127.0.0.1:0";
     $serverFlags = STREAM_SERVER_BIND | STREAM_SERVER_LISTEN;
     $serverCtx = stream_context_create(['ssl' => [
-        'local_cert' => __DIR__ . '/bug54992.pem'
+        'local_cert' => '%s'
     ]]);
 
     $server = stream_socket_server($serverUri, $errno, $errstr, $serverFlags, $serverCtx);
-    phpt_notify();
+    phpt_notify_server_start($server);
 
     for ($i = 0; $i < 5; $i++) {
         @stream_socket_accept($server, 1);
     }
 CODE;
+$serverCode = sprintf($serverCode, $certFile);
 
+$peerName = 'peer_verification';
 $clientCode = <<<'CODE'
-    $serverUri = "ssl://127.0.0.1:64321";
+    $serverUri = "ssl://{{ ADDR }}";
     $clientFlags = STREAM_CLIENT_CONNECT;
-    $caFile = __DIR__ . '/bug54992-ca.pem';
-
-    phpt_wait();
+    $caFile = '%s';
 
     // Expected to fail -- untrusted server cert and no CA File present
     var_dump(@stream_socket_client($serverUri, $errno, $errstr, 1, $clientFlags));
@@ -47,13 +52,25 @@ $clientCode = <<<'CODE'
     // Should succeed with CA file specified in context
     $clientCtx = stream_context_create(['ssl' => [
         'cafile'   => $caFile,
-        'peer_name' => 'bug54992.local',
+        'peer_name' => '%s',
     ]]);
     var_dump(stream_socket_client($serverUri, $errno, $errstr, 1, $clientFlags, $clientCtx));
 CODE;
+$clientCode = sprintf($clientCode, $cacertFile, $peerName);
+
+include 'CertificateGenerator.inc';
+$certificateGenerator = new CertificateGenerator();
+$certificateGenerator->saveCaCert($cacertFile);
+$certificateGenerator->saveNewCertAsFileWithKey($peerName, $certFile);
 
 include 'ServerClientTestCase.inc';
 ServerClientTestCase::getInstance()->run($clientCode, $serverCode);
+?>
+--CLEAN--
+<?php
+@unlink(__DIR__ . DIRECTORY_SEPARATOR . 'peer_verification.pem.tmp');
+@unlink(__DIR__ . DIRECTORY_SEPARATOR . 'peer_verification-ca.pem.tmp');
+?>
 --EXPECTF--
 bool(false)
 bool(false)

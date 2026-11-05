@@ -1,5 +1,5 @@
 --TEST--
-Trait method overriddes base class method
+Trait method overrides base class method
 --FILE--
 <?php
 error_reporting(E_ALL);
@@ -9,7 +9,7 @@ class Base {
      echo 'Hello ';
    }
 }
- 
+
 trait SayWorld {
    public function sayHello() {
      echo 'World!';
@@ -23,5 +23,5 @@ class MyHelloWorld extends Base {
 $o = new MyHelloWorld();
 $o->sayHello();
 ?>
---EXPECT--	
+--EXPECT--
 World!

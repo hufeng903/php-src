@@ -1,23 +1,23 @@
 --TEST--
 execute a file with -f
 --SKIPIF--
-<?php 
-include "skipif.inc"; 
+<?php
+include "skipif.inc";
 if (substr(PHP_OS, 0, 3) == 'WIN') {
-	die ("skip not for Windows");
+    die ("skip not for Windows");
 }
 ?>
 --FILE--
 <?php
 
-$php = getenv('TEST_PHP_EXECUTABLE');
+$php = getenv('TEST_PHP_EXECUTABLE_ESCAPED');
 
-$filename = dirname(__FILE__).'/008.test.php';
+$filename = __DIR__.'/008.test.php';
 $code ='
 <?php
 
-class test { 
-	private $pri; 
+class test {
+    private $pri;
 }
 
 var_dump(test::$pri);
@@ -26,14 +26,18 @@ var_dump(test::$pri);
 
 file_put_contents($filename, $code);
 
-var_dump(`$php -n -f "$filename"`);
-var_dump(`$php -n -f "wrong"`);
+var_dump(shell_exec(<<<SHELL
+$php -n -f "$filename"
+SHELL));
+var_dump(shell_exec(<<<SHELL
+$php -n -f "wrong"
+SHELL));
 
 @unlink($filename);
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECTF--
 string(%d) "
 
 Fatal error: Uncaught Error: Cannot access private property test::$pri in %s:%d
@@ -41,6 +45,6 @@ Stack trace:
 #0 {main}
   thrown in %s on line %d
 "
-string(33) "Could not open input file: wrong
-"
+Could not open input file: wrong
+NULL
 Done

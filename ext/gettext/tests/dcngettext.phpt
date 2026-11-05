@@ -1,30 +1,38 @@
 --TEST--
 dcngettext() tests
+--EXTENSIONS--
+gettext
 --SKIPIF--
-<?php 
-if (!extension_loaded("gettext")) die("skip"); 
+<?php
 if (!function_exists("dcngettext")) die("skip dcngettext() doesn't exist");
 ?>
 --FILE--
 <?php
 
-var_dump(dcngettext(1,1,1,1));
 var_dump(dcngettext(1,1,1,1,1));
 var_dump(dcngettext("test","test","test",1,1));
-var_dump(dcngettext("test","test","test",0,0));
+var_dump(dcngettext("test","test","test",0,1));
 var_dump(dcngettext("test","test","test",-1,-1));
-var_dump(dcngettext("","","",1,1));
-var_dump(dcngettext("","","",0,0));
+
+try {
+    dcngettext("","","",1,1);
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+    dcngettext("","","",0,1);
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 echo "Done\n";
 ?>
---EXPECTF--	
-Warning: dcngettext() expects exactly 5 parameters, 4 given in %s on line %d
-bool(false)
+--EXPECT--
 string(1) "1"
 string(4) "test"
 string(4) "test"
 string(4) "test"
-string(0) ""
-string(0) ""
+ValueError: dcngettext(): Argument #1 ($domain) must not be empty
+ValueError: dcngettext(): Argument #1 ($domain) must not be empty
 Done

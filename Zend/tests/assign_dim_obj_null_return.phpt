@@ -7,50 +7,77 @@ function test() {
     $array = [PHP_INT_MAX => 42];
     $true = true;
 
-    var_dump($array[] = 123);
-    var_dump($array[[]] = 123);
-    var_dump($array[new stdClass] = 123);
-    var_dump($true[123] = 456);
+    try {
+        var_dump($array[] = 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
 
-    var_dump($array[] += 123);
-    var_dump($array[[]] += 123);
-    var_dump($array[new stdClass] += 123);
-    var_dump($true[123] += 456);
+    try {
+        var_dump($array[[]] = 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
 
-    var_dump($true->foo = 123);
-    var_dump($true->foo += 123);
+    try {
+        var_dump($array[new stdClass] = 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($true[123] = 456);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($array[] += 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($array[[]] += 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($array[new stdClass] += 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($true[123] += 456);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+
+    try {
+        var_dump($true->foo = 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
+    try {
+        var_dump($true->foo += 123);
+    } catch (Throwable $e) {
+        echo $e::class, ': ', $e->getMessage(), "\n";
+    }
 }
 
 test();
 
 ?>
---EXPECTF--
-Warning: Cannot add element to the array as the next element is already occupied in %s on line %d
-NULL
-
-Warning: Illegal offset type in %s on line %d
-NULL
-
-Warning: Illegal offset type in %s on line %d
-NULL
-
-Warning: Cannot use a scalar value as an array in %s on line %d
-NULL
-
-Warning: Cannot add element to the array as the next element is already occupied in %s on line %d
-NULL
-
-Warning: Illegal offset type in %s on line %d
-NULL
-
-Warning: Illegal offset type in %s on line %d
-NULL
-
-Warning: Cannot use a scalar value as an array in %s on line %d
-NULL
-
-Warning: Attempt to assign property 'foo' of non-object in %s on line %d
-NULL
-
-Warning: Attempt to assign property 'foo' of non-object in %s on line %d
-NULL
+--EXPECT--
+Error: Cannot add element to the array as the next element is already occupied
+TypeError: Cannot access offset of type array on array
+TypeError: Cannot access offset of type stdClass on array
+Error: Cannot use a scalar value as an array
+Error: Cannot add element to the array as the next element is already occupied
+TypeError: Cannot access offset of type array on array
+TypeError: Cannot access offset of type stdClass on array
+Error: Cannot use a scalar value as an array
+Error: Attempt to assign property "foo" on true
+Error: Attempt to assign property "foo" on true

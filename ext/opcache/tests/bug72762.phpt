@@ -1,5 +1,7 @@
 --TEST--
 Bug #72762: Infinite loop while parsing a file with opcache enabled
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

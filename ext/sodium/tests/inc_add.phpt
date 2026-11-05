@@ -1,7 +1,7 @@
 --TEST--
 increment and add edge cases
---SKIPIF--
-<?php if (!extension_loaded("sodium")) print "skip"; ?>
+--EXTENSIONS--
+sodium
 --FILE--
 <?php
 
@@ -9,7 +9,7 @@ $notStr = 123;
 try {
     sodium_increment($notStr);
 } catch (SodiumException $e) {
-    echo $e->getMessage(), "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 $str = "abc";
@@ -28,7 +28,7 @@ $notStr = 123;
 try {
     sodium_add($notStr, $addStr);
 } catch (SodiumException $e) {
-    echo $e->getMessage(), "\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 $str = "abc";
@@ -43,12 +43,12 @@ var_dump($str, $str2);
 
 ?>
 --EXPECT--
-a PHP string is required
+SodiumException: a PHP string is required
 string(3) "bbc"
 string(3) "abc"
 string(3) "bbc"
 string(3) "abc"
-PHP strings are required
+SodiumException: PHP strings are required
 string(3) "cbc"
 string(3) "abc"
 string(3) "cbc"

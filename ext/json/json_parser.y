@@ -1,17 +1,14 @@
+%require "3.0"
 %code top {
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Author: Jakub Zelenka <bukka@php.net>                                |
   +----------------------------------------------------------------------+
@@ -32,10 +29,6 @@ int json_yydebug = 1;
 #define YYFREE free
 #endif
 
-#define PHP_JSON_USE(uv) ((void) (uv))
-#define PHP_JSON_USE_1(uvr, uv1) PHP_JSON_USE(uvr); PHP_JSON_USE(uv1)
-#define PHP_JSON_USE_2(uvr, uv1, uv2) PHP_JSON_USE(uvr); PHP_JSON_USE(uv1); PHP_JSON_USE(uv2)
-
 #define PHP_JSON_DEPTH_DEC --parser->depth
 #define PHP_JSON_DEPTH_INC \
 	if (parser->max_depth && parser->depth >= parser->max_depth) { \
@@ -46,19 +39,13 @@ int json_yydebug = 1;
 
 }
 
-%pure-parser
-%name-prefix "php_json_yy"
-%lex-param  { php_json_parser *parser  }
-%parse-param { php_json_parser *parser }
+%define api.prefix {php_json_yy}
+%define api.pure full
+%param  { php_json_parser *parser  }
 
 %union {
 	zval value;
-	struct {
-		zend_string *key;
-		zval val;
-	} pair;
 }
-
 
 %token <value> PHP_JSON_T_NUL
 %token <value> PHP_JSON_T_TRUE
@@ -67,19 +54,19 @@ int json_yydebug = 1;
 %token <value> PHP_JSON_T_DOUBLE
 %token <value> PHP_JSON_T_STRING
 %token <value> PHP_JSON_T_ESTRING
-%token <value> PHP_JSON_T_EOI
-%token <value> PHP_JSON_T_ERROR
+%token PHP_JSON_T_EOI
+%token PHP_JSON_T_ERROR
 
-%type <value> start object key value array errlex
+%type <value> start object key value array
 %type <value> members member elements element
-%type <pair> pair
 
-%destructor { zval_dtor(&$$); } <value>
-%destructor { zend_string_release($$.key); zval_dtor(&$$.val); } <pair>
+%destructor { zval_ptr_dtor_nogc(&$$); } <value>
 
 %code {
 static int php_json_yylex(union YYSTYPE *value, php_json_parser *parser);
 static void php_json_yyerror(php_json_parser *parser, char const *msg);
+static int php_json_parser_array_create(php_json_parser *parser, zval *array);
+static int php_json_parser_object_create(php_json_parser *parser, zval *array);
 
 }
 
@@ -90,11 +77,8 @@ start:
 			{
 				ZVAL_COPY_VALUE(&$$, &$1);
 				ZVAL_COPY_VALUE(parser->return_value, &$1);
-				PHP_JSON_USE($2); YYACCEPT;
-			}
-	|	value errlex
-			{
-				PHP_JSON_USE_2($$, $1, $2);
+				(void) php_json_yynerrs;
+				YYACCEPT;
 			}
 ;
 
@@ -126,43 +110,35 @@ object_end:
 ;
 
 members:
-		/* empty */
+		%empty
 			{
-				parser->methods.object_create(parser, &$$);
+				if ((parser->scanner.options & PHP_JSON_OBJECT_AS_ARRAY) && parser->methods.object_create == php_json_parser_object_create) {
+					ZVAL_EMPTY_ARRAY(&$$);
+				} else {
+					if (UNEXPECTED(parser->methods.object_create(parser, &$$) == FAILURE)) {
+						YYERROR;
+					}
+				}
 			}
 	|	member
 ;
 
 member:
-		pair
+		key ':' value
 			{
-				parser->methods.object_create(parser, &$$);
-				if (parser->methods.object_update(parser, &$$, $1.key, &$1.val) == FAILURE) {
+				if (UNEXPECTED(parser->methods.object_create(parser, &$$) == FAILURE)) {
+					YYERROR;
+				}
+				if (parser->methods.object_update(parser, &$$, Z_STR($1), &$3) == FAILURE) {
 					YYERROR;
 				}
 			}
-	|	member ',' pair
+	|	member ',' key ':' value
 			{
-				if (parser->methods.object_update(parser, &$1, $3.key, &$3.val) == FAILURE) {
+				if (parser->methods.object_update(parser, &$1, Z_STR($3), &$5) == FAILURE) {
 					YYERROR;
 				}
 				ZVAL_COPY_VALUE(&$$, &$1);
-			}
-	|	member errlex
-			{
-				PHP_JSON_USE_2($$, $1, $2);
-			}
-;
-
-pair:
-		key ':' value
-			{
-				$$.key = Z_STR($1);
-				ZVAL_COPY_VALUE(&$$.val, &$3);
-			}
-	|	key errlex
-			{
-				PHP_JSON_USE_2($$, $1, $2);
 			}
 ;
 
@@ -194,9 +170,15 @@ array_end:
 ;
 
 elements:
-		/* empty */
+		%empty
 			{
-				parser->methods.array_create(parser, &$$);
+				if (parser->methods.array_create == php_json_parser_array_create) {
+					ZVAL_EMPTY_ARRAY(&$$);
+				} else {
+					if (UNEXPECTED(parser->methods.array_create(parser, &$$) == FAILURE)) {
+						YYERROR;
+					}
+				}
 			}
 	|	element
 ;
@@ -204,17 +186,19 @@ elements:
 element:
 		value
 			{
-				parser->methods.array_create(parser, &$$);
-				parser->methods.array_append(parser, &$$, &$1);
+				if (UNEXPECTED(parser->methods.array_create(parser, &$$) == FAILURE)) {
+					YYERROR;
+				}
+				if (UNEXPECTED(parser->methods.array_append(parser, &$$, &$1) == FAILURE)) {
+					YYERROR;
+				}
 			}
 	|	element ',' value
 			{
-				parser->methods.array_append(parser, &$1, &$3);
+				if (UNEXPECTED(parser->methods.array_append(parser, &$1, &$3) == FAILURE)) {
+					YYERROR;
+				}
 				ZVAL_COPY_VALUE(&$$, &$1);
-			}
-	|	element errlex
-			{
-				PHP_JSON_USE_2($$, $1, $2);
 			}
 ;
 
@@ -233,68 +217,108 @@ value:
 	|	PHP_JSON_T_NUL
 	|	PHP_JSON_T_TRUE
 	|	PHP_JSON_T_FALSE
-	|	errlex
-;
-
-errlex:
-		PHP_JSON_T_ERROR
-			{
-				PHP_JSON_USE_1($$, $1);
-				YYERROR;
-			}
 ;
 
 %% /* Functions */
 
 static int php_json_parser_array_create(php_json_parser *parser, zval *array)
 {
-	array_init(array);
+	if (UNEXPECTED(!array_finit(array))) {
+		ZEND_ASSERT(ZEND_HAS_OOM());
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 
 static int php_json_parser_array_append(php_json_parser *parser, zval *array, zval *zvalue)
 {
-	zend_hash_next_index_insert(Z_ARRVAL_P(array), zvalue);
+	if (UNEXPECTED(zend_hash_next_index_finsert(Z_ARRVAL_P(array), zvalue) == HASH_NOMEM)) {
+		ZEND_ASSERT(ZEND_HAS_OOM());
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 
 static int php_json_parser_object_create(php_json_parser *parser, zval *object)
 {
+	bool created;
+
 	if (parser->scanner.options & PHP_JSON_OBJECT_AS_ARRAY) {
-		array_init(object);
-		return SUCCESS;
+		created = array_finit(object);
 	} else {
-		return object_init(object);
+		created = object_finit(object);
 	}
+	if (UNEXPECTED(!created)) {
+		ZEND_ASSERT(ZEND_HAS_OOM());
+		return FAILURE;
+	}
+	return SUCCESS;
 }
 
 static int php_json_parser_object_update(php_json_parser *parser, zval *object, zend_string *key, zval *zvalue)
 {
 	/* if JSON_OBJECT_AS_ARRAY is set */
 	if (Z_TYPE_P(object) == IS_ARRAY) {
-		zend_symtable_update(Z_ARRVAL_P(object), key, zvalue);
-	} else {
-		zval zkey;
-		if (ZSTR_LEN(key) > 0 && ZSTR_VAL(key)[0] == '\0') {
-			parser->scanner.errcode = PHP_JSON_ERROR_INVALID_PROPERTY_NAME;
-			zend_string_release(key);
-			zval_dtor(zvalue);
-			zval_dtor(object);
+		if (UNEXPECTED(zend_symtable_fupdate(Z_ARRVAL_P(object), key, zvalue) == HASH_NOMEM)) {
 			return FAILURE;
 		}
-		ZVAL_NEW_STR(&zkey, key);
-		zend_std_write_property(object, &zkey, zvalue, NULL);
+	} else {
+		if (ZSTR_LEN(key) > 0 && ZSTR_VAL(key)[0] == '\0') {
+			parser->scanner.errcode = PHP_JSON_ERROR_INVALID_PROPERTY_NAME;
+			zend_string_release_ex(key, 0);
+			zval_ptr_dtor_nogc(zvalue);
+			zval_ptr_dtor_nogc(object);
+			return FAILURE;
+		}
+		zend_std_write_property(Z_OBJ_P(object), key, zvalue, NULL);
 		Z_TRY_DELREF_P(zvalue);
+		if (ZEND_HAS_OOM()) {
+			return FAILURE;
+		}
 	}
-	zend_string_release(key);
+	zend_string_release_ex(key, 0);
 
+	return SUCCESS;
+}
+
+static int php_json_parser_array_create_validate(php_json_parser *parser, zval *array)
+{
+	ZVAL_NULL(array);
+	return SUCCESS;
+}
+
+static int php_json_parser_array_append_validate(php_json_parser *parser, zval *array, zval *zvalue)
+{
+	return SUCCESS;
+}
+
+static int php_json_parser_object_create_validate(php_json_parser *parser, zval *object)
+{
+	ZVAL_NULL(object);
+	return SUCCESS;
+}
+
+static int php_json_parser_object_update_validate(php_json_parser *parser, zval *object, zend_string *key, zval *zvalue)
+{
 	return SUCCESS;
 }
 
 static int php_json_yylex(union YYSTYPE *value, php_json_parser *parser)
 {
 	int token = php_json_scan(&parser->scanner);
-	value->value = parser->scanner.value;
+
+	bool validate = parser->methods.array_create == php_json_parser_array_create_validate
+		&& parser->methods.array_append == php_json_parser_array_append_validate
+		&& parser->methods.object_create == php_json_parser_object_create_validate
+		&& parser->methods.object_update == php_json_parser_object_update_validate;
+
+	if (validate) {
+		zval_ptr_dtor_str(&(parser->scanner.value));
+		ZVAL_UNDEF(&value->value);
+	} else {
+		value->value = parser->scanner.value;
+	}
+
 	return token;
 }
 
@@ -310,6 +334,30 @@ PHP_JSON_API php_json_error_code php_json_parser_error_code(const php_json_parse
 	return parser->scanner.errcode;
 }
 
+static uint64_t php_json_compute_error_column(const php_json_scanner *s)
+{
+	const php_json_ctype *p = s->line_start;
+	const php_json_ctype *end = s->token;
+	/* Count characters from the start of the line to the failing token,
+	 * folding UTF-8 continuation bytes into their leading byte. */
+	uint64_t column = 1;
+
+	while (p < end) {
+		if ((*p & 0b11000000) != 0b10000000) {
+			column++;
+		}
+		p++;
+	}
+	return column;
+}
+
+PHP_JSON_API void php_json_parser_error_details(const php_json_parser *parser, php_json_error_details *out)
+{
+	out->code = parser->scanner.errcode;
+	out->line = parser->scanner.line;
+	out->column = php_json_compute_error_column(&parser->scanner);
+}
+
 static const php_json_parser_methods default_parser_methods =
 {
 	php_json_parser_array_create,
@@ -322,9 +370,21 @@ static const php_json_parser_methods default_parser_methods =
 	NULL,
 };
 
+static const php_json_parser_methods validate_parser_methods =
+{
+	php_json_parser_array_create_validate,
+	php_json_parser_array_append_validate,
+	NULL,
+	NULL,
+	php_json_parser_object_create_validate,
+	php_json_parser_object_update_validate,
+	NULL,
+	NULL,
+};
+
 PHP_JSON_API void php_json_parser_init_ex(php_json_parser *parser,
 		zval *return_value,
-		char *str,
+		const char *str,
 		size_t str_len,
 		int options,
 		int max_depth,
@@ -340,7 +400,7 @@ PHP_JSON_API void php_json_parser_init_ex(php_json_parser *parser,
 
 PHP_JSON_API void php_json_parser_init(php_json_parser *parser,
 		zval *return_value,
-		char *str,
+		const char *str,
 		size_t str_len,
 		int options,
 		int max_depth)
@@ -358,4 +418,9 @@ PHP_JSON_API void php_json_parser_init(php_json_parser *parser,
 PHP_JSON_API int php_json_parse(php_json_parser *parser)
 {
 	return php_json_yyparse(parser);
+}
+
+const php_json_parser_methods* php_json_get_validate_methods(void)
+{
+	return &validate_parser_methods;
 }

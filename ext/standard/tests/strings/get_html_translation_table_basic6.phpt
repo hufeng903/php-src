@@ -3,7 +3,7 @@ Test get_html_translation_table() function : basic functionality - HTML 5/Window
 --FILE--
 <?php
 
-function so($a,$b) { return ord($a) - ord($b); }
+function so($a,$b) { return ord($a[0]) - ord($b[0]); }
 
 echo "*** Testing get_html_translation_table() : basic functionality - HTML 5/Windows-1251 ***\n";
 
@@ -25,7 +25,7 @@ $tt = get_html_translation_table($table, ENT_NOQUOTES | ENT_HTML5, "Windows-1251
 var_dump( count($tt) );
 
 echo "-- with table = HTML_SPECIALCHARS, ENT_COMPAT --\n";
-$table = HTML_SPECIALCHARS; 
+$table = HTML_SPECIALCHARS;
 $tt = get_html_translation_table($table, ENT_COMPAT, "Windows-1251");
 uksort( $tt, 'so' );
 var_dump( count($tt) );
@@ -81,7 +81,7 @@ Array
     [^] => &Hat;
     [_] => &lowbar;
     [`] => &grave;
-    [fj] => &fjlig
+    [fj] => &fjlig;
     [{] => &lbrace;
     [|] => &vert;
     [}] => &rcub;

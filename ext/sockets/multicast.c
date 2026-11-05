@@ -1,25 +1,19 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Authors: Gustavo Lopes    <cataphract@php.net>                       |
    +----------------------------------------------------------------------+
  */
 
-/* $Id$ */
-
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
 #include "php.h"
@@ -58,20 +52,20 @@ static int _php_mcast_source_op(php_socket *sock, int level, struct sockaddr *gr
 
 #ifdef RFC3678_API
 static int _php_source_op_to_rfc3678_op(enum source_op sop);
-#elif HAS_MCAST_EXT
+#elif defined(HAS_MCAST_EXT)
 static const char *_php_source_op_to_string(enum source_op sop);
 static int _php_source_op_to_ipv4_op(enum source_op sop);
 #endif
 
-int php_string_to_if_index(const char *val, unsigned *out)
+zend_result php_string_to_if_index(const char *val, unsigned *out)
 {
-#if HAVE_IF_NAMETOINDEX
+#ifdef HAVE_IF_NAMETOINDEX
 	unsigned int ind;
 
 	ind = if_nametoindex(val);
 	if (ind == 0) {
 		php_error_docref(NULL, E_WARNING,
-			"no interface with name \"%s\" could be found", val);
+			"No interface with name \"%s\" could be found", val);
 		return FAILURE;
 	} else {
 		*out = ind;
@@ -79,29 +73,29 @@ int php_string_to_if_index(const char *val, unsigned *out)
 	}
 #else
 	php_error_docref(NULL, E_WARNING,
-			"this platform does not support looking up an interface by "
+			"This platform does not support looking up an interface by "
 			"name, an integer interface index must be supplied instead");
 	return FAILURE;
 #endif
 }
 
-static int php_get_if_index_from_zval(zval *val, unsigned *out)
+static zend_result php_get_if_index_from_zval(zval *val, unsigned *out)
 {
 	int ret;
 
 	if (Z_TYPE_P(val) == IS_LONG) {
 		if (Z_LVAL_P(val) < 0 || (zend_ulong)Z_LVAL_P(val) > UINT_MAX) {
-			php_error_docref(NULL, E_WARNING,
-				"the interface index cannot be negative or larger than %u;"
-				" given " ZEND_LONG_FMT, UINT_MAX, Z_LVAL_P(val));
-			ret = FAILURE;
-		} else {
-			*out = Z_LVAL_P(val);
-			ret = SUCCESS;
+			zend_value_error("Index must be between 0 and %u", UINT_MAX);
+			return FAILURE;
 		}
+		*out = Z_LVAL_P(val);
+		ret = SUCCESS;
 	} else {
 		zend_string *tmp_str;
-		zend_string *str = zval_get_tmp_string(val, &tmp_str);
+		zend_string *str = zval_try_get_tmp_string(val, &tmp_str);
+		if (UNEXPECTED(!str)) {
+			return FAILURE;
+		}
 		ret = php_string_to_if_index(ZSTR_VAL(str), out);
 		zend_tmp_string_release(tmp_str);
 	}
@@ -111,7 +105,7 @@ static int php_get_if_index_from_zval(zval *val, unsigned *out)
 
 
 
-static int php_get_if_index_from_array(const HashTable *ht, const char *key,
+static zend_result php_get_if_index_from_array(const HashTable *ht, const char *key,
 	php_socket *sock, unsigned int *if_index)
 {
 	zval *val;
@@ -124,18 +118,21 @@ static int php_get_if_index_from_array(const HashTable *ht, const char *key,
 	return php_get_if_index_from_zval(val, if_index);
 }
 
-static int php_get_address_from_array(const HashTable *ht, const char *key,
+static zend_result php_get_address_from_array(const HashTable *ht, const char *key,
 	php_socket *sock, php_sockaddr_storage *ss, socklen_t *ss_len)
 {
 	zval *val;
 	zend_string *str, *tmp_str;
 
 	if ((val = zend_hash_str_find(ht, key, strlen(key))) == NULL) {
-		php_error_docref(NULL, E_WARNING, "no key \"%s\" passed in optval", key);
+		zend_value_error("No key \"%s\" passed in optval", key);
 		return FAILURE;
 	}
-	str = zval_get_tmp_string(val, &tmp_str);
-	if (!php_set_inet46_addr(ss, ss_len, ZSTR_VAL(str), sock)) {
+	str = zval_try_get_tmp_string(val, &tmp_str);
+	if (UNEXPECTED(!str)) {
+		return FAILURE;
+	}
+	if (!php_set_inet46_addr(ss, ss_len, str, sock)) {
 		zend_tmp_string_release(tmp_str);
 		return FAILURE;
 	}
@@ -143,7 +140,7 @@ static int php_get_address_from_array(const HashTable *ht, const char *key,
 	return SUCCESS;
 }
 
-static int php_do_mcast_opt(php_socket *php_sock, int level, int optname, zval *arg4)
+static zend_result php_do_mcast_opt(php_socket *php_sock, int level, int optname, zval *arg4)
 {
 	HashTable		 		*opt_ht;
 	unsigned int			if_index;
@@ -161,13 +158,21 @@ static int php_do_mcast_opt(php_socket *php_sock, int level, int optname, zval *
 		goto mcast_req_fun;
 	case PHP_MCAST_LEAVE_GROUP:
 		{
+			mcast_req_fun = &php_mcast_leave;
+mcast_req_fun: ;
 			php_sockaddr_storage	group = {0};
 			socklen_t				glen;
 
-			mcast_req_fun = &php_mcast_leave;
-mcast_req_fun:
-			convert_to_array_ex(arg4);
-			opt_ht = Z_ARRVAL_P(arg4);
+			if (Z_TYPE_P(arg4) != IS_ARRAY) {
+				if (UNEXPECTED(Z_TYPE_P(arg4) != IS_OBJECT)) {
+					zend_argument_type_error(4, "must be of type array when argument #3 ($option) is MCAST_LEAVE_GROUP, %s given", zend_zval_value_name(arg4));
+					return FAILURE;
+				} else {
+					opt_ht = Z_OBJPROP_P(arg4);
+				}
+			} else {
+				opt_ht = Z_ARRVAL_P(arg4);
+			}
 
 			if (php_get_address_from_array(opt_ht, "group", php_sock, &group,
 				&glen) == FAILURE) {
@@ -195,15 +200,22 @@ mcast_req_fun:
 		goto mcast_sreq_fun;
 	case PHP_MCAST_LEAVE_SOURCE_GROUP:
 		{
+			mcast_sreq_fun = &php_mcast_leave_source;
+		mcast_sreq_fun: ;
 			php_sockaddr_storage	group = {0},
 									source = {0};
 			socklen_t				glen,
 									slen;
-
-			mcast_sreq_fun = &php_mcast_leave_source;
-		mcast_sreq_fun:
-			convert_to_array_ex(arg4);
-			opt_ht = Z_ARRVAL_P(arg4);
+			if (Z_TYPE_P(arg4) != IS_ARRAY) {
+				if (UNEXPECTED(Z_TYPE_P(arg4) != IS_OBJECT)) {
+					zend_argument_type_error(4, "must be of type array when argument #3 ($option) is MCAST_LEAVE_SOURCE_GROUP, %s given", zend_zval_value_name(arg4));
+					return FAILURE;
+				} else {
+					opt_ht = Z_OBJPROP_P(arg4);
+				}
+			} else {
+				opt_ht = Z_ARRVAL_P(arg4);
+			}
 
 			if (php_get_address_from_array(opt_ht, "group", php_sock, &group,
 					&glen) == FAILURE) {
@@ -225,14 +237,14 @@ mcast_req_fun:
 #endif
 	default:
 		php_error_docref(NULL, E_WARNING,
-			"unexpected option in php_do_mcast_opt (level %d, option %d). "
+			"Unexpected option in php_do_mcast_opt (level %d, option %d). "
 			"This is a bug.", level, optname);
 		return FAILURE;
 	}
 
 	if (retval != 0) {
 		if (retval != -2) { /* error, but message already emitted */
-			PHP_SOCKET_ERROR(php_sock, "unable to set socket option", errno);
+			PHP_SOCKET_ERROR(php_sock, "Unable to set socket option", errno);
 		}
 		return FAILURE;
 	}
@@ -279,15 +291,13 @@ int php_do_setsockopt_ip_mcast(php_socket *php_sock,
 		goto dosockopt;
 
 	case IP_MULTICAST_LOOP:
-		convert_to_boolean_ex(arg4);
-		ipv4_mcast_ttl_lback = (unsigned char) (Z_TYPE_P(arg4) == IS_TRUE);
+		ipv4_mcast_ttl_lback = (unsigned char) zend_is_true(arg4);
 		goto ipv4_loop_ttl;
 
 	case IP_MULTICAST_TTL:
-		convert_to_long_ex(arg4);
+		convert_to_long(arg4);
 		if (Z_LVAL_P(arg4) < 0L || Z_LVAL_P(arg4) > 255L) {
-			php_error_docref(NULL, E_WARNING,
-					"Expected a value between 0 and 255");
+			zend_argument_value_error(4, "must be between 0 and 255");
 			return FAILURE;
 		}
 		ipv4_mcast_ttl_lback = (unsigned char) Z_LVAL_P(arg4);
@@ -302,7 +312,7 @@ ipv4_loop_ttl:
 dosockopt:
 	retval = setsockopt(php_sock->bsd_socket, level, optname, opt_ptr, optlen);
 	if (retval != 0) {
-		PHP_SOCKET_ERROR(php_sock, "unable to set socket option", errno);
+		PHP_SOCKET_ERROR(php_sock, "Unable to set socket option", errno);
 		return FAILURE;
 	}
 
@@ -345,14 +355,12 @@ int php_do_setsockopt_ipv6_mcast(php_socket *php_sock,
 		goto dosockopt;
 
 	case IPV6_MULTICAST_LOOP:
-		convert_to_boolean_ex(arg4);
-		ov = (int) Z_TYPE_P(arg4) == IS_TRUE;
+		ov = (int) zend_is_true(arg4);
 		goto ipv6_loop_hops;
 	case IPV6_MULTICAST_HOPS:
-		convert_to_long_ex(arg4);
+		convert_to_long(arg4);
 		if (Z_LVAL_P(arg4) < -1L || Z_LVAL_P(arg4) > 255L) {
-			php_error_docref(NULL, E_WARNING,
-					"Expected a value between -1 and 255");
+			zend_argument_value_error(4, "must be between -1 and 255");
 			return FAILURE;
 		}
 		ov = (int) Z_LVAL_P(arg4);
@@ -367,7 +375,7 @@ ipv6_loop_hops:
 dosockopt:
 	retval = setsockopt(php_sock->bsd_socket, level, optname, opt_ptr, optlen);
 	if (retval != 0) {
-		PHP_SOCKET_ERROR(php_sock, "unable to set socket option", errno);
+		PHP_SOCKET_ERROR(php_sock, "Unable to set socket option", errno);
 		return FAILURE;
 	}
 
@@ -465,8 +473,9 @@ static int _php_mcast_join_leave(
 			sizeof(greq));
 #else
 	if (sock->type == AF_INET) {
-		struct ip_mreq mreq = {0};
+		struct ip_mreq mreq;
 		struct in_addr addr;
+		memset(&mreq, 0, sizeof(struct ip_mreq));
 
 		assert(group_len == sizeof(struct sockaddr_in));
 
@@ -483,9 +492,10 @@ static int _php_mcast_join_leave(
 				join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP, (char*)&mreq,
 				sizeof(mreq));
 	}
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 	else if (sock->type == AF_INET6) {
-		struct ipv6_mreq mreq = {0};
+		struct ipv6_mreq mreq;
+		memset(&mreq, 0, sizeof(struct ipv6_mreq));
 
 		assert(group_len == sizeof(struct sockaddr_in6));
 
@@ -498,8 +508,7 @@ static int _php_mcast_join_leave(
 	}
 #endif
 	else {
-		php_error_docref(NULL, E_WARNING,
-			"Option %s is inapplicable to this socket type",
+		zend_value_error("Option %s is inapplicable to this socket type",
 			join ? "MCAST_JOIN_GROUP" : "MCAST_LEAVE_GROUP");
 		return -2;
 	}
@@ -551,7 +560,7 @@ static int _php_mcast_source_op(
 		return setsockopt(sock->bsd_socket, level,
 				_php_source_op_to_ipv4_op(sop), (char*)&mreqs, sizeof(mreqs));
 	}
-#if HAVE_IPV6
+#ifdef HAVE_IPV6
 	else if (sock->type == AF_INET6) {
 		php_error_docref(NULL, E_WARNING,
 			"This platform does not support %s for IPv6 sockets",
@@ -568,7 +577,7 @@ static int _php_mcast_source_op(
 #endif
 }
 
-#if RFC3678_API
+#ifdef RFC3678_API
 static int _php_source_op_to_rfc3678_op(enum source_op sop)
 {
 	switch (sop) {
@@ -624,11 +633,11 @@ static int _php_source_op_to_ipv4_op(enum source_op sop)
 #endif /* HAS_MCAST_EXT */
 
 #ifdef PHP_WIN32
-int php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_addr *out_addr)
+zend_result php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_addr *out_addr)
 {
 	MIB_IPADDRTABLE *addr_table;
-    ULONG size;
-    DWORD retval;
+	ULONG size;
+	DWORD retval;
 	DWORD i;
 
 	(void) php_sock; /* not necessary */
@@ -643,11 +652,11 @@ int php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_add
 retry:
 	retval = GetIpAddrTable(addr_table, &size, 0);
 	if (retval == ERROR_INSUFFICIENT_BUFFER) {
-		efree(addr_table);
-		addr_table = emalloc(size);
+		addr_table = erealloc(addr_table, size);
 		goto retry;
 	}
 	if (retval != NO_ERROR) {
+		efree(addr_table);
 		php_error_docref(NULL, E_WARNING,
 			"GetIpAddrTable failed with error %lu", retval);
 		return FAILURE;
@@ -656,19 +665,21 @@ retry:
 		MIB_IPADDRROW r = addr_table->table[i];
 		if (r.dwIndex == if_index) {
 			out_addr->s_addr = r.dwAddr;
+			efree(addr_table);
 			return SUCCESS;
 		}
 	}
+	efree(addr_table);
 	php_error_docref(NULL, E_WARNING,
 		"No interface with index %u was found", if_index);
 	return FAILURE;
 }
 
-int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *if_index)
+zend_result php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *if_index)
 {
 	MIB_IPADDRTABLE *addr_table;
-    ULONG size;
-    DWORD retval;
+	ULONG size;
+	DWORD retval;
 	DWORD i;
 
 	(void) php_sock; /* not necessary */
@@ -683,11 +694,11 @@ int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *i
 retry:
 	retval = GetIpAddrTable(addr_table, &size, 0);
 	if (retval == ERROR_INSUFFICIENT_BUFFER) {
-		efree(addr_table);
-		addr_table = emalloc(size);
+		addr_table = erealloc(addr_table, size);
 		goto retry;
 	}
 	if (retval != NO_ERROR) {
+		efree(addr_table);
 		php_error_docref(NULL, E_WARNING,
 			"GetIpAddrTable failed with error %lu", retval);
 		return FAILURE;
@@ -696,9 +707,11 @@ retry:
 		MIB_IPADDRROW r = addr_table->table[i];
 		if (r.dwAddr == addr->s_addr) {
 			*if_index = r.dwIndex;
+			efree(addr_table);
 			return SUCCESS;
 		}
 	}
+	efree(addr_table);
 
 	{
 		char addr_str[17] = {0};
@@ -711,7 +724,7 @@ retry:
 
 #else
 
-int php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_addr *out_addr)
+zend_result php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_addr *out_addr)
 {
 	struct ifreq if_req;
 
@@ -720,7 +733,7 @@ int php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_add
 		return SUCCESS;
 	}
 
-#if !defined(ifr_ifindex) && defined(ifr_index)
+#if !defined(ifr_ifindex) && (defined(ifr_index) || defined(__HAIKU__))
 #define ifr_ifindex ifr_index
 #endif
 
@@ -748,7 +761,7 @@ int php_if_index_to_addr4(unsigned if_index, php_socket *php_sock, struct in_add
 	return SUCCESS;
 }
 
-int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *if_index)
+zend_result php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *if_index)
 {
 	struct ifconf	if_conf = {0};
 	char			*buf = NULL,
@@ -764,7 +777,7 @@ int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *i
 
 	for(;;) {
 		size += 5 * sizeof(struct ifreq);
-		buf = ecalloc(size, 1);
+		buf = ecalloc(size, sizeof(char));
 		if_conf.ifc_len = size;
 		if_conf.ifc_buf = buf;
 
@@ -786,30 +799,29 @@ int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *i
 	}
 
 	for (p = if_conf.ifc_buf;
-		 p < if_conf.ifc_buf + if_conf.ifc_len;
+		 p < ((char *)if_conf.ifc_buf) + if_conf.ifc_len;
 		 p += entry_len) {
-		struct ifreq *cur_req;
+		/* p may be misaligned on macos. */
+		struct ifreq cur_req;
+		memcpy(&cur_req, p, sizeof(struct ifreq));
 
-		/* let's hope the pointer is aligned */
-		cur_req = (struct ifreq*) p;
-
-#ifdef HAVE_SOCKADDR_SA_LEN
-		entry_len = cur_req->ifr_addr.sa_len + sizeof(cur_req->ifr_name);
+#ifdef HAVE_STRUCT_SOCKADDR_SA_LEN
+		entry_len = cur_req.ifr_addr.sa_len + sizeof(cur_req.ifr_name);
 #else
 		/* if there's no sa_len, assume the ifr_addr field is a sockaddr */
-		entry_len = sizeof(struct sockaddr) + sizeof(cur_req->ifr_name);
+		entry_len = sizeof(struct sockaddr) + sizeof(cur_req.ifr_name);
 #endif
-		entry_len = MAX(entry_len, sizeof(*cur_req));
+		entry_len = MAX(entry_len, sizeof(cur_req));
 
-		if ((((struct sockaddr*)&cur_req->ifr_addr)->sa_family == AF_INET) &&
-				(((struct sockaddr_in*)&cur_req->ifr_addr)->sin_addr.s_addr ==
+		if ((((struct sockaddr*)&cur_req.ifr_addr)->sa_family == AF_INET) &&
+				(((struct sockaddr_in*)&cur_req.ifr_addr)->sin_addr.s_addr ==
 					addr->s_addr)) {
 #if defined(SIOCGIFINDEX)
-			if (ioctl(php_sock->bsd_socket, SIOCGIFINDEX, (char*)cur_req)
+			if (ioctl(php_sock->bsd_socket, SIOCGIFINDEX, (char*)&cur_req)
 					== -1) {
 #elif defined(HAVE_IF_NAMETOINDEX)
 			unsigned index_tmp;
-			if ((index_tmp = if_nametoindex(cur_req->ifr_name)) == 0) {
+			if ((index_tmp = if_nametoindex(cur_req.ifr_name)) == 0) {
 #else
 #error Neither SIOCGIFINDEX nor if_nametoindex are available
 #endif
@@ -819,7 +831,7 @@ int php_add4_to_if_index(struct in_addr *addr, php_socket *php_sock, unsigned *i
 				goto err;
 			} else {
 #if defined(SIOCGIFINDEX)
-				*if_index = cur_req->ifr_ifindex;
+				*if_index = cur_req.ifr_ifindex;
 #else
 				*if_index = index_tmp;
 #endif

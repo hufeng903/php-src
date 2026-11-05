@@ -1,9 +1,7 @@
 --TEST--
 Test function readgzfile() reading a plain relative file
---SKIPIF--
-<?php
-if (!extension_loaded('zlib')) die ('skip zlib extension not available in this build');
-?>
+--EXTENSIONS--
+zlib
 --FILE--
 <?php
 $plaintxt = <<<EOT
@@ -12,7 +10,7 @@ is a very common test
 for all languages
 
 EOT;
-$dirname = 'readgzfile_temp';
+$dirname = 'readgzfile_basic2_temp';
 $filename = $dirname.'/readgzfile_basic2.txt';
 mkdir($dirname);
 $h = fopen($filename, 'w');
@@ -21,14 +19,14 @@ fclose($h);
 
 
 var_dump(readgzfile( $filename ) );
-
-unlink($filename);
-rmdir($dirname);
 ?>
-===DONE===
+--CLEAN--
+<?php
+@unlink('readgzfile_basic2_temp/readgzfile_basic2.txt');
+@rmdir('readgzfile_basic2_temp');
+?>
 --EXPECT--
 hello world
 is a very common test
 for all languages
 int(52)
-===DONE===

@@ -1,31 +1,28 @@
 --TEST--
 IDN UTS #46 API basic tests
---SKIPIF--
-<?php
-	if (!extension_loaded('intl'))
-		die('skip');
-	if (!defined('INTL_IDNA_VARIANT_UTS46'))
-		die('skip no UTS #46 API');
+--EXTENSIONS--
+intl
 --FILE--
 <?php
 $utf8dn = "www.fußball.com";
 $asciiNonTrans = "www.xn--fuball-cta.com";
 
 echo "all ok, no details:", "\n";
-var_dump(idn_to_ascii($utf8dn, 
-	IDNA_NONTRANSITIONAL_TO_ASCII, INTL_IDNA_VARIANT_UTS46));
-	
+var_dump(idn_to_ascii($utf8dn,
+    IDNA_NONTRANSITIONAL_TO_ASCII, INTL_IDNA_VARIANT_UTS46));
+
 echo "all ok, no details, transitional:", "\n";
 var_dump(idn_to_ascii($utf8dn, 0, INTL_IDNA_VARIANT_UTS46));
 
 echo "all ok, with details:", "\n";
 var_dump(idn_to_ascii($utf8dn, IDNA_NONTRANSITIONAL_TO_ASCII,
-	INTL_IDNA_VARIANT_UTS46, $info));
+    INTL_IDNA_VARIANT_UTS46, $info));
 var_dump($info);
 
 echo "reverse, ok, with details:", "\n";
 var_dump(idn_to_utf8($asciiNonTrans, 0, INTL_IDNA_VARIANT_UTS46, $info));
 var_dump($info);
+?>
 --EXPECT--
 all ok, no details:
 string(22) "www.xn--fuball-cta.com"

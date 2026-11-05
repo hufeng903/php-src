@@ -8,29 +8,25 @@ if (substr(PHP_OS, 0, 3) != 'WIN') {
 ?>
 --FILE--
 <?php
-/* Prototype: bool rename ( string $oldname, string $newname [, resource $context] );
-   Description: Renames a file or directory
-*/
-
-require dirname(__FILE__).'/file.inc';
+require __DIR__.'/file.inc';
 
 /* creating directory */
-$file_path = dirname(__FILE__);
+$file_path = __DIR__;
 
 // rename dirs across directories
 echo "\n*** Testing rename() : renaming directory across directories ***\n";
 $src_dirs = array (
   /* Testing simple directory tree */
-  "$file_path/rename_variation/",
+  "$file_path/rename_variation1-win32/",
 
   /* Testing a dir with trailing slash */
-  "$file_path/rename_variation/",
+  "$file_path/rename_variation1-win32/",
 
   /* Testing dir with double trailing slashes */
-  "$file_path//rename_variation//",
+  "$file_path//rename_variation1-win32//",
 );
 
-$dest_dir = "$file_path/rename_variation_dir";
+$dest_dir = "$file_path/rename_variation1-win32_dir";
 
 // create the $dest_dir
 mkdir($dest_dir);
@@ -42,10 +38,10 @@ foreach($src_dirs as $src_dir) {
   echo "-- Iteration $counter --\n";
 
   // create the src dir
-  mkdir("$file_path/rename_variation/");
+  mkdir("$file_path/rename_variation1-win32/");
   // rename the src dir to a new dir in dest dir
   var_dump( rename($src_dir, $dest_dir."/new_dir") );
-  // ensure that dir was renamed 
+  // ensure that dir was renamed
   var_dump( file_exists($src_dir) );  // expecting false
   var_dump( file_exists($dest_dir."/new_dir") ); // expecting true
 
@@ -58,10 +54,8 @@ echo "Done\n";
 ?>
 --CLEAN--
 <?php
-$file_path = dirname(__FILE__);
-unlink($file_path."/rename_variation_link.tmp");
-unlink($file_path."/rename_variation.tmp");
-rmdir($file_path."/rename_variation_dir");
+$file_path = __DIR__;
+rmdir($file_path."/rename_variation1-win32_dir");
 ?>
 --EXPECT--
 *** Testing rename() : renaming directory across directories ***
@@ -78,4 +72,3 @@ bool(true)
 bool(false)
 bool(true)
 Done
-

@@ -1,0 +1,21 @@
+--TEST--
+match expression always errors
+--FILE--
+<?php
+function get_value() {
+    return 0;
+}
+function test() {
+    match(get_value()) {
+        false => $a,
+        true => $b,
+    };
+}
+try {
+    test();
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+?>
+--EXPECT--
+UnhandledMatchError: Unhandled match case 0

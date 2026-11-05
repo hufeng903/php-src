@@ -10,8 +10,12 @@ if (!function_exists('time_nanosleep')) die("skip");
 --FILE--
 <?php
 
-$nano = time_nanosleep(0, -10);
+try {
+	time_nanosleep(0, -10);
+} catch (ValueError $exception) {
+    echo $exception->getMessage(), "\n";
+}
 
 ?>
---EXPECTF--
-Warning: time_nanosleep(): The nanoseconds value must be greater than 0 in %stime_nanosleep_error4.php on line %d
+--EXPECT--
+time_nanosleep(): Argument #2 ($nanoseconds) must be between 0 and 999999999

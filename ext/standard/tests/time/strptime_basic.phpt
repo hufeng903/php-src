@@ -1,28 +1,25 @@
 --TEST--
-Test strptime() function : basic functionality 
+Test strptime() function : basic functionality
 --SKIPIF--
-<?php 
-	if (!function_exists('strptime')) { 
-		die("skip - strptime() function not available in this build"); 
-	}	 
-        if(PHP_OS == 'Darwin') die("skip - strptime() behaves differently on Darwin");
+<?php
+if (!function_exists('strptime')) {
+    die("skip - strptime() function not available in this build");
+}
+if (PHP_OS_FAMILY == 'Darwin' || PHP_OS_FAMILY == 'BSD' || PHP_OS_FAMILY == 'Solaris' ) {
+    die("skip strptime() behaves differently on Darwin/BSD/Solaris");
+}
+if (!@strftime('%Z')) die('skip strftime does not support %Z');
 ?>
-
 --FILE--
 <?php
-/* Prototype  : array strptime  ( string $date  , string $format  )
- * Description:  Parse a time/date generated with strftime()
- * Source code: ext/standard/datetime.c
-*/
-
 $orig = setlocale(LC_ALL, 'C');
-date_default_timezone_set("GMT"); 
+date_default_timezone_set("GMT");
 
 echo "*** Testing strptime() : basic functionality ***\n";
 
 $input = "10:00:00 AM July 2 1963";
 $tstamp = strtotime($input);
- 
+
 $str = strftime("%r %B%e %Y %Z", $tstamp);
 var_dump(strptime($str, '%H:%M:%S %p %B %d %Y'));
 
@@ -34,9 +31,12 @@ var_dump(strptime($str, '%A %B %e %R'));
 
 setlocale(LC_ALL, $orig);
 ?>
-===DONE===
---EXPECT--
+--EXPECTF--
 *** Testing strptime() : basic functionality ***
+
+Deprecated: Function strftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
+
+Deprecated: Function strptime() is deprecated since 8.2, use date_parse_from_format() (for locale-independent parsing), or IntlDateFormatter::parse() (for locale-dependent parsing) instead in %s on line %d
 array(9) {
   ["tm_sec"]=>
   int(0)
@@ -57,6 +57,10 @@ array(9) {
   ["unparsed"]=>
   string(4) " GMT"
 }
+
+Deprecated: Function strftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
+
+Deprecated: Function strptime() is deprecated since 8.2, use date_parse_from_format() (for locale-independent parsing), or IntlDateFormatter::parse() (for locale-dependent parsing) instead in %s on line %d
 array(9) {
   ["tm_sec"]=>
   int(0)
@@ -77,6 +81,10 @@ array(9) {
   ["unparsed"]=>
   string(0) ""
 }
+
+Deprecated: Function strftime() is deprecated since 8.1, use IntlDateFormatter::format() instead in %s on line %d
+
+Deprecated: Function strptime() is deprecated since 8.2, use date_parse_from_format() (for locale-independent parsing), or IntlDateFormatter::parse() (for locale-dependent parsing) instead in %s on line %d
 array(9) {
   ["tm_sec"]=>
   int(0)
@@ -97,4 +105,3 @@ array(9) {
   ["unparsed"]=>
   string(0) ""
 }
-===DONE===

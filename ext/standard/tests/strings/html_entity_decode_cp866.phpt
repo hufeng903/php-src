@@ -138,13 +138,14 @@ foreach ($arr as $u => $v) {
     $res = html_entity_decode($ent, ENT_QUOTES, 'CP866');
     $d = unpack("H*", $res);
     echo sprintf("%s: %s => %s\n", $v[1], $ent, $d[1]);
-    
+
     $ent = sprintf("&#x%X;", $v[0]);
     $res = html_entity_decode($ent, ENT_QUOTES, 'CP866');
     if ($res[0] != "&" || $res[1] != "#")
         $res = unpack("H*", $res)[1];
     echo sprintf("%s => %s\n\n", $ent, $res);
 }
+?>
 --EXPECT--
 CYRILLIC CAPITAL LETTER A: &#x410; => 80
 &#x80; => &#x80;
@@ -529,5 +530,3 @@ BLACK SQUARE: &#x25A0; => fe
 
 NO-BREAK SPACE: &#xA0; => ff
 &#xFF; => &#xFF;
-
-

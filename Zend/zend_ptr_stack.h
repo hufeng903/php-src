@@ -2,31 +2,30 @@
    +----------------------------------------------------------------------+
    | Zend Engine                                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 Zend Technologies Ltd. (http://www.zend.com) |
+   | Copyright © Zend Technologies Ltd., a subsidiary company of          |
+   |     Perforce Software, Inc., and Contributors.                       |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 2.00 of the Zend license,     |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.zend.com/license/2_00.txt.                                |
-   | If you did not receive a copy of the Zend license and are unable to  |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@zend.com so we can mail you a copy immediately.              |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | Authors: Andi Gutmans <andi@zend.com>                                |
-   |          Zeev Suraski <zeev@zend.com>                                |
+   | Authors: Andi Gutmans <andi@php.net>                                 |
+   |          Zeev Suraski <zeev@php.net>                                 |
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #ifndef ZEND_PTR_STACK_H
 #define ZEND_PTR_STACK_H
+
+#include "zend_alloc.h"
 
 typedef struct _zend_ptr_stack {
 	int top, max;
 	void **elements;
 	void **top_element;
-	zend_bool persistent;
+	bool persistent;
 } zend_ptr_stack;
 
 
@@ -34,13 +33,13 @@ typedef struct _zend_ptr_stack {
 
 BEGIN_EXTERN_C()
 ZEND_API void zend_ptr_stack_init(zend_ptr_stack *stack);
-ZEND_API void zend_ptr_stack_init_ex(zend_ptr_stack *stack, zend_bool persistent);
+ZEND_API void zend_ptr_stack_init_ex(zend_ptr_stack *stack, bool persistent);
 ZEND_API void zend_ptr_stack_n_push(zend_ptr_stack *stack, int count, ...);
 ZEND_API void zend_ptr_stack_n_pop(zend_ptr_stack *stack, int count, ...);
 ZEND_API void zend_ptr_stack_destroy(zend_ptr_stack *stack);
 ZEND_API void zend_ptr_stack_apply(zend_ptr_stack *stack, void (*func)(void *));
 ZEND_API void zend_ptr_stack_reverse_apply(zend_ptr_stack *stack, void (*func)(void *));
-ZEND_API void zend_ptr_stack_clean(zend_ptr_stack *stack, void (*func)(void *), zend_bool free_elements);
+ZEND_API void zend_ptr_stack_clean(zend_ptr_stack *stack, void (*func)(void *), bool free_elements);
 ZEND_API int zend_ptr_stack_num_elements(zend_ptr_stack *stack);
 END_EXTERN_C()
 
@@ -50,7 +49,7 @@ END_EXTERN_C()
 		do {												\
 			stack->max += PTR_STACK_BLOCK_SIZE;				\
 		} while (stack->top+count > stack->max);			\
-		stack->elements = (void **) perealloc(stack->elements, (sizeof(void *) * (stack->max)), stack->persistent);	\
+		stack->elements = (void **) safe_perealloc(stack->elements, (stack->max), sizeof(void *), 0, stack->persistent);	\
 		stack->top_element = stack->elements+stack->top;	\
 	}
 
@@ -118,13 +117,3 @@ static zend_always_inline void *zend_ptr_stack_top(zend_ptr_stack *stack)
 }
 
 #endif /* ZEND_PTR_STACK_H */
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

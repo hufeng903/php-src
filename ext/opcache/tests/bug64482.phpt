@@ -3,10 +3,10 @@ Bug #64482 (Opcodes for dynamic includes should not be cached)
 --INI--
 opcache.enable=1
 opcache.enable_cli=1
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+opcache
 --FILE--
-<?php 
+<?php
 include 'bug64482.inc';
 echo "\n";
 include 'php://filter/read=string.toupper/resource=bug64482.inc';

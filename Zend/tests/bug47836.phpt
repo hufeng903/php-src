@@ -4,12 +4,16 @@ Bug #47836 (array operator [] inconsistency when the array has PHP_INT_MAX index
 <?php
 
 $arr[PHP_INT_MAX] = 1;
-$arr[] = 2;
+try {
+    $arr[] = 2;
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 var_dump($arr);
 ?>
 --EXPECTF--
-Warning: Cannot add element to the array as the next element is already occupied in %s on line 4
+Error: Cannot add element to the array as the next element is already occupied
 array(1) {
   [%d]=>
   int(1)

@@ -15,12 +15,21 @@ var_dump(getenv($var_name));
 var_dump(putenv($var_name));
 var_dump(getenv($var_name));
 
-var_dump(putenv("=123"));
-var_dump(putenv(""));
+try {
+    putenv("=123");
+} catch (Throwable $exception) {
+    echo $exception::class, ': ', $exception->getMessage(), "\n";
+}
+
+try {
+    putenv("");
+} catch (Throwable $exception) {
+    echo $exception::class, ': ', $exception->getMessage(), "\n";
+}
 
 echo "Done\n";
 ?>
---EXPECTF--	
+--EXPECT--
 bool(false)
 bool(true)
 string(5) "value"
@@ -28,10 +37,6 @@ bool(true)
 string(0) ""
 bool(true)
 bool(false)
-
-Warning: putenv(): Invalid parameter syntax in %s on line %d
-bool(false)
-
-Warning: putenv(): Invalid parameter syntax in %s on line %d
-bool(false)
+ValueError: putenv(): Argument #1 ($assignment) must have a valid syntax
+ValueError: putenv(): Argument #1 ($assignment) must have a valid syntax
 Done

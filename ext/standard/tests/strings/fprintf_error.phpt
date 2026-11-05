@@ -7,25 +7,31 @@ Test fprintf() function (errors)
 echo "*** Testing Error Conditions ***\n";
 
 /* zero argument */
-var_dump( fprintf() );
+try {
+    var_dump( fprintf() );
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 /* scalar argument */
-var_dump( fprintf(3) );
+try {
+    var_dump( fprintf(3) );
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 /* NULL argument */
-var_dump( fprintf(NULL) );
+try {
+    var_dump( fprintf(NULL) );
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
 echo "Done\n";
 ?>
---EXPECTF--
+--EXPECT--
 *** Testing Error Conditions ***
-
-Warning: Wrong parameter count for fprintf() in %sfprintf_error.php on line %d
-NULL
-
-Warning: Wrong parameter count for fprintf() in %sfprintf_error.php on line %d
-NULL
-
-Warning: Wrong parameter count for fprintf() in %sfprintf_error.php on line %d
-NULL
+ArgumentCountError: fprintf() expects at least 2 arguments, 0 given
+ArgumentCountError: fprintf() expects at least 2 arguments, 1 given
+ArgumentCountError: fprintf() expects at least 2 arguments, 1 given
 Done

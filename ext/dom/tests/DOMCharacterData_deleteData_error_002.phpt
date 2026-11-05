@@ -3,8 +3,8 @@ DOMCharacterData::deleteData() with offset exceeding string size.
 --CREDITS--
 Eric Lee Stewart <ericleestewart@gmail.com>
 # TestFest Atlanta 2009-05-24
---SKIPIF--
-<?php require_once('skipif.inc'); ?>
+--EXTENSIONS--
+dom
 --FILE--
 <?php
 $document = new DOMDocument;
@@ -13,11 +13,11 @@ $document->appendChild($root);
 
 $cdata = $document->createCDATASection('test');
 $root->appendChild($cdata);
-$cdata->deleteData(5, 1);
+try {
+    $cdata->deleteData(5, 1);
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Fatal error: Uncaught DOMException: Index Size Error in %s:%d
-Stack trace:
-#0 %s(%d): DOMCharacterData->deleteData(5, 1)
-#1 {main}
-  thrown in %s on line %d
+--EXPECT--
+DOMException: Index Size Error

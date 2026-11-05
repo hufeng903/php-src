@@ -8,18 +8,23 @@ exec, system, passthru  — Basic command execution functions
 --FILE--
 <?php
 $cmd = "echo abc\n\0command";
-var_dump(exec($cmd, $output));
-var_dump($output);
-var_dump(system($cmd));
-var_dump(passthru($cmd));
+try {
+    var_dump(exec($cmd, $output));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+    var_dump(system($cmd, $output));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+    var_dump(passthru($cmd, $output));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Warning: exec(): NULL byte detected. Possible attack in %s on line %d
-bool(false)
-NULL
-
-Warning: system(): NULL byte detected. Possible attack in %s on line %d
-bool(false)
-
-Warning: passthru(): NULL byte detected. Possible attack in %s on line %d
-bool(false)
+--EXPECT--
+ValueError: exec(): Argument #1 ($command) must not contain any null bytes
+ValueError: system(): Argument #1 ($command) must not contain any null bytes
+ValueError: passthru(): Argument #1 ($command) must not contain any null bytes

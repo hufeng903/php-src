@@ -62,13 +62,14 @@ foreach ($arr as $u => $v) {
     $res = html_entity_decode($ent, ENT_QUOTES, 'WINDOWS-1252');
     $d = unpack("H*", $res);
     echo sprintf("%s: %s => %s\n", $v[1], $ent, $d[1]);
-    
+
     $ent = sprintf("&#x%X;", $v[0]);
     $res = html_entity_decode($ent, ENT_QUOTES, 'WINDOWS-1252');
     if ($res[0] != "&" || $res[1] != "#")
         $res = unpack("H*", $res)[1];
     echo sprintf("%s => %s\n\n", $ent, $res);
 }
+?>
 --EXPECT--
 Special test for &#x81; (shouldn't decode):
 &#x81;
@@ -165,5 +166,3 @@ LATIN SMALL LETTER Z WITH CARON: &#x17E; => 9e
 
 LATIN CAPITAL LETTER Y WITH DIAERESIS: &#x178; => 9f
 &#x9F; => &#x9F;
-
-

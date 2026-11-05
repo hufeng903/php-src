@@ -1,16 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Alexander Peslyak (Solar Designer) <solar at openwall.com>   |
    |         Lachlan Roche                                                |
@@ -18,38 +14,30 @@
    +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
-
 #include "php.h"
 #include "md5.h"
 
-PHPAPI void make_digest(char *md5str, const unsigned char *digest) /* {{{ */
+PHPAPI void make_digest(char *md5str, const unsigned char *digest)
 {
 	make_digest_ex(md5str, digest, 16);
 }
-/* }}} */
 
-PHPAPI void make_digest_ex(char *md5str, const unsigned char *digest, int len) /* {{{ */
+PHPAPI void make_digest_ex(char *md5str, const unsigned char *digest, size_t len)
 {
-	static const char hexits[17] = "0123456789abcdef";
-	int i;
-
-	for (i = 0; i < len; i++) {
-		md5str[i * 2]       = hexits[digest[i] >> 4];
-		md5str[(i * 2) + 1] = hexits[digest[i] &  0x0F];
-	}
+	zend_bin2hex(md5str, digest, len);
+	/* Some callers (e.g. ext/soap's WSDL cache key) memcpy() the whole
+	   buffer including this terminator, so it must still be written here;
+	   zend_bin2hex() itself does not null-terminate. */
 	md5str[len * 2] = '\0';
 }
-/* }}} */
 
-/* {{{ proto string md5(string str, [ bool raw_output])
-   Calculate the md5 hash of a string */
-PHP_NAMED_FUNCTION(php_if_md5)
+/* Calculate the md5 hash of a string */
+PHP_FUNCTION(md5)
 {
 	zend_string *arg;
-	zend_bool raw_output = 0;
 	PHP_MD5_CTX context;
 	unsigned char digest[16];
+	bool raw_output = false;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_STR(arg)
@@ -68,19 +56,17 @@ PHP_NAMED_FUNCTION(php_if_md5)
 	}
 
 }
-/* }}} */
 
-/* {{{ proto string md5_file(string filename [, bool raw_output])
-   Calculate the md5 hash of given filename */
-PHP_NAMED_FUNCTION(php_if_md5_file)
+/* Calculate the md5 hash of given filename */
+PHP_FUNCTION(md5_file)
 {
 	char          *arg;
 	size_t           arg_len;
-	zend_bool raw_output = 0;
+	bool raw_output = false;
 	unsigned char buf[1024];
 	unsigned char digest[16];
 	PHP_MD5_CTX   context;
-	size_t           n;
+	ssize_t       n;
 	php_stream    *stream;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
@@ -119,7 +105,6 @@ PHP_NAMED_FUNCTION(php_if_md5_file)
 		make_digest_ex(Z_STRVAL_P(return_value), digest, 16);
 	}
 }
-/* }}} */
 
 /*
  * This is an OpenSSL-compatible implementation of the RSA Data Security,
@@ -169,8 +154,9 @@ PHP_NAMED_FUNCTION(php_if_md5_file)
  * doesn't work.
  */
 #if defined(__i386__) || defined(__x86_64__) || defined(__vax__)
+typedef ZEND_SET_ALIGNED(1, uint32_t unaligned_uint32_t);
 # define SET(n) \
-	(*(uint32_t *)&ptr[(n) * 4])
+	(*(unaligned_uint32_t *)&ptr[(n) * 4])
 # define GET(n) \
 	SET(n)
 #else
@@ -295,7 +281,7 @@ static const void *body(PHP_MD5_CTX *ctx, const void *data, size_t size)
 	return ptr;
 }
 
-PHPAPI void PHP_MD5Init(PHP_MD5_CTX *ctx)
+PHPAPI void PHP_MD5InitArgs(PHP_MD5_CTX *ctx, ZEND_ATTRIBUTE_UNUSED HashTable *args)
 {
 	ctx->a = 0x67452301;
 	ctx->b = 0xefcdab89;
@@ -391,12 +377,3 @@ PHPAPI void PHP_MD5Final(unsigned char *result, PHP_MD5_CTX *ctx)
 
 	ZEND_SECURE_ZERO(ctx, sizeof(*ctx));
 }
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

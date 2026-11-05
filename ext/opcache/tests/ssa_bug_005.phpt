@@ -1,5 +1,7 @@
 --TEST--
 Assign elision exception safety: UCALL
+--EXTENSIONS--
+opcache
 --FILE--
 <?php
 

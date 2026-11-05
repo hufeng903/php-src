@@ -1,15 +1,9 @@
 --TEST--
-Test rmdir() function : variation: various valid and invalid paths 
+Test rmdir() function : variation: various valid and invalid paths
 --CREDITS--
 Dave Kelsey <d_kelsey@uk.ibm.com>
 --FILE--
 <?php
-/* Prototype  : bool rmdir(string dirname[, resource context])
- * Description: Remove a directory 
- * Source code: ext/standard/file.c
- * Alias to functions: 
- */
-
 echo "*** Testing rmdir() : variation ***\n";
 
 $workDir = "rmdirVar3.tmp";
@@ -22,33 +16,33 @@ $dirs = array(
              $workDir.'/'.$subDir,
              './'.$workDir.'/'.$subDir,
              $workDir.'/../'.$workDir.'/'.$subDir,
-             
+
              // relative bad path
              $workDir.'/../BADDIR/'.$subDir,
              'BADDIR/'.$subDir,
-             
+
              //absolute
              $cwd.'/'.$workDir.'/'.$subDir,
              $cwd.'/./'.$workDir.'/'.$subDir,
              $cwd.'/'.$workDir.'/../'.$workDir.'/'.$subDir,
 
-             //absolute bad path             
+             //absolute bad path
              $cwd.'/BADDIR/'.$subDir,
-             
+
              //trailing separators
              $workDir.'/'.$subDir.'/',
              $cwd.'/'.$workDir.'/'.$subDir.'/',
-             
+
              // multiple separators
              $workDir.'//'.$subDir,
              $cwd.'//'.$workDir.'//'.$subDir,
-             
+
              );
-             
+
 
 foreach($dirs as $dir) {
    mkdir($workDir.'/'.$subDir);
-   echo "-- removing $dir --\n";           
+   echo "-- removing $dir --\n";
    $res = rmdir($dir);
    if ($res === true) {
       echo "Directory removed\n";
@@ -58,10 +52,12 @@ foreach($dirs as $dir) {
    }
 }
 
-rmdir($workDir);
-
 ?>
-===DONE===
+--CLEAN--
+<?php
+@rmdir("rmdirVar3.tmp/aSubDir");
+@rmdir("rmdirVar3.tmp");
+?>
 --EXPECTF--
 *** Testing rmdir() : variation ***
 -- removing rmdirVar3.tmp/aSubDir --
@@ -72,10 +68,10 @@ Directory removed
 Directory removed
 -- removing rmdirVar3.tmp/../BADDIR/aSubDir --
 
-Warning: rmdir(rmdirVar3.tmp/../BADDIR/aSubDir): No such file or directory in %s on line %d
+Warning: rmdir(): No such file or directory in %s on line %d
 -- removing BADDIR/aSubDir --
 
-Warning: rmdir(BADDIR/aSubDir): No such file or directory in %s on line %d
+Warning: rmdir(): No such file or directory in %s on line %d
 -- removing %s/rmdirVar3.tmp/aSubDir --
 Directory removed
 -- removing %s/./rmdirVar3.tmp/aSubDir --
@@ -84,7 +80,7 @@ Directory removed
 Directory removed
 -- removing %s/BADDIR/aSubDir --
 
-Warning: rmdir(%s/BADDIR/aSubDir): No such file or directory in %s on line %d
+Warning: rmdir(): No such file or directory in %s on line %d
 -- removing rmdirVar3.tmp/aSubDir/ --
 Directory removed
 -- removing %s/rmdirVar3.tmp/aSubDir/ --
@@ -93,4 +89,3 @@ Directory removed
 Directory removed
 -- removing %s//rmdirVar3.tmp//aSubDir --
 Directory removed
-===DONE===

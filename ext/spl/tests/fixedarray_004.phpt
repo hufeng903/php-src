@@ -6,13 +6,11 @@ SPL: FixedArray: adding new elements
 $a = new SplFixedArray(10);
 
 try {
-	$a[] = 1;
-} catch (Exception $e) {
-	var_dump($e->getMessage());
+    $a[] = 1;
+} catch (Error $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 ?>
-===DONE===
 --EXPECT--
-string(29) "Index invalid or out of range"
-===DONE===
+Error: [] operator not supported for SplFixedArray

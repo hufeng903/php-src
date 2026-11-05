@@ -1,20 +1,22 @@
 --TEST--
 Bug #73957 (signed integer conversion in imagescale())
+--EXTENSIONS--
+gd
 --SKIPIF--
 <?php
-if (!extension_loaded('gd')) die('skip gd extension not available');
 if (PHP_INT_SIZE != 8) die('skip this test is for 64bit platforms only');
 ?>
 --FILE--
 <?php
 $im = imagecreate(8, 8);
-$im = imagescale($im, 0x100000001, 1);
-var_dump($im);
-if ($im) { // which is not supposed to happen
-    var_dump(imagesx($im));
+
+try {
+	$im = imagescale($im, 0x100000001, 1);
+	// which is not supposed to happen
+	var_dump(imagesx($im));
+} catch (\ValueError $e) {
+	echo $e::class, ': ', $e->getMessage(), PHP_EOL;
 }
 ?>
-===DONE===
---EXPECT--
-bool(false)
-===DONE===
+--EXPECTF--
+ValueError: imagescale(): Argument #2 ($width) must be between 1 and %d

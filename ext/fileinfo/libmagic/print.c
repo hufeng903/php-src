@@ -28,13 +28,11 @@
 /*
  * print.c - debugging printout routines
  */
-#define _GNU_SOURCE
-#include "php.h"
 
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: print.c,v 1.82 2017/02/10 18:14:01 christos Exp $")
+FILE_RCSID("@(#)$File: print.c,v 1.111 2026/04/19 19:56:49 christos Exp $")
 #endif  /* lint */
 
 #include <string.h>
@@ -45,23 +43,17 @@ FILE_RCSID("@(#)$File: print.c,v 1.82 2017/02/10 18:14:01 christos Exp $")
 #endif
 #include <time.h>
 
-#ifdef PHP_WIN32
-# define asctime_r php_asctime_r
-# define ctime_r php_ctime_r
-#endif
-
-#define SZOF(a)	(sizeof(a) / sizeof(a[0]))
-
 #include "cdf.h"
 
 #ifndef COMPILE_ONLY
-protected void
+file_protected void
 file_mdump(struct magic *m)
 {
 	static const char optyp[] = { FILE_OPS };
-	char tbuf[26];
+	char tbuf[256];
 
-	(void) fprintf(stderr, "%u: %.*s %u", m->lineno,
+	(void) fprintf(stderr, "%s, %u: %.*s %d", 
+	     m->desc[0] == '\0' ? m->desc + 1 : "*unknown*", m->lineno,
 	    (m->cont_level & 7) + 1, ">>>>>>>>", m->offset);
 
 	if (m->flag & INDIR) {
@@ -71,10 +63,10 @@ file_mdump(struct magic *m)
 		    "*bad in_type*");
 		if (m->in_op & FILE_OPINVERSE)
 			(void) fputc('~', stderr);
-		(void) fprintf(stderr, "%c%u),",
-		    ((size_t)(m->in_op & FILE_OPS_MASK) <
-		    SZOF(optyp)) ? optyp[m->in_op & FILE_OPS_MASK] : '?',
-		    m->in_offset);
+		(void) fprintf(stderr, "%c%d),",
+		    (CAST(size_t, m->in_op & FILE_OPS_MASK) <
+		    __arraycount(optyp)) ?
+		    optyp[m->in_op & FILE_OPS_MASK] : '?', m->in_offset);
 	}
 	(void) fprintf(stderr, " %s%s", (m->flag & UNSIGNED) ? "u" : "",
 	    /* Note: type is unsigned */
@@ -85,16 +77,16 @@ file_mdump(struct magic *m)
 	if (IS_LIBMAGIC_STRING(m->type)) {
 		if (m->str_flags) {
 			(void) fputc('/', stderr);
-			if (m->str_flags & STRING_COMPACT_WHITESPACE) 
+			if (m->str_flags & STRING_COMPACT_WHITESPACE)
 				(void) fputc(CHAR_COMPACT_WHITESPACE, stderr);
-			if (m->str_flags & STRING_COMPACT_OPTIONAL_WHITESPACE) 
+			if (m->str_flags & STRING_COMPACT_OPTIONAL_WHITESPACE)
 				(void) fputc(CHAR_COMPACT_OPTIONAL_WHITESPACE,
 				    stderr);
-			if (m->str_flags & STRING_IGNORE_LOWERCASE) 
+			if (m->str_flags & STRING_IGNORE_LOWERCASE)
 				(void) fputc(CHAR_IGNORE_LOWERCASE, stderr);
-			if (m->str_flags & STRING_IGNORE_UPPERCASE) 
+			if (m->str_flags & STRING_IGNORE_UPPERCASE)
 				(void) fputc(CHAR_IGNORE_UPPERCASE, stderr);
-			if (m->str_flags & REGEX_OFFSET_START) 
+			if (m->str_flags & REGEX_OFFSET_START)
 				(void) fputc(CHAR_REGEX_OFFSET_START, stderr);
 			if (m->str_flags & STRING_TEXTTEST)
 				(void) fputc(CHAR_TEXTTEST, stderr);
@@ -119,14 +111,15 @@ file_mdump(struct magic *m)
 			(void) fprintf(stderr, "/%u", m->str_range);
 	}
 	else {
-		if ((size_t)(m->mask_op & FILE_OPS_MASK) < SZOF(optyp))
+		if (CAST(size_t, m->mask_op & FILE_OPS_MASK) <
+		    __arraycount(optyp))
 			(void) fputc(optyp[m->mask_op & FILE_OPS_MASK], stderr);
 		else
 			(void) fputc('?', stderr);
-			
+
 		if (m->num_mask) {
 			(void) fprintf(stderr, "%.8llx",
-			    (unsigned long long)m->num_mask);
+			    CAST(unsigned long long, m->num_mask));
 		}
 	}
 	(void) fprintf(stderr, ",%c", m->reln);
@@ -142,13 +135,14 @@ file_mdump(struct magic *m)
 		case FILE_BESHORT:
 		case FILE_BELONG:
 		case FILE_INDIRECT:
-			(void) fprintf(stderr, "%d", m->value.l);
+			(void) fprintf(stderr, "%d", CAST(int32_t, m->value.l));
 			break;
 		case FILE_BEQUAD:
 		case FILE_LEQUAD:
 		case FILE_QUAD:
+		case FILE_OFFSET:
 			(void) fprintf(stderr, "%" INT64_T_FORMAT "d",
-			    (unsigned long long)m->value.q);
+			    CAST(long long, m->value.q));
 			break;
 		case FILE_PSTRING:
 		case FILE_STRING:
@@ -156,39 +150,43 @@ file_mdump(struct magic *m)
 		case FILE_BESTRING16:
 		case FILE_LESTRING16:
 		case FILE_SEARCH:
-			file_showstr(stderr, m->value.s, (size_t)m->vallen);
+			file_showstr(stderr, m->value.s,
+			    CAST(size_t, m->vallen));
 			break;
 		case FILE_DATE:
 		case FILE_LEDATE:
 		case FILE_BEDATE:
 		case FILE_MEDATE:
 			(void)fprintf(stderr, "%s,",
-			    file_fmttime(m->value.l, 0, tbuf));
+			    file_fmtdatetime(tbuf, sizeof(tbuf), m->value.l, 0));
 			break;
 		case FILE_LDATE:
 		case FILE_LELDATE:
 		case FILE_BELDATE:
 		case FILE_MELDATE:
 			(void)fprintf(stderr, "%s,",
-			    file_fmttime(m->value.l, FILE_T_LOCAL, tbuf));
+			    file_fmtdatetime(tbuf, sizeof(tbuf), m->value.l,
+			    FILE_T_LOCAL));
 			break;
 		case FILE_QDATE:
 		case FILE_LEQDATE:
 		case FILE_BEQDATE:
 			(void)fprintf(stderr, "%s,",
-			    file_fmttime(m->value.q, 0, tbuf));
+			    file_fmtdatetime(tbuf, sizeof(tbuf), m->value.q, 0));
 			break;
 		case FILE_QLDATE:
 		case FILE_LEQLDATE:
 		case FILE_BEQLDATE:
 			(void)fprintf(stderr, "%s,",
-			    file_fmttime(m->value.q, FILE_T_LOCAL, tbuf));
+			    file_fmtdatetime(tbuf, sizeof(tbuf), m->value.q,
+			    FILE_T_LOCAL));
 			break;
 		case FILE_QWDATE:
 		case FILE_LEQWDATE:
 		case FILE_BEQWDATE:
 			(void)fprintf(stderr, "%s,",
-			    file_fmttime(m->value.q, FILE_T_WINDOWS, tbuf));
+			    file_fmtdatetime(tbuf, sizeof(tbuf), m->value.q,
+			    FILE_T_WINDOWS));
 			break;
 		case FILE_FLOAT:
 		case FILE_BEFLOAT:
@@ -200,6 +198,27 @@ file_mdump(struct magic *m)
 		case FILE_LEDOUBLE:
 			(void) fprintf(stderr, "%G", m->value.d);
 			break;
+		case FILE_LEVARINT:
+		case FILE_BEVARINT:
+			(void)fprintf(stderr, "%s", file_fmtvarint(
+			    tbuf, sizeof(tbuf), m->value.us, m->type));
+			break;
+		case FILE_MSDOSDATE:
+		case FILE_BEMSDOSDATE:
+		case FILE_LEMSDOSDATE:
+			(void)fprintf(stderr, "%s,",
+			    file_fmtdate(tbuf, sizeof(tbuf), m->value.h));
+			break;
+		case FILE_MSDOSTIME:
+		case FILE_BEMSDOSTIME:
+		case FILE_LEMSDOSTIME:
+			(void)fprintf(stderr, "%s,",
+			    file_fmttime(tbuf, sizeof(tbuf), m->value.h));
+			break;
+		case FILE_OCTAL:
+			(void)fprintf(stderr, "%s",
+			    file_fmtnum(tbuf, sizeof(tbuf), m->value.s, 8));
+			break;
 		case FILE_DEFAULT:
 			/* XXX - do anything here? */
 			break;
@@ -207,6 +226,17 @@ file_mdump(struct magic *m)
 		case FILE_NAME:
 		case FILE_DER:
 			(void) fprintf(stderr, "'%s'", m->value.s);
+			break;
+		case FILE_LEGUID:
+		case FILE_GUID:
+			(void) file_print_leguid(tbuf, sizeof(tbuf),
+			    m->value.guid);
+			(void) fprintf(stderr, "%s", tbuf);
+			break;
+		case FILE_BEGUID:
+			(void) file_print_beguid(tbuf, sizeof(tbuf),
+			    m->value.guid);
+			(void) fprintf(stderr, "%s", tbuf);
 			break;
 		default:
 			(void) fprintf(stderr, "*bad type %d*", m->type);
@@ -217,31 +247,59 @@ file_mdump(struct magic *m)
 }
 #endif
 
-/*VARARGS*/
-protected void
-file_magwarn(struct magic_set *ms, const char *f, ...)
+static void __attribute__((__format__(__printf__, 1, 0)))
+file_vmagwarn(const char *f, va_list va)
 {
-	va_list va;
 	char *expanded_format = NULL;
-	int expanded_len;
-
-	va_start(va, f);
-	expanded_len = vasprintf(&expanded_format, f, va);
-	va_end(va);
+	int expanded_len = vasprintf(&expanded_format, f, va);
 
 	if (expanded_len >= 0 && expanded_format) {
-		php_error_docref(NULL, E_NOTICE, "Warning: %s", expanded_format);
+		php_error_docref(NULL, E_WARNING, "%s", expanded_format);
 
 		free(expanded_format);
 	}
 }
 
-protected const char *
-file_fmttime(uint64_t v, int flags, char *buf)
+/*VARARGS*/
+file_protected void
+file_magwarn1(const char *f, ...)
+{
+	va_list va;
+
+	va_start(va, f);
+	file_vmagwarn(f, va);
+	va_end(va);
+}
+
+
+/*VARARGS*/
+file_protected void
+file_magwarn(struct magic_set *ms, const char *f, ...)
+{
+	/* Upstream has a check here: ++ms->magwarn == ms->magwarn_max,
+	 * but for PHP BC we keep emitting all warnings and
+	 * letting the user control the output behaviour. */
+	va_list va;
+
+	va_start(va, f);
+	file_vmagwarn(f, va);
+	va_end(va);
+}
+
+file_protected const char *
+file_fmtvarint(char *buf, size_t blen, const unsigned char *us, int t)
+{
+	snprintf(buf, blen, "%jd", CAST(intmax_t,
+	    file_varint2uintmax_t(us, t, NULL)));
+	return buf;
+}
+
+file_protected const char *
+file_fmtdatetime(char *buf, size_t bsize, uint64_t v, int flags)
 {
 	char *pp;
-	time_t t = (time_t)v;
-	struct tm *tm = NULL;
+	time_t t;
+	struct tm *tm, tmz;
 
 	if (flags & FILE_T_WINDOWS) {
 		struct timespec ts;
@@ -250,42 +308,92 @@ file_fmttime(uint64_t v, int flags, char *buf)
 	} else {
 		// XXX: perhaps detect and print something if overflow
 		// on 32 bit time_t?
-		t = (time_t)v;
+		t = CAST(time_t, v);
 	}
 
-	if (flags & FILE_T_LOCAL) {
-		pp = ctime_r(&t, buf);
-	} else {
-#ifndef HAVE_DAYLIGHT
-		private int daylight = 0;
-#ifdef HAVE_TM_ISDST
-		private time_t now = (time_t)0;
+	if (t > MAX_CTIME)
+		goto out;
 
-		if (now == (time_t)0) {
-			struct tm *tm1;
-			(void)time(&now);
-			tm1 = localtime(&now);
-			if (tm1 == NULL)
-				goto out;
-			daylight = tm1->tm_isdst;
-		}
-#endif /* HAVE_TM_ISDST */
-#endif /* HAVE_DAYLIGHT */
-		if (daylight)
-			t += 3600;
-		tm = gmtime(&t);
-		if (tm == NULL)
-			goto out;
-		pp = asctime_r(tm, buf);
+	if (flags & FILE_T_LOCAL) {
+		tzset();
+		tm = php_localtime_r(&t, &tmz);
+	} else {
+		tm = php_gmtime_r(&t, &tmz);
 	}
 	if (tm == NULL)
 		goto out;
-	pp = asctime_r(tm, buf);
+	pp = php_asctime_r(tm, buf);
 
 	if (pp == NULL)
 		goto out;
 	pp[strcspn(pp, "\n")] = '\0';
 	return pp;
 out:
-	return strcpy(buf, "*Invalid time*");
+	strlcpy(buf, "*Invalid datetime*", bsize);
+	return buf;
+}
+
+/* 
+ * https://docs.microsoft.com/en-us/windows/win32/api/winbase/\
+ *	nf-winbase-dosdatetimetofiletime?redirectedfrom=MSDN
+ */
+file_protected const char *
+file_fmtdate(char *buf, size_t bsize, uint16_t v)
+{
+	struct tm tm;
+
+	memset(&tm, 0, sizeof(tm));
+	tm.tm_mday = v & 0x1f;
+	tm.tm_mon = ((v >> 5) & 0xf) - 1;
+	// Sanity check because some OS's coredump with invalid values.
+	// Yes, Cygwin I am looking at you!
+	if (tm.tm_mon < 0 || tm.tm_mon > 11)
+		tm.tm_mon = 0;
+	tm.tm_year = (v >> 9) + 80;
+
+	if (strftime(buf, bsize, "%b %d %Y", &tm) == 0)
+		goto out;
+
+	return buf;
+out:
+	strlcpy(buf, "*Invalid date*", bsize);
+	return buf;
+}
+
+file_protected const char *
+file_fmttime(char *buf, size_t bsize, uint16_t v)
+{
+	struct tm tm;
+
+	memset(&tm, 0, sizeof(tm));
+	tm.tm_sec = (v & 0x1f) * 2;
+	tm.tm_min = ((v >> 5) & 0x3f);
+	tm.tm_hour = (v >> 11);
+
+	if (strftime(buf, bsize, "%T", &tm) == 0)
+		goto out;
+
+	return buf;
+out:
+	strlcpy(buf, "*Invalid time*", bsize);
+	return buf;
+
+}
+
+file_protected const char *
+file_fmtnum(char *buf, size_t blen, const char *us, int base)
+{
+	char *endptr;
+	unsigned long long val;
+
+	errno = 0;
+	val = strtoull(us, &endptr, base);
+	if (*endptr || errno) {
+bad:		strlcpy(buf, "*Invalid number*", blen);
+		return buf;
+	}
+
+	if (snprintf(buf, blen, "%llu", val) < 0)
+		goto bad;
+	return buf;
 }

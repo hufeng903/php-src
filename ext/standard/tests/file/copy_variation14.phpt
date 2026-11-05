@@ -2,15 +2,10 @@
 Test copy() function: usage variations - non existing src/dest
 --FILE--
 <?php
-/* Prototype: bool copy ( string $source, string $dest );
-   Description: Makes a copy of the file source to dest.
-     Returns TRUE on success or FALSE on failure.
-*/
+/* Test copy(): Trying to create a copy of non-existing source in an existing destination
+     and an existing source in non-existing destination */
 
-/* Test copy(): Trying to create a copy of non-existing source in an existing destination 
-     and an existing source in non-existing destiantion */
-
-$file_path = dirname(__FILE__);
+$file_path = __DIR__;
 
 echo "*** Test copy() function: Trying to create a copy of non-existing source in existing destination ***";
 $file = $file_path."/copy_variation14.tmp";
@@ -28,20 +23,18 @@ var_dump( filesize($file) );  //size of the source
 
 echo "*** Done ***\n";
 ?>
-
 --CLEAN--
 <?php
-unlink(dirname(__FILE__)."/copy_variation14.tmp");
+unlink(__DIR__."/copy_variation14.tmp");
 ?>
-
 --EXPECTF--
 *** Test copy() function: Trying to create a copy of non-existing source in existing destination ***
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 bool(false)
 
 *** Test copy() function: Trying to create copy of an existing source in non-existing destination ***
-Warning: copy(%s): %s
+Warning: copy(): %s
 bool(false)
 bool(false)
 int(1500)

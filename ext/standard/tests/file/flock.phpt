@@ -3,17 +3,24 @@ flock() tests
 --FILE--
 <?php
 
-$file = dirname(__FILE__)."/flock.dat";
-
-var_dump(flock());
-var_dump(flock("", "", $var));
+$file = __DIR__."/flock.dat";
 
 $fp = fopen($file, "w");
 fclose($fp);
 
-var_dump(flock($fp, LOCK_SH|LOCK_NB));
+try {
+    var_dump(flock($fp, LOCK_SH|LOCK_NB));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
-$fp = fopen($file, "w");
+/*
+ On Solaris, flock() is emulated via fcntl(). A shared lock (LOCK_SH) maps to
+ F_RDLCK, which requires the file descriptor to be open for reading. Using "w"
+ opens write-only and causes EBADF on Solaris. Open with "w+" so LOCK_SH works
+ portably across platforms.
+*/
+$fp = fopen($file, "w+");
 
 var_dump(flock($fp, LOCK_SH|LOCK_NB));
 var_dump(flock($fp, LOCK_UN));
@@ -31,24 +38,21 @@ var_dump(flock($fp, LOCK_UN, $would));
 var_dump($would);
 
 var_dump(flock($fp, -1));
-var_dump(flock($fp, 0));
 
-echo "Done\n";
+try {
+    var_dump(flock($fp, 0));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
 ?>
 --CLEAN--
 <?php
-$file = dirname(__FILE__)."/flock.dat";
+$file = __DIR__."/flock.dat";
 unlink($file);
 ?>
---EXPECTF--	
-Warning: flock() expects at least 2 parameters, 0 given in %s on line %d
-NULL
-
-Warning: flock() expects parameter 1 to be resource, string given in %s on line %d
-NULL
-
-Warning: flock(): supplied resource is not a valid stream resource in %s on line %d
-bool(false)
+--EXPECT--
+TypeError: flock(): Argument #1 ($stream) must be an open stream resource
 bool(true)
 bool(true)
 bool(true)
@@ -62,7 +66,4 @@ int(0)
 bool(true)
 int(0)
 bool(true)
-
-Warning: flock(): Illegal operation argument in %s on line %d
-bool(false)
-Done
+ValueError: flock(): Argument #2 ($operation) must be one of LOCK_SH, LOCK_EX, or LOCK_UN

@@ -1,19 +1,15 @@
 --TEST--
 Test session_start() function : variation
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.auto_start=1
 --FILE--
 <?php
 
 ob_start();
-
-/* 
- * Prototype : bool session_write_close(void)
- * Description : Write session data and end session
- * Source code : ext/session/session.c 
- */
 
 echo "*** Testing session_write_close() : variation ***\n";
 
@@ -36,4 +32,3 @@ array(0) {
 bool(true)
 bool(true)
 Done
-

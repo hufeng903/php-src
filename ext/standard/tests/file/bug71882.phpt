@@ -3,10 +3,11 @@ Bug #71882 (Negative ftruncate() on php://memory exhausts memory)
 --FILE--
 <?php
 $fd = fopen("php://memory", "w+");
-var_dump(ftruncate($fd, -1));
+try {
+    var_dump(ftruncate($fd, -1));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
-==DONE==
---EXPECTF--
-Warning: ftruncate(): Negative size is not supported in %s%ebug71882.php on line %d
-bool(false)
-==DONE==
+--EXPECT--
+ValueError: ftruncate(): Argument #2 ($size) must be greater than or equal to 0

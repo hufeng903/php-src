@@ -1,22 +1,18 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 7                                                        |
+  | Copyright © The PHP Group and Contributors.                          |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2018 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.0 of the PHP license,       |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_0.txt.                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  | This source file is subject to the Modified BSD License that is      |
+  | bundled with this package in the file LICENSE, and is available      |
+  | through the World Wide Web at <https://www.php.net/license/>.        |
+  |                                                                      |
+  | SPDX-License-Identifier: BSD-3-Clause                                |
   +----------------------------------------------------------------------+
   | Author: Wez Furlong <wez@php.net>                                    |
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
+/* internal header; not supposed to be installed */
 
 #ifdef PHP_WIN32
 # define PDO_ODBC_TYPE	"Win32"
@@ -28,75 +24,71 @@
 #endif
 
 /* {{{ Roll a dice, pick a header at random... */
-#if HAVE_SQLCLI1_H
+#ifdef HAVE_SQLCLI1_H
 # include <sqlcli1.h>
 # if defined(DB268K) && HAVE_LIBRARYMANAGER_H
 #  include <LibraryManager.h>
 # endif
 #endif
 
-#if HAVE_ODBC_H
+#ifdef HAVE_ODBC_H
 # include <odbc.h>
 #endif
 
-#if HAVE_IODBC_H
+#ifdef HAVE_IODBC_H
 # include <iodbc.h>
 #endif
 
-#if HAVE_SQLUNIX_H && !defined(PHP_WIN32)
+#if defined(HAVE_SQLUNIX_H) && !defined(PHP_WIN32)
 # include <sqlunix.h>
 #endif
 
-#if HAVE_SQLTYPES_H
+#ifdef HAVE_SQLTYPES_H
 # include <sqltypes.h>
 #endif
 
-#if HAVE_SQLUCODE_H
+#ifdef HAVE_SQLUCODE_H
 # include <sqlucode.h>
 #endif
 
-#if HAVE_SQL_H
+#ifdef HAVE_SQL_H
 # include <sql.h>
 #endif
 
-#if HAVE_ISQL_H
+#ifdef HAVE_ISQL_H
 # include <isql.h>
 #endif
 
-#if HAVE_SQLEXT_H
+#ifdef HAVE_SQLEXT_H
 # include <sqlext.h>
 #endif
 
-#if HAVE_ISQLEXT_H
+#ifdef HAVE_ISQLEXT_H
 # include <isqlext.h>
 #endif
 
-#if HAVE_UDBCEXT_H
+#ifdef HAVE_UDBCEXT_H
 # include <udbcext.h>
 #endif
 
-#if HAVE_CLI0CORE_H
+#ifdef HAVE_CLI0CORE_H
 # include <cli0core.h>
 #endif
 
-#if HAVE_CLI0EXT1_H
+#ifdef HAVE_CLI0EXT1_H
 # include <cli0ext.h>
 #endif
 
-#if HAVE_CLI0CLI_H
+#ifdef HAVE_CLI0CLI_H
 # include <cli0cli.h>
 #endif
 
-#if HAVE_CLI0DEFS_H
+#ifdef HAVE_CLI0DEFS_H
 # include <cli0defs.h>
 #endif
 
-#if HAVE_CLI0ENV_H
+#ifdef HAVE_CLI0ENV_H
 # include <cli0env.h>
-#endif
-
-#if HAVE_ODBCSDK_H
-# include <odbcsdk.h>
 #endif
 
 /* }}} */
@@ -120,7 +112,7 @@
 typedef struct {
 	char last_state[6];
 	char last_err_msg[SQL_MAX_MESSAGE_LENGTH];
-	SDWORD last_error;
+	SQLINTEGER last_error;
 	const char *file, *what;
 	int line;
 } pdo_odbc_errinfo;
@@ -137,7 +129,7 @@ typedef struct {
 	char *data;
 	zend_ulong datalen;
 	SQLLEN fetched_len;
-	SWORD	coltype;
+	SQLSMALLINT coltype;
 	char colname[128];
 	unsigned is_long;
 	unsigned is_unicode:1;
@@ -151,14 +143,22 @@ typedef struct {
 	pdo_odbc_errinfo einfo;
 	char *convbuf;
 	zend_ulong convbufsize;
+	HashTable *out_buffers;
 	unsigned going_long:1;
 	unsigned assume_utf8:1;
-	unsigned _spare:30;
+	unsigned params_dirty:1;
+	signed col_count:16;
+	unsigned _spare:13;
 } pdo_odbc_stmt;
 
 typedef struct {
 	SQLLEN len;
+	SQLLEN outbuflen;
 	SQLSMALLINT paramtype;
+	SQLSMALLINT sqltype;
+	SQLSMALLINT ctype;
+	SQLSMALLINT scale;
+	SQLULEN precision;
 	char *outbuf;
 	unsigned is_unicode:1;
 	unsigned _spare:31;
@@ -184,12 +184,3 @@ enum {
 	PDO_ODBC_ATTR_USE_CURSOR_LIBRARY = PDO_ATTR_DRIVER_SPECIFIC,
 	PDO_ODBC_ATTR_ASSUME_UTF8 /* assume that input strings are UTF-8 when feeding data to unicode columns */
 };
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */

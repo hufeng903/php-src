@@ -1,18 +1,14 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
-   +----------------------------------------------------------------------+
-   | Author: Zeev Suraski <zeev@zend.com>                                 |
+   | Author: Zeev Suraski <zeev@php.net>                                  |
    +----------------------------------------------------------------------+
  */
 
@@ -53,9 +49,9 @@ static int OpenPhpRegistryKey(char* sub_key, HKEY *hKey)
 			LONG ret;
 
 			main_key_len = strlen(*key_name);
-			reg_key = emalloc(main_key_len + sub_key_len + 1);
-			memcpy(reg_key, *key_name, main_key_len);
-			memcpy(reg_key + main_key_len, sub_key, sub_key_len + 1);
+			reg_key = zend_cstr_concat(
+				*key_name, main_key_len,
+				sub_key, sub_key_len);
 			ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, reg_key, 0, KEY_READ, hKey);
 			efree(reg_key);
 
@@ -96,7 +92,7 @@ static int LoadDirectory(HashTable *directories, HKEY key, char *path, int path_
 				memset(name, '\0', max_name+1);
 				memset(value, '\0', max_value+1);
 
-				if (RegEnumValue(key, i, name, &name_len, NULL, &type, value, &value_len) == ERROR_SUCCESS) {
+				if (RegEnumValue(key, i, name, &name_len, NULL, &type, (LPBYTE) value, &value_len) == ERROR_SUCCESS) {
 					if ((type == REG_SZ) || (type == REG_EXPAND_SZ)) {
 						zval data;
 
@@ -118,7 +114,7 @@ static int LoadDirectory(HashTable *directories, HKEY key, char *path, int path_
 					zend_ulong num;
 					zval *tmpdata;
 
-					ZEND_HASH_FOREACH_KEY_VAL(parent_ht, num, index, tmpdata) {
+					ZEND_HASH_MAP_FOREACH_KEY_VAL(parent_ht, num, index, tmpdata) {
 						zend_hash_add(ht, index, tmpdata);
 					} ZEND_HASH_FOREACH_END();
 				}
@@ -265,7 +261,7 @@ void UpdateIniFromRegistry(char *path)
 			zend_string *index;
 			zval *data;
 
-			ZEND_HASH_FOREACH_STR_KEY_VAL(ht, index, data) {
+			ZEND_HASH_MAP_FOREACH_STR_KEY_VAL(ht, index, data) {
 				zend_alter_ini_entry(index, Z_STR_P(data), PHP_INI_USER, PHP_INI_STAGE_ACTIVATE);
 			} ZEND_HASH_FOREACH_END();
 		}
@@ -289,7 +285,7 @@ char *GetIniPathFromRegistry()
 	if (OpenPhpRegistryKey(NULL, &hKey)) {
 		DWORD buflen = MAXPATHLEN;
 		reg_location = emalloc(MAXPATHLEN+1);
-		if(RegQueryValueEx(hKey, PHPRC_REGISTRY_NAME, 0, NULL, reg_location, &buflen) != ERROR_SUCCESS) {
+		if(RegQueryValueEx(hKey, PHPRC_REGISTRY_NAME, 0, NULL, (LPBYTE) reg_location, &buflen) != ERROR_SUCCESS) {
 			RegCloseKey(hKey);
 			efree(reg_location);
 			reg_location = NULL;
@@ -299,12 +295,3 @@ char *GetIniPathFromRegistry()
 	}
 	return reg_location;
 }/*}}}*/
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: sw=4 ts=4 fdm=marker
- * vim<600: sw=4 ts=4
- */

@@ -1,23 +1,23 @@
 --TEST--
-CLI php -m 
+CLI php -m
 --SKIPIF--
-<?php 
-include "skipif.inc"; 
+<?php
+include "skipif.inc";
 if (substr(PHP_OS, 0, 3) == 'WIN') {
-	die ("skip not for Windows");
+    die ("skip not for Windows");
 }
 ?>
 --FILE--
 <?php
 
-$php = getenv('TEST_PHP_EXECUTABLE');
+$php = getenv('TEST_PHP_EXECUTABLE_ESCAPED');
 
 
-echo `"$php" -n -m`;
+echo shell_exec("$php -n -m");
 
 echo "Done\n";
 ?>
---EXPECTF--     
+--EXPECTF--
 [PHP Modules]
 %a
 pcre

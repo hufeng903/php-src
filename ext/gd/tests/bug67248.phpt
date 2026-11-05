@@ -1,27 +1,26 @@
 --TEST--
 Bug #67248 (imageaffinematrixget missing check of parameters)
+--EXTENSIONS--
+gd
 --SKIPIF--
 <?php
-        if(!extension_loaded('gd')){ die('skip gd extension not available'); }
         if(!function_exists('imageaffinematrixget')) die('skip imageaffinematrixget() not available');
 ?>
 --FILE--
 <?php
+require __DIR__ . '/func.inc';
+
 for($i=0;$i<7;$i++) {
-	imageaffinematrixget($i);
+    trycatch_dump(
+        fn() => imageaffinematrixget($i, new stdClass())
+    );
 }
 ?>
 --EXPECTF--
-Warning: imageaffinematrixget(): Array expected as options in %s on line %d
-
-Warning: imageaffinematrixget(): Array expected as options in %s on line %d
-
-Warning: imageaffinematrixget(): Number is expected as option in %s on line %d
-
-Warning: imageaffinematrixget(): Number is expected as option in %s on line %d
-
-Warning: imageaffinematrixget(): Number is expected as option in %s on line %d
-
-Warning: imageaffinematrixget(): Invalid type for element 5 in %s on line %d
-
-Warning: imageaffinematrixget(): Invalid type for element 6 in %s on line %d
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given
+!! [TypeError] imageaffinematrixget(): Argument #2 ($options) must be of type array|float, stdClass given

@@ -1,44 +1,36 @@
 --TEST--
 Test parameter handling in socket_create_pair()
+--EXTENSIONS--
+sockets
 --SKIPIF--
 <?php
 if (substr(PHP_OS, 0, 3) == 'WIN') {
-	die('skip.. Not valid for Windows');
+    die('skip.. Not valid for Windows');
 }
-if (!extension_loaded('sockets')) {
-    die('SKIP The sockets extension is not loaded.');
-}
+?>
 --FILE--
 <?php
-var_dump(socket_create_pair(AF_INET, null, null));
 
-$domain = 'unknown';
-var_dump(socket_create_pair($domain, SOCK_STREAM, 0, $sockets));
+var_dump(socket_create_pair(AF_INET, 0, 0, $sockets));
 
-var_dump(socket_create_pair(AF_INET, null, null, $sockets));
+try {
+    var_dump(socket_create_pair(31337, 0, 0, $sockets));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
-var_dump(socket_create_pair(31337, null, null, $sockets));
+try {
+    var_dump(socket_create_pair(AF_INET, 31337, 0, $sockets));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 
-var_dump(socket_create_pair(AF_INET, 31337, 0, $sockets));
+?>
 --EXPECTF--
-Warning: socket_create_pair() expects exactly 4 parameters, 3 given in %s on line %d
-NULL
-
-Warning: socket_create_pair() expects parameter 1 to be int, string given in %s on line %d
-NULL
-
-Warning: socket_create_pair(): unable to create socket pair [%d]: %s not supported in %s on line %d
+Warning: socket_create_pair(): Unable to create socket pair [%d]: %s %r(not supported|wrong type for socket)%r in %s on line %d
 bool(false)
-
-Warning: socket_create_pair(): invalid socket domain [31337] specified for argument 1, assuming AF_INET in %s on line %d
-
-Warning: socket_create_pair(): unable to create socket pair [%d]: %s not supported in %s on line %d
-bool(false)
-
-Warning: socket_create_pair(): invalid socket type [31337] specified for argument 2, assuming SOCK_STREAM in %s on line %d
-
-Warning: socket_create_pair(): unable to create socket pair [%d]: %s not supported %s on line %d
-bool(false)
+ValueError: socket_create_pair(): Argument #1 ($domain) must be one of AF_UNIX, AF_INET6, or AF_INET
+ValueError: socket_create_pair(): Argument #2 ($type) must be one of SOCK_STREAM, SOCK_DGRAM, SOCK_SEQPACKET, SOCK_RAW, or SOCK_RDM%A
 --CREDITS--
 Till Klampaeckel, till@php.net
 Berlin TestFest 2009

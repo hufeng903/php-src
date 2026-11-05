@@ -1,9 +1,7 @@
 --TEST--
 Bug 62523 (php crashes with segfault when exif_read_data called)
---SKIPIF--
-<?php
-extension_loaded("exif") or die("skip need exif");
-?>
+--EXTENSIONS--
+exif
 --FILE--
 <?php
 echo "Test\n";
@@ -13,6 +11,6 @@ Done
 --EXPECTF--
 Test
 
-Warning: exif_read_data(bug62523_3.jpg): File not supported in %sbug62523_3.php on line %d
+Warning: exif_read_data(): File not supported in %sbug62523_3.php on line %d
 bool(false)
 Done

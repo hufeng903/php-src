@@ -8,20 +8,32 @@ function &test() : string {
     return $str[0];
 }
 
+function &gen() {
+    $str = "foo";
+    yield $str[0];
+}
+
 try {
     test();
-} catch (Error $e) {
-    echo $e->getMessage(), "\n";
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 try {
     $str = "foo";
     $str[0] =& $str[1];
-} catch (Error $e) {
-    echo $e->getMessage(), "\n";
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+
+try {
+    foreach (gen() as $v) {}
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 ?>
 --EXPECT--
-Cannot return string offsets by reference
-Cannot create references to/from string offsets
+Error: Cannot create references to/from string offsets
+Error: Cannot create references to/from string offsets
+Error: Cannot create references to/from string offsets

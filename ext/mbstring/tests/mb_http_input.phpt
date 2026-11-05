@@ -1,51 +1,38 @@
 --TEST--
-mb_http_input() 
---SKIPIF--
-<?php
-extension_loaded('mbstring') or die('skip mbstring not available');
-(php_sapi_name()=='cgi') or die("skip sapi is not a cgi version");
-die("skip disabled temporarily");
-?>
+mb_http_input()
+--EXTENSIONS--
+mbstring
 --POST--
 a=ÆüËÜ¸ì0123456789ÆüËÜ¸ì¥«¥¿¥«¥Ê¤Ò¤é¤¬¤Ê
 --GET--
-b=ÆüËÜ¸ì0123456789ÆüËÜ¸ì¥«¥¿¥«¥Ê¤Ò¤é¤¬¤Ê
+b=%C6%FC%CB%DC%B8%EC0123456789%C6%FC%CB%DC%B8%EC%A5%AB%A5%BF%A5%AB%A5%CA%A4%D2%A4%E9%A4%AC%A4%CA
+--INI--
+mbstring.encoding_translation=1
+input_encoding=latin1
 --FILE--
 <?php
-// TODO: This is not a real test.... Need to change so that it does real testing
-//$debug = true;
-ini_set('include_path', dirname(__FILE__));
-include_once('common.inc');
 
-$ini = ini_get('mbstring.http_input');
-
-// It must be url encoded....
-// echo vars
 echo $_POST['a']."\n";
 echo $_GET['b']."\n";
 
 // Get encoding
-$enc = mb_http_input('P');
-
-// check
-if (empty($ini)) {
-	// Must be pass
-	if ($enc === 'pass') {
-		echo "OK\n";
-	}
-	else {
-		echo "NG\n";
-	}
-}
-else {
-	// Some encoding
-	echo "This heppens when php.ini-dist is not used\n";
-}
+var_dump(mb_http_input('P'));
+var_dump(mb_http_input('G'));
+var_dump(mb_http_input('C'));
+var_dump(mb_http_input('S'));
+var_dump(mb_http_input('I'));
+var_dump(mb_http_input('L'));
 
 ?>
-
 --EXPECT--
-ÆüËÜ¸ì0123456789ÆüËÜ¸ì¥«¥¿¥«¥Ê¤Ò¤é¤¬¤Ê
-ÆüËÜ¸ì0123456789ÆüËÜ¸ì¥«¥¿¥«¥Ê¤Ò¤é¤¬¤Ê
-OK
-
+Ã†Ã¼Ã‹ÃœÂ¸Ã¬0123456789Ã†Ã¼Ã‹ÃœÂ¸Ã¬Â¥Â«Â¥Â¿Â¥Â«Â¥ÃŠÂ¤Ã’Â¤Ã©Â¤Â¬Â¤ÃŠ
+Ã†Ã¼Ã‹ÃœÂ¸Ã¬0123456789Ã†Ã¼Ã‹ÃœÂ¸Ã¬Â¥Â«Â¥Â¿Â¥Â«Â¥ÃŠÂ¤Ã’Â¤Ã©Â¤Â¬Â¤ÃŠ
+string(10) "ISO-8859-1"
+string(10) "ISO-8859-1"
+bool(false)
+bool(false)
+array(1) {
+  [0]=>
+  string(10) "ISO-8859-1"
+}
+string(10) "ISO-8859-1"

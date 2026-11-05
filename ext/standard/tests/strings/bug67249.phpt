@@ -2,7 +2,11 @@
 Bug #67249 (printf out-of-bounds read)
 --FILE--
 <?php
-var_dump(sprintf("%'", "foo"));
+try {
+    var_dump(sprintf("%'", "foo"));
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
 --EXPECT--
-string(0) ""
+ValueError: Missing padding character

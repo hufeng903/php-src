@@ -1,16 +1,12 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available at through the world-wide-web at the following url:        |
-   | http://www.php.net/license/3_01.txt.                                 |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: George Wang <gwang@litespeedtech.com>                        |
    +----------------------------------------------------------------------+
@@ -70,8 +66,8 @@ struct LSAPI_key_value_pair
     int    valLen;
 };
 
-
-#define LSAPI_MAX_RESP_HEADERS  100
+struct lsapi_child_status;
+#define LSAPI_MAX_RESP_HEADERS  1000
 
 typedef struct lsapi_request
 {
@@ -91,6 +87,7 @@ typedef struct lsapi_request
     char            * m_pRespHeaderBuf;
     char            * m_pRespHeaderBufEnd;
     char            * m_pRespHeaderBufPos;
+    struct lsapi_child_status * child_status;
 
 
     struct iovec    * m_pIovec;
@@ -265,6 +262,9 @@ static inline off_t LSAPI_GetReqBodyRemain_r( LSAPI_Request * pReq )
 }
 
 
+int LSAPI_End_Response_r(LSAPI_Request * pReq);
+
+
 
 int LSAPI_Is_Listen(void);
 
@@ -348,6 +348,9 @@ static inline int LSAPI_SetRespStatus( int code )
 static inline int LSAPI_ErrResponse( int code, const char ** pRespHeaders, const char * pBody, int bodyLen )
 {   return LSAPI_ErrResponse_r( &g_req, code, pRespHeaders, pBody, bodyLen );   }
 
+static inline int LSAPI_End_Response(void)
+{   return LSAPI_End_Response_r( &g_req );                         }
+
 int LSAPI_IsRunning(void);
 
 int LSAPI_CreateListenSock( const char * pBind, int backlog );
@@ -389,6 +392,12 @@ void LSAPI_Register_Pgrp_Timer_Callback(LSAPI_On_Timer_pf);
 
 int LSAPI_Inc_Req_Processed(int cnt);
 
+int LSAPI_Accept_Before_Fork(LSAPI_Request * pReq);
+
+int LSAPI_Postfork_Child(LSAPI_Request * pReq);
+
+int LSAPI_Postfork_Parent(LSAPI_Request * pReq);
+
 #define LSAPI_LOG_LEVEL_BITS    0xff
 #define LSAPI_LOG_FLAG_NONE     0
 #define LSAPI_LOG_FLAG_DEBUG    1
@@ -402,11 +411,12 @@ int LSAPI_Inc_Req_Processed(int cnt);
 #define LSAPI_LOG_TIMESTAMP_BITS (0xff00)
 #define LSAPI_LOG_TIMESTAMP_FULL (0x100)
 #define LSAPI_LOG_TIMESTAMP_HMS  (0x200)
+#define LSAPI_LOG_TIMESTAMP_STDERR  (0x400)
 
 #define LSAPI_LOG_PID            (0x10000)
 
 void LSAPI_Log(int flag, const char * fmt, ...)
-#if __GNUC__
+#ifdef __GNUC__
         __attribute__((format(printf, 2, 3)))
 #endif
 ;
@@ -418,10 +428,3 @@ void LSAPI_Log(int flag, const char * fmt, ...)
 
 
 #endif
-
-
-
-
-
-
-

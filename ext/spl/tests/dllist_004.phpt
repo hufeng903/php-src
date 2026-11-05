@@ -7,12 +7,12 @@ $stack = new SplStack();
 try {
     $stack->pop();
 } catch (RuntimeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 try {
     $stack->shift();
 } catch (RuntimeException $e) {
-    echo "Exception: ".$e->getMessage()."\n";
+    echo $e::class, ': ', $e->getMessage(), "\n";
 }
 
 // data consistency
@@ -44,11 +44,9 @@ $stack_clone = clone $stack;
 $stack_clone->pop();
 echo count($stack)."\n";
 ?>
-===DONE===
-<?php exit(0); ?>
 --EXPECT--
-Exception: Can't pop from an empty datastructure
-Exception: Can't shift from an empty datastructure
+RuntimeException: Can't pop from an empty datastructure
+RuntimeException: Can't shift from an empty datastructure
 2
 2
 [2]
@@ -58,4 +56,3 @@ Exception: Can't shift from an empty datastructure
 NULL
 NULL
 3
-===DONE===

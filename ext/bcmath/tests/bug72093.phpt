@@ -1,16 +1,20 @@
 --TEST--
-Bug 72093: bcpowmod accepts negative scale and corrupts _one_ definition
---SKIPIF--
-<?php
-if(!extension_loaded("bcmath")) print "skip";
-?>
+Bug 72093: bcpowmod fails on negative scale and corrupts _one_ definition
+--EXTENSIONS--
+bcmath
 --FILE--
 <?php
-var_dump(bcpowmod(1, "A", 128, -200));
-var_dump(bcpowmod(1, 1.2, 1, 1));
+try {
+    var_dump(bcpowmod(1, 0, 128, -200));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
+try {
+    var_dump(bcpowmod(1, 1.2, 1, 1));
+} catch (\Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-string(1) "1"
-
-Warning: bcpowmod(): non-zero scale in exponent in %s on line %d
-string(3) "0.0"
+--EXPECT--
+ValueError: bcpowmod(): Argument #4 ($scale) must be between 0 and 2147483647
+ValueError: bcpowmod(): Argument #2 ($exponent) cannot have a fractional part

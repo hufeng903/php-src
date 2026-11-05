@@ -1,0 +1,25 @@
+/* This is a generated file, edit fpm_main.stub.php instead.
+ * Stub hash: b9cdc331451e1f03af1faf6fc621a4ad62603ab0 */
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_fastcgi_finish_request, 0, 0, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_apache_request_headers, 0, 0, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_getallheaders arginfo_apache_request_headers
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_fpm_get_status, 0, 0, MAY_BE_ARRAY|MAY_BE_FALSE)
+ZEND_END_ARG_INFO()
+
+ZEND_FUNCTION(fastcgi_finish_request);
+ZEND_FUNCTION(fpm_request_headers);
+ZEND_FUNCTION(fpm_get_status);
+
+static const zend_function_entry ext_functions[] = {
+	ZEND_FE(fastcgi_finish_request, arginfo_fastcgi_finish_request)
+	ZEND_RAW_FENTRY("apache_request_headers", zif_fpm_request_headers, arginfo_apache_request_headers, 0, NULL, NULL)
+	ZEND_RAW_FENTRY("getallheaders", zif_fpm_request_headers, arginfo_getallheaders, 0, NULL, NULL)
+	ZEND_FE(fpm_get_status, arginfo_fpm_get_status)
+	ZEND_FE_END
+};

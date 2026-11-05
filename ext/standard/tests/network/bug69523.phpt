@@ -2,7 +2,11 @@
 setcookie() allows empty cookie name
 --FILE--
 <?php
-setcookie('', 'foo');
+try {
+    setcookie('', 'foo');
+} catch (Throwable $e) {
+    echo $e::class, ': ', $e->getMessage(), "\n";
+}
 ?>
---EXPECTF--
-Warning: Cookie names must not be empty in %s on line %d
+--EXPECT--
+ValueError: setcookie(): Argument #1 ($name) must not be empty

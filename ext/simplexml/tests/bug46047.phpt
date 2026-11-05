@@ -1,10 +1,10 @@
 --TEST--
 Bug #46047 (SimpleXML converts empty nodes into object with nested array)
---SKIPIF--
-<?php if (!extension_loaded("simplexml")) print "skip"; ?>
+--EXTENSIONS--
+simplexml
 --FILE--
 <?php
-$xml = new SimpleXMLElement('<foo><bar><![CDATA[]]></bar><baz/></foo>', 
+$xml = new SimpleXMLElement('<foo><bar><![CDATA[]]></bar><baz/></foo>',
   LIBXML_NOCDATA);
 print_r($xml);
 
@@ -14,7 +14,6 @@ print_r($xml);
 $xml = new SimpleXMLElement('<foo><bar/><baz/></foo>');
 print_r($xml);
 ?>
-===DONE===
 --EXPECT--
 SimpleXMLElement Object
 (
@@ -49,5 +48,4 @@ SimpleXMLElement Object
         )
 
 )
-===DONE===
 	

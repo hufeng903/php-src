@@ -1,19 +1,15 @@
 --TEST--
 Test session_commit() function : variation
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.use_strict_mode=0
 --FILE--
 <?php
 
 ob_start();
-
-/*
- * Prototype : bool session_commit(void)
- * Description : Write session data and end session
- * Source code : ext/session/session.c
- */
 
 echo "*** Testing session_commit() : variation ***\n";
 
@@ -67,4 +63,3 @@ string(32) "%s"
 bool(true)
 bool(true)
 Done
-

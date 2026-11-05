@@ -1,30 +1,40 @@
 --TEST--
 Test session_get_cookie_params() function : basic functionality
+--EXTENSIONS--
+session
 --SKIPIF--
-<?php include('skipif.inc'); ?>
+<?php include 'skipif.inc'; ?>
 --INI--
 session.cookie_lifetime=0
 session.cookie_path="/"
 session.cookie_domain=""
 session.cookie_secure=0
+session.cookie_partitioned=0
 session.cookie_httponly=0
+session.cookie_samesite=""
 --FILE--
 <?php
 
 ob_start();
-
-/* 
- * Prototype : array session_get_cookie_params(void)
- * Description : Get the session cookie parameters
- * Source code : ext/session/session.c 
- */
 
 echo "*** Testing session_get_cookie_params() : basic functionality ***\n";
 
 var_dump(session_get_cookie_params());
 var_dump(session_set_cookie_params(3600, "/path", "blah", FALSE, FALSE));
 var_dump(session_get_cookie_params());
-var_dump(session_set_cookie_params(1234567890, "/guff", "foo", TRUE, TRUE));
+var_dump(session_set_cookie_params(1000000000, "/guff", "foo", TRUE, TRUE));
+var_dump(session_get_cookie_params());
+var_dump(session_set_cookie_params([
+  "lifetime" => 123,
+  "path" => "/bar",
+  "domain" => "baz",
+  "secure" => FALSE,
+  "httponly" => FALSE,
+  "samesite" => "Strict"]));
+var_dump(session_get_cookie_params());
+var_dump(session_set_cookie_params([
+  "secure" => TRUE,
+  "partitioned" => TRUE]));
 var_dump(session_get_cookie_params());
 
 echo "Done";
@@ -32,7 +42,7 @@ ob_end_flush();
 ?>
 --EXPECT--
 *** Testing session_get_cookie_params() : basic functionality ***
-array(5) {
+array(7) {
   ["lifetime"]=>
   int(0)
   ["path"]=>
@@ -41,11 +51,15 @@ array(5) {
   string(0) ""
   ["secure"]=>
   bool(false)
+  ["partitioned"]=>
+  bool(false)
   ["httponly"]=>
   bool(false)
+  ["samesite"]=>
+  string(0) ""
 }
 bool(true)
-array(5) {
+array(7) {
   ["lifetime"]=>
   int(3600)
   ["path"]=>
@@ -54,20 +68,62 @@ array(5) {
   string(4) "blah"
   ["secure"]=>
   bool(false)
+  ["partitioned"]=>
+  bool(false)
   ["httponly"]=>
   bool(false)
+  ["samesite"]=>
+  string(0) ""
 }
 bool(true)
-array(5) {
+array(7) {
   ["lifetime"]=>
-  int(1234567890)
+  int(1000000000)
   ["path"]=>
   string(5) "/guff"
   ["domain"]=>
   string(3) "foo"
   ["secure"]=>
   bool(true)
+  ["partitioned"]=>
+  bool(false)
   ["httponly"]=>
   bool(true)
+  ["samesite"]=>
+  string(0) ""
+}
+bool(true)
+array(7) {
+  ["lifetime"]=>
+  int(123)
+  ["path"]=>
+  string(4) "/bar"
+  ["domain"]=>
+  string(3) "baz"
+  ["secure"]=>
+  bool(false)
+  ["partitioned"]=>
+  bool(false)
+  ["httponly"]=>
+  bool(false)
+  ["samesite"]=>
+  string(6) "Strict"
+}
+bool(true)
+array(7) {
+  ["lifetime"]=>
+  int(123)
+  ["path"]=>
+  string(4) "/bar"
+  ["domain"]=>
+  string(3) "baz"
+  ["secure"]=>
+  bool(true)
+  ["partitioned"]=>
+  bool(true)
+  ["httponly"]=>
+  bool(false)
+  ["samesite"]=>
+  string(6) "Strict"
 }
 Done

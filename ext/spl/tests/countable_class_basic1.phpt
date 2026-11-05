@@ -2,7 +2,7 @@
 SPL: Test shape of interface Countable.
 --FILE--
 <?php
-ReflectionClass::export('Countable');
+echo new ReflectionClass('Countable');
 ?>
 --EXPECTF--
 Interface [ <internal%s> interface Countable ] {
@@ -24,6 +24,7 @@ Interface [ <internal%s> interface Countable ] {
 
       - Parameters [0] {
       }
+      - Tentative return [ int ]
     }
   }
 }

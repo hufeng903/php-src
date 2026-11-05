@@ -1,7 +1,7 @@
 --TEST--
 mb_output_handler() (EUC-JP)
---SKIPIF--
-<?php extension_loaded('mbstring') or die('skip mbstring not available'); ?>
+--EXTENSIONS--
+mbstring
 --FILE--
 <?php
 // TODO: Do real test
@@ -16,6 +16,5 @@ $output = ob_get_clean();
 var_dump( $output );
 
 ?>
-
 --EXPECT--
 string(73) "テスト用日本語文字列。このモジュールはPHPにマルチバイト関数を提供します。"

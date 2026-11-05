@@ -1,22 +1,16 @@
 /*
    +----------------------------------------------------------------------+
-   | PHP Version 7                                                        |
+   | Copyright © The PHP Group and Contributors.                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1997-2018 The PHP Group                                |
-   +----------------------------------------------------------------------+
-   | This source file is subject to version 3.01 of the PHP license,      |
-   | that is bundled with this package in the file LICENSE, and is        |
-   | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
-   | If you did not receive a copy of the PHP license and are unable to   |
-   | obtain it through the world-wide-web, please send a note to          |
-   | license@php.net so we can mail you a copy immediately.               |
+   | This source file is subject to the Modified BSD License that is      |
+   | bundled with this package in the file LICENSE, and is available      |
+   | through the World Wide Web at <https://www.php.net/license/>.        |
+   |                                                                      |
+   | SPDX-License-Identifier: BSD-3-Clause                                |
    +----------------------------------------------------------------------+
    | Author: Andrew Sitnikov <sitnikov@infonet.ee>                        |
    +----------------------------------------------------------------------+
 */
-
-/* $Id$ */
 
 #include "php.h"
 
@@ -30,9 +24,8 @@
 #include "win32/ipc.h"
 #endif
 
-#if HAVE_FTOK
-/* {{{ proto int ftok(string pathname, string proj)
-   Convert a pathname and a project identifier to a System V IPC key */
+#ifdef HAVE_FTOK
+/* {{{ Convert a pathname and a project identifier to a System V IPC key */
 PHP_FUNCTION(ftok)
 {
 	char *pathname, *proj;
@@ -45,13 +38,13 @@ PHP_FUNCTION(ftok)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (pathname_len == 0){
-		php_error_docref(NULL, E_WARNING, "Pathname is invalid");
-		RETURN_LONG(-1);
+		zend_argument_must_not_be_empty_error(1);
+		RETURN_THROWS();
 	}
 
 	if (proj_len != 1){
-		php_error_docref(NULL, E_WARNING, "Project identifier is invalid");
-		RETURN_LONG(-1);
+		zend_argument_value_error(2, "must be a single character");
+		RETURN_THROWS();
 	}
 
 	if (php_check_open_basedir(pathname)) {
@@ -67,10 +60,3 @@ PHP_FUNCTION(ftok)
 }
 /* }}} */
 #endif
-
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- */
